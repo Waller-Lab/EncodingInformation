@@ -57,11 +57,10 @@ def normalize_image_stack(stack):
 ## Functions for computing and sampling from Gaussian processes    
 
 
-def sample_multivariate_gaussian(cov_mat):
+def sample_multivariate_gaussian(cholesky):
     """
-    Generate a sample from multivariate gaussian with zero mean given its covariance matrix
+    Generate a sample from multivariate gaussian with zero mean given the cholesky decomposition of its covariance matrix
     """
-    cholesky = np.linalg.cholesky(cov_mat)
     sample = cholesky @ np.random.multivariate_normal(np.zeros(cholesky.shape[0]), np.eye(cholesky.shape[0]))
     sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
     return sampled_image
