@@ -1,12 +1,14 @@
 
 """
-Functions for processing images in useful ways
-    extracting patches, adding synthetic noise, etc.
+Functions for processing images in useful ways extracting patches, adding synthetic noise, etc.
 """
 import jax.numpy as np
 import numpy as onp
 from tqdm import tqdm
-import warnings
+import numpy as np
+import scipy.linalg as sla
+from cleanplots import *
+
 
 
 
@@ -20,16 +22,6 @@ def add_shot_noise(images):
     # ensure non-negative
     noisy_images[noisy_images < 0] = 0
     return noisy_images
-
-def compute_cov_mat(patches):
-    """
-    Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches
-    """
-    patches = np.array(patches)
-    vectorized_patches = patches.reshape(patches.shape[0], -1).T
-    # center on 0
-    vectorized_patches = vectorized_patches - np.mean(vectorized_patches, axis=1, keepdims=True)
-    return np.cov(vectorized_patches)
 
 def compute_eigenvalues(image_patches):   
     """
@@ -60,3 +52,18 @@ def normalize_image_stack(stack):
     average_energy_per_pixel = np.sum(stack.astype(float)) / np.prod(stack.size)
     stack = stack.astype(float) / average_energy_per_pixel
     return stack
+
+##########################
+## Functions for computing and sampling from Gaussian processes    
+
+
+def sample_multivariate_gaussian(cov_mat):
+    """
+    Generate a sample from multivariate gaussian with zero mean given its covariance matrix
+    """
+    cholesky = np.linalg.cholesky(cov_mat)
+    sample = cholesky @ np.random.multivariate_normal(np.zeros(cholesky.shape[0]), np.eye(cholesky.shape[0]))
+    sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
+    return sampled_image
+
+
