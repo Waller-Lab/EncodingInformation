@@ -6,10 +6,8 @@ import jax.numpy as np
 import numpy as onp
 from tqdm import tqdm
 import numpy as np
-import scipy.linalg as sla
 from cleanplots import *
-
-
+from jax.scipy.linalg import toeplitz
 
 
 def add_shot_noise(images):
@@ -33,9 +31,10 @@ def compute_eigenvalues(image_patches):
     evals = np.abs(evals)
     return evals
 
-def extract_patches(stack, patch_size, num_patches=1000, seed=12345):
+def extract_patches(stack, patch_size, num_patches=1000, seed=None):
     patches = []
-    onp.random.seed(seed)
+    if seed is not None:
+        onp.random.seed(seed)
     image_indices = onp.random.randint(0, stack.shape[0], num_patches)
     x_indices = onp.random.randint(0, stack.shape[1] - patch_size, num_patches)
     y_indices = onp.random.randint(0, stack.shape[2] - patch_size, num_patches)
@@ -56,13 +55,207 @@ def normalize_image_stack(stack):
 ##########################
 ## Functions for computing and sampling from Gaussian processes    
 
+import jax
 
-def sample_multivariate_gaussian(cholesky):
+def compute_cov_mat(patches):
+    """
+    Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches
+    """
+    patches = np.array(patches)
+    vectorized_patches = patches.reshape(patches.shape[0], -1).T
+    # center on 0
+    vectorized_patches = vectorized_patches - np.mean(vectorized_patches, axis=1, keepdims=True)
+    return np.cov(vectorized_patches)
+
+# trying to add jit to this somehow makes it run slower
+def compute_stationary_cov_mat(patches):
+    """
+    Uses images patches to estimate the covariance matrix of a stationary 2D process.
+    The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
+    of blocks, each of which itself is a toeplitz matrix. The raw covariance matrix calculated
+    from the patches is not doubly toeplitz, so we need to average over all elements that should 
+    be the same as each other within this structure.
+    """
+    cov_mat = compute_cov_mat(patches)
+    # split it into individual blocks
+    block_size = patches.shape[-1]
+    # divide it into blocks
+    blocks = [np.hsplit(row, cov_mat.shape[1]//block_size) for row in np.vsplit(cov_mat, cov_mat.shape[0]//block_size)]
+
+    toeplitz_blocks = {}
+    for i in range(len(blocks)):
+        for j in range(len(blocks[0])):
+            id = (i - j)
+            if id not in toeplitz_blocks:
+                toeplitz_blocks[id] = []
+            toeplitz_blocks[id].append(blocks[i][j])
+
+    # compute the mean of each block
+    toeplitz_block_means = {id: np.mean(np.stack(blocks, axis=0), axis=0) for id, blocks in toeplitz_blocks.items()}
+
+    # now repeat the process within each block
+    j, i = np.meshgrid(np.arange(block_size), np.arange(block_size))
+    differences = abs(i - j)
+    masks = np.array([differences == id for id in np.arange(block_size)])
+    for block_id, block in tqdm(dict(toeplitz_block_means.items()).items()):
+        diag_values = []
+        for mask in masks:
+            diag_values.append(np.sum(np.where(mask, block, 0)) / np.sum(mask))            
+        # create a new topelitz matrix from the diagonal values
+        toeplitz_block_means[block_id] = toeplitz(np.array(diag_values))
+
+    # now reconstruct the full doubly toeplitz matrix from the blocks
+    new_blocks = []
+    for i in range(len(blocks)):
+        row = []
+        for j in range(len(blocks[0])):
+            id = abs(i - j)
+            row.append(toeplitz_block_means[id])
+        new_blocks.append(np.hstack(row))
+    stationary_cov_mat = np.vstack(new_blocks)
+    return stationary_cov_mat
+
+def sample_multivariate_gaussian(cholesky, key):
     """
     Generate a sample from multivariate gaussian with zero mean given the cholesky decomposition of its covariance matrix
     """
-    sample = cholesky @ np.random.multivariate_normal(np.zeros(cholesky.shape[0]), np.eye(cholesky.shape[0]))
+    mvn_sample = jax.random.multivariate_normal(key, np.zeros(cholesky.shape[0]), np.eye(cholesky.shape[0]))
+    # mvn_sample = onp.random.normal(size=cholesky.shape[0])
+    sample = np.array(cholesky) @ mvn_sample
     sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
     return sampled_image
 
+def make_positive_definite(A, cutoff_percentile=25, show_plot=True):
+    """
+    ensure the matrix is positive definite by adding a small value to the eigenvalues
+    start small and iteratively increase the threshold until the matrix is positive definite
 
+    A : matrix to make positive definite
+    cutoff_percentile : all eigenvalues below this percentile will be increased to it
+    show_plot : whether to show a plot of the eigenvalue spectrum and cutoff threshold
+    """
+    # IMPORTANT: This has to run using regular numpy, not jax.numpy, because
+    # jax.numpy has weird, possibly buggy behavior when computing eigenvalues
+    # and gives different results than numpy
+    eigvals, eigvecs = onp.linalg.eigh(A)
+    if np.min(eigvals) > 0:
+        return A
+    threshold = np.percentile(eigvals, cutoff_percentile)
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    ax.semilogy(eigvals)
+    ax.set(title='Eigenvalue spectrum', xlabel='Eigenvalue index', ylabel='Eigenvalue')
+    # plot vertical line at the threshold
+    ax.axhline(threshold, color='green', linestyle='--')
+    while onp.min(eigvals) <= 0:
+        print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
+        eigvals = onp.where(eigvals < threshold, threshold, eigvals)
+        new_matrix = eigvecs @ onp.diag(eigvals) @ eigvecs.T
+        eigvals, eigvecs = onp.linalg.eigh(new_matrix)
+        threshold *= 2
+    return new_matrix
+
+
+def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, prefer_iterative_sampling=False):
+    """
+    Given a covariance matrix of a stationary Gaussian process, generate samples from it
+
+    cov_mat : The covariance matrix of a stationary Gaussian process
+    sample_size : int that is the one dimensional shape of a patch that the new
+        covariance matrix represents the size of the covariance matrix is the patch size squared
+    num_samples : int number of samples to generate
+    prefer_iterative_sampling : bool if true, dont directly sample the first (patch_size, patch_size) pixels
+        directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
+        This is much slower
+    """
+    key = jax.random.PRNGKey(onp.random.randint(0, 10000))
+
+    # precompute everything that will be the same for all samples
+    patch_size = int(np.sqrt(cov_mat.shape[0]))
+    vectorized_masks = []
+    variances = []
+    mean_multipliers = []
+    print('precomputing masks and variances')
+    for i in tqdm(np.arange(sample_size)):
+        for j in np.arange(sample_size):
+            if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
+                # Add placeholders since these get sampled from the covariance matrix directly
+                variances.append(None)
+                mean_multipliers.append(None)
+                vectorized_masks.append(None)
+            else:
+                top_part = np.ones((min(i, patch_size - 1), patch_size), dtype=bool)
+                left_part = np.ones((1, min(j, patch_size - 1)), dtype=bool)
+                right_part = np.zeros((1, patch_size - min(j, patch_size - 1)), dtype=bool)
+                bottom_part = np.zeros((patch_size - min(i, patch_size - 1) - 1, patch_size), dtype=bool)
+                middle_row = np.hstack((left_part, right_part))
+                conditioning_mask = np.vstack((top_part, middle_row, bottom_part))
+
+                vectorized_mask = conditioning_mask.reshape(-1)
+                vectorized_masks.append(vectorized_mask)
+                # find the linear index in the covariance matrix of the pixel we want to predict
+                pixel_to_predict_index = np.min(np.array([i, patch_size - 1])) * patch_size + np.min(np.array([j, patch_size - 1]))
+                sigma_11 = cov_mat[vectorized_mask][:, vectorized_mask].reshape(pixel_to_predict_index, pixel_to_predict_index) 
+                sigma_12 = cov_mat[vectorized_mask][:, pixel_to_predict_index].reshape(-1, 1)
+                sigma_21 = sigma_12.reshape(1, -1)
+                sigma_22 = cov_mat[pixel_to_predict_index, pixel_to_predict_index].reshape(1, 1)
+
+                variances.append(sigma_22 - sigma_21 @ np.linalg.inv(sigma_11) @ sigma_12)
+                mean_multipliers.append(sigma_21 @ np.linalg.inv(sigma_11))
+                # print(i, j, np.linalg.det(sigma_11))
+
+                # print(i,j, mean_multipliers[-1].mean())
+                if variances[-1] < 0:
+                    raise ValueError('Variance is negative {} {}'.format(i, j))
+
+
+    samples = []
+    for i in range(num_samples):
+        sample, key = _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, 
+                                        mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling)
+        samples.append(sample)
+    return samples
+
+def _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, mean_multipliers, prefer_iterative_sampling=False):
+    if not prefer_iterative_sampling:
+        cholesky = onp.linalg.cholesky(cov_mat)
+        sampled_image = sample_multivariate_gaussian(cholesky, key)
+        key = jax.random.split(key)[1]
+
+        if sampled_image.shape[0] == sample_size:
+            return sampled_image
+        elif sampled_image.shape[0] > sample_size:
+            return sampled_image[:sample_size, :sample_size]
+
+        # pad the right and bottom with zeros
+        sampled_image = np.pad(sampled_image, ((0, sample_size - sampled_image.shape[0]), (0, sample_size - sampled_image.shape[1])))
+    else:
+        sampled_image = np.zeros((sample_size, sample_size))
+
+    for i in tqdm(np.arange(sample_size), name='generating sample'):
+        for j in np.arange(sample_size):
+            if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
+                # use existing values
+                pass
+            elif i == 0 and j == 0:
+                # top left pixel is not conditioned on anything
+                mean = 0
+                sample = (jax.random.normal(key) * np.sqrt(cov_mat[0, 0]) + mean).reshape(-1)[0]
+                sampled_image = sampled_image.at[i, j].set(sample)
+                key = jax.random.split(key)[1]
+            else:
+                vectorized_mask = vectorized_masks[i * sample_size + j]
+                # get the relevant window of previous values
+                relevant_window = sampled_image[max(i - patch_size + 1, 0):max(i - patch_size + 1, 0) + patch_size, 
+                                                max(j - patch_size + 1, 0):max(j - patch_size + 1, 0) + patch_size]
+                previous_values = relevant_window.reshape(-1)[vectorized_mask].reshape(-1, 1)
+                
+                if i == 9 and j == 10:
+                    pass
+                mean = mean_multipliers[i * sample_size + j] @ previous_values
+                variance = variances[i * sample_size + j]
+                sample = (jax.random.normal(key) * np.sqrt(variance) + mean).reshape(-1)[0]
+                sampled_image = sampled_image.at[i, j].set(sample)
+                key = jax.random.split(key)[1]
+            
+    return sampled_image, jax.random.split(key)[1]
+    
