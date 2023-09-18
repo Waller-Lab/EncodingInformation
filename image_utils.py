@@ -2,13 +2,13 @@
 """
 Functions for processing images in useful ways extracting patches, adding synthetic noise, etc.
 """
-import jax.numpy as np
+
 import numpy as onp
 from tqdm import tqdm
-import numpy as np
 from cleanplots import *
 from jax.scipy.linalg import toeplitz
-
+import jax.numpy as np
+import jax
 
 def add_shot_noise(images):
     """
@@ -18,7 +18,7 @@ def add_shot_noise(images):
     """
     noisy_images = images + onp.random.randn(*images.shape) * onp.sqrt(images)
     # ensure non-negative
-    noisy_images[noisy_images < 0] = 0
+    noisy_images = np.where(noisy_images < 0, 0, noisy_images)
     return noisy_images
 
 def compute_eigenvalues(image_patches):   
@@ -55,13 +55,12 @@ def normalize_image_stack(stack):
 ##########################
 ## Functions for computing and sampling from Gaussian processes    
 
-import jax
 
 def compute_cov_mat(patches):
     """
     Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches
     """
-    patches = np.array(patches)
+    # patches = np.array(patches)
     vectorized_patches = patches.reshape(patches.shape[0], -1).T
     # center on 0
     vectorized_patches = vectorized_patches - np.mean(vectorized_patches, axis=1, keepdims=True)
@@ -125,13 +124,14 @@ def sample_multivariate_gaussian(cholesky, key):
     sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
     return sampled_image
 
-def make_positive_definite(A, cutoff_percentile=25, show_plot=True):
+def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, show_plot=True):
     """
     ensure the matrix is positive definite by adding a small value to the eigenvalues
     start small and iteratively increase the threshold until the matrix is positive definite
 
     A : matrix to make positive definite
     cutoff_percentile : all eigenvalues below this percentile will be increased to it
+    eigenvalue_threshold : if not None, use this as the initial threshold instead of the cutoff_percentile
     show_plot : whether to show a plot of the eigenvalue spectrum and cutoff threshold
     """
     # IMPORTANT: This has to run using regular numpy, not jax.numpy, because
@@ -140,12 +140,16 @@ def make_positive_definite(A, cutoff_percentile=25, show_plot=True):
     eigvals, eigvecs = onp.linalg.eigh(A)
     if np.min(eigvals) > 0:
         return A
-    threshold = np.percentile(eigvals, cutoff_percentile)
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    ax.semilogy(eigvals)
-    ax.set(title='Eigenvalue spectrum', xlabel='Eigenvalue index', ylabel='Eigenvalue')
-    # plot vertical line at the threshold
-    ax.axhline(threshold, color='green', linestyle='--')
+    if eigenvalue_threshold is not None:
+        threshold = eigenvalue_threshold
+    else:
+        threshold = np.percentile(eigvals, cutoff_percentile)
+    if show_plot:
+        fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+        ax.semilogy(eigvals)
+        ax.set(title='Eigenvalue spectrum', xlabel='Eigenvalue index', ylabel='Eigenvalue')
+        # plot vertical line at the threshold
+        ax.axhline(threshold, color='green', linestyle='--')
     while onp.min(eigvals) <= 0:
         print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
         eigvals = onp.where(eigvals < threshold, threshold, eigvals)
@@ -155,7 +159,7 @@ def make_positive_definite(A, cutoff_percentile=25, show_plot=True):
     return new_matrix
 
 
-def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, prefer_iterative_sampling=False):
+def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, mean=None, prefer_iterative_sampling=False):
     """
     Given a covariance matrix of a stationary Gaussian process, generate samples from it
 
@@ -163,6 +167,7 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
     sample_size : int that is the one dimensional shape of a patch that the new
         covariance matrix represents the size of the covariance matrix is the patch size squared
     num_samples : int number of samples to generate
+    mean : mean of the Gaussian process. If None, use zero mean
     prefer_iterative_sampling : bool if true, dont directly sample the first (patch_size, patch_size) pixels
         directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
         This is much slower
@@ -212,26 +217,29 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
     for i in range(num_samples):
         sample, key = _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, 
                                         mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling)
+        if mean is not None:
+            sample += mean
         samples.append(sample)
     return samples
 
 def _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, mean_multipliers, prefer_iterative_sampling=False):
+    patch_size = int(np.sqrt(cov_mat.shape[0]))
     if not prefer_iterative_sampling:
         cholesky = onp.linalg.cholesky(cov_mat)
         sampled_image = sample_multivariate_gaussian(cholesky, key)
         key = jax.random.split(key)[1]
 
         if sampled_image.shape[0] == sample_size:
-            return sampled_image
+            return sampled_image, key
         elif sampled_image.shape[0] > sample_size:
-            return sampled_image[:sample_size, :sample_size]
+            return sampled_image[:sample_size, :sample_size], key
 
         # pad the right and bottom with zeros
         sampled_image = np.pad(sampled_image, ((0, sample_size - sampled_image.shape[0]), (0, sample_size - sampled_image.shape[1])))
     else:
         sampled_image = np.zeros((sample_size, sample_size))
 
-    for i in tqdm(np.arange(sample_size), name='generating sample'):
+    for i in tqdm(np.arange(sample_size), desc='generating sample'):
         for j in np.arange(sample_size):
             if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
                 # use existing values
