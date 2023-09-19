@@ -65,11 +65,12 @@ def _do_gaussian_entropy_estimate(X, D, stationary=True, base=2):
     """
     Just-in-time compiled helper function for gaussian_entropy_estimate.
     """
+    # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
     zero_centered = X.T - np.mean(X.T, axis=1, keepdims=True)
     if not stationary:
         cov_mat = np.cov(zero_centered)
     else:
-        cov_mat = compute_stationary_cov_mat(zero_centered)
+        cov_mat = compute_stationary_cov_mat(zero_centered.T)
         cov_mat = make_positive_definite(cov_mat, show_plot=False)
 
     sum_log_evs = np.sum(np.log2(np.abs(np.linalg.eigvalsh(cov_mat))))

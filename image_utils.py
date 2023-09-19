@@ -9,6 +9,7 @@ from cleanplots import *
 from jax.scipy.linalg import toeplitz
 import jax.numpy as np
 import jax
+import warnings
 
 def add_shot_noise(images):
     """
@@ -112,6 +113,14 @@ def compute_stationary_cov_mat(patches):
             row.append(toeplitz_block_means[id])
         new_blocks.append(np.hstack(row))
     stationary_cov_mat = np.vstack(new_blocks)
+
+    # ensure that it is a valid covariance matrix
+    non_symmetric_deviation = np.abs(stationary_cov_mat - stationary_cov_mat.T)
+    if np.any(non_symmetric_deviation > 0):
+        percentage_error = non_symmetric_deviation / np.mean(stationary_cov_mat)
+        warnings.warn(f'Making covariance matrix symmetric, current deviation is {np.max(percentage_error)}% of the mean')
+        stationary_cov_mat = (stationary_cov_mat + stationary_cov_mat.T) / 2
+
     return stationary_cov_mat
 
 def sample_multivariate_gaussian(cholesky, key):
@@ -159,7 +168,9 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
     return new_matrix
 
 
-def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, mean=None, prefer_iterative_sampling=False):
+def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, mean=None, 
+                                                 ensure_nonnegative=False,
+                                                 prefer_iterative_sampling=False):
     """
     Given a covariance matrix of a stationary Gaussian process, generate samples from it
 
@@ -168,6 +179,7 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
         covariance matrix represents the size of the covariance matrix is the patch size squared
     num_samples : int number of samples to generate
     mean : mean of the Gaussian process. If None, use zero mean
+    ensure_nonnegative : bool if true, ensure that all pixel values of sampls are nonnegative
     prefer_iterative_sampling : bool if true, dont directly sample the first (patch_size, patch_size) pixels
         directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
         This is much slower
@@ -214,11 +226,13 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
 
 
     samples = []
-    for i in range(num_samples):
+    for i in tqdm(range(num_samples), desc='generating samples'):
         sample, key = _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, 
                                         mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling)
         if mean is not None:
             sample += mean
+        if ensure_nonnegative:
+            sample = np.where(sample < 0, 0, sample)
         samples.append(sample)
     return samples
 
