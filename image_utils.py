@@ -146,6 +146,10 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
         threshold = eigenvalue_threshold
     else:
         threshold = np.percentile(eigvals, cutoff_percentile)
+        while threshold <= 0:
+            cutoff_percentile += 1
+            print('Threshold is negative. Increasing cutoff percentile to {}'.format(cutoff_percentile))
+            threshold = np.percentile(eigvals, cutoff_percentile)
     if show_plot:
         fig, ax = plt.subplots(1, 1, figsize=(3, 3))
         ax.semilogy(eigvals)
