@@ -114,13 +114,6 @@ def compute_stationary_cov_mat(patches):
         new_blocks.append(np.hstack(row))
     stationary_cov_mat = np.vstack(new_blocks)
 
-    # ensure that it is a valid covariance matrix
-    non_symmetric_deviation = np.abs(stationary_cov_mat - stationary_cov_mat.T)
-    if np.any(non_symmetric_deviation > 0):
-        percentage_error = non_symmetric_deviation / np.mean(stationary_cov_mat)
-        warnings.warn(f'Making covariance matrix symmetric, current deviation is {np.max(percentage_error)}% of the mean')
-        stationary_cov_mat = (stationary_cov_mat + stationary_cov_mat.T) / 2
-
     return stationary_cov_mat
 
 def sample_multivariate_gaussian(cholesky, key):
