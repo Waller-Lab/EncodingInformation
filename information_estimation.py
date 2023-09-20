@@ -111,3 +111,21 @@ def compute_conditional_entropy(images, gaussian_noise_sigma=None):
         # only depends on the gaussian sigma
         return np.mean(np.sum(images.shape[-1] * 0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2), axis=1))
     
+def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, cutoff_percentile=10):
+    """
+    Estimate the mutual information (in bits) of a stack of noisy images, by making a Gaussian approximation
+    to the distribution of noisy images, and subtracting the conditional entropy of the clean images
+    If clean_images is not provided, instead compute the conditional entropy of the noisy images.
+
+    noisy : ndarray NxHxW array of images or image patches
+    clean_images : ndarray NxHxW array of images or image patches
+    use_stationary_model : bool, whether to assume the distribution is stationary
+    cutoff_percentile : float, if estimating a stationary covariance matrix and it
+        is not positive definite, enforce this by setting making all eigenvalues
+        below this percentile of the eigenvalue distribution to be this percentile.
+    """
+    h_y_given_x = compute_conditional_entropy(noisy_images if clean_images is None else clean_images)
+    h_y_gaussian = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, cutoff_percentile=cutoff_percentile)
+    mutual_info = (h_y_gaussian - h_y_given_x)
+    # convert from nats to bits
+    return mutual_info / np.log(2)
