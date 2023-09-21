@@ -96,10 +96,11 @@ def compute_stationary_cov_mat(patches):
     # now repeat the process within each block
     j, i = np.meshgrid(np.arange(block_size), np.arange(block_size))
     differences = abs(i - j)
-    masks = np.array([differences == id for id in np.arange(block_size)])
     for block_id, block in tqdm(dict(toeplitz_block_means.items()).items()):
         diag_values = []
-        for mask in masks:
+        for id in np.arange(block_size):
+            # recompute mask each time to save memory
+            mask = differences == id
             diag_values.append(np.sum(np.where(mask, block, 0)) / np.sum(mask))            
         # create a new topelitz matrix from the diagonal values
         toeplitz_block_means[block_id] = toeplitz(np.array(diag_values))
@@ -136,10 +137,10 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
     eigenvalue_threshold : if not None, use this as the initial threshold instead of the cutoff_percentile
     show_plot : whether to show a plot of the eigenvalue spectrum and cutoff threshold
     """
-    # IMPORTANT: This has to run using regular numpy, not jax.numpy, because
-    # jax.numpy has weird, possibly buggy behavior when computing eigenvalues
-    # and gives different results than numpy
-    eigvals, eigvecs = onp.linalg.eigh(A)
+    # jax.numpy and regular numpy have different behavior when computing eigenvalues
+    # and gives different results
+    # eigvals, eigvecs = onp.linalg.eigh(A)
+    eigvals, eigvecs = np.linalg.eigh(A)
     if np.min(eigvals) > 0:
         return A
     if eigenvalue_threshold is not None:
@@ -159,8 +160,10 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
     while onp.min(eigvals) <= 0:
         print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
         eigvals = onp.where(eigvals < threshold, threshold, eigvals)
-        new_matrix = eigvecs @ onp.diag(eigvals) @ eigvecs.T
-        eigvals, eigvecs = onp.linalg.eigh(new_matrix)
+        # new_matrix = eigvecs @ onp.diag(eigvals) @ eigvecs.T
+        # eigvals, eigvecs = onp.linalg.eigh(new_matrix)
+        new_matrix = eigvecs @ np.diag(eigvals) @ eigvecs.T
+        eigvals, eigvecs = np.linalg.eigh(new_matrix)
         threshold *= 2
     return new_matrix
 
