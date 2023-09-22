@@ -170,7 +170,7 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
 
 def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, mean=None, 
                                                  ensure_nonnegative=False,
-                                                 prefer_iterative_sampling=False):
+                                                 prefer_iterative_sampling=False, seed=None):
     """
     Given a covariance matrix of a stationary Gaussian process, generate samples from it
 
@@ -184,15 +184,14 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
         directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
         This is much slower
     """
-    key = jax.random.PRNGKey(onp.random.randint(0, 10000))
+    key = jax.random.PRNGKey(onp.random.randint(0, 10000) if seed is None else seed)
 
     # precompute everything that will be the same for all samples
     patch_size = int(np.sqrt(cov_mat.shape[0]))
     vectorized_masks = []
     variances = []
     mean_multipliers = []
-    print('precomputing masks and variances')
-    for i in tqdm(np.arange(sample_size)):
+    for i in tqdm(np.arange(sample_size), desc='precomputing masks and variances'):
         for j in np.arange(sample_size):
             if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
                 # Add placeholders since these get sampled from the covariance matrix directly
@@ -226,7 +225,8 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
 
 
     samples = []
-    for i in tqdm(range(num_samples), desc='generating samples'):
+    print('generating samples')
+    for i in range(num_samples):
         sample, key = _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, 
                                         mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling)
         if mean is not None:
