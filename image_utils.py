@@ -145,8 +145,6 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
         fig, ax = plt.subplots(1, 1, figsize=(3, 3))
         ax.semilogy(eigvals)
         ax.set(title='Eigenvalue spectrum', xlabel='Eigenvalue index', ylabel='Eigenvalue')
-        # plot vertical line at the threshold
-        ax.axhline(threshold, color='green', linestyle='--')
     if np.min(eigvals) > 0:
         return A
     if eigenvalue_threshold is not None:
@@ -157,6 +155,9 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
             cutoff_percentile += 1
             print('Threshold is negative. Increasing cutoff percentile to {}'.format(cutoff_percentile))
             threshold = np.percentile(eigvals, cutoff_percentile)
+    if show_plot:
+         # plot vertical line at the threshold
+        ax.axhline(threshold, color='green', linestyle='--')
     while onp.min(eigvals) <= 0:
         print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
         eigvals = onp.where(eigvals < threshold, threshold, eigvals)
