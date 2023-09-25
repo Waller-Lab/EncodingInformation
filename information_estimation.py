@@ -135,9 +135,11 @@ def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_
     if np.any(clean_images_if_available < 0):   
         warnings.warn(f"{np.sum(clean_images_if_available < 0) / clean_images_if_available.size:.2%} of pixels are negative.")
 
-    h_y_given_x = compute_conditional_entropy(clean_images_if_available)
+    # compute per pixels entropies in bits
+    h_y_given_x = compute_conditional_entropy(clean_images_if_available
+                                              ) / np.log(2) / (clean_images_if_available.shape[-2] * clean_images_if_available.shape[-1])
     h_y_gaussian = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, 
-                                             cutoff_percentile=cutoff_percentile, show_plot=show_eigenvalue_plot)
+                                             cutoff_percentile=cutoff_percentile, 
+                                             show_plot=show_eigenvalue_plot) / np.log(2) / (noisy_images.shape[-2] * noisy_images.shape[-1])
     mutual_info = (h_y_gaussian - h_y_given_x)
-    # convert from nats to bits
-    return mutual_info / np.log(2) / (noisy_images.shape[-2] * noisy_images.shape[-1])
+    return mutual_info 
