@@ -175,7 +175,10 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
                                                  ensure_nonnegative=False,
                                                  prefer_iterative_sampling=False, seed=None):
     """
-    Given a covariance matrix of a stationary Gaussian process, generate samples from it
+    Given a covariance matrix of a stationary Gaussian process, generate samples from it. If the sample_size
+    is less than or equal to the patch size used to generate the covariance matrix, this will be relatively
+    fast. If it is larger, it will be slower and linear in the number additional pixels, since each new
+    pixel is sampled conditional on the previous ones.
 
     cov_mat : The covariance matrix of a stationary Gaussian process
     sample_size : int that is the one dimensional shape of a patch that the new
