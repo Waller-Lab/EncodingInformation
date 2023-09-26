@@ -37,8 +37,8 @@ def extract_patches(stack, patch_size, num_patches=1000, seed=None):
     if seed is not None:
         onp.random.seed(seed)
     image_indices = onp.random.randint(0, stack.shape[0], num_patches)
-    x_indices = onp.random.randint(0, stack.shape[1] - patch_size, num_patches)
-    y_indices = onp.random.randint(0, stack.shape[2] - patch_size, num_patches)
+    x_indices = onp.random.randint(0, stack.shape[1] - patch_size + 1, num_patches)
+    y_indices = onp.random.randint(0, stack.shape[2] - patch_size + 1, num_patches)
     for i in tqdm(range(num_patches)):
         patches.append(stack[image_indices[i], x_indices[i]:x_indices[i]+patch_size, y_indices[i]:y_indices[i]+patch_size])
     return np.array(patches)
@@ -68,7 +68,7 @@ def compute_cov_mat(patches):
     return np.cov(vectorized_patches)
 
 # trying to add jit to this somehow makes it run slower
-def compute_stationary_cov_mat(patches):
+def compute_stationary_cov_mat(patches, verbose=True):
     """
     Uses images patches to estimate the covariance matrix of a stationary 2D process.
     The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
@@ -96,7 +96,7 @@ def compute_stationary_cov_mat(patches):
     # now repeat the process within each block
     j, i = np.meshgrid(np.arange(block_size), np.arange(block_size))
     differences = abs(i - j)
-    for block_id, block in tqdm(dict(toeplitz_block_means.items()).items()):
+    for block_id, block in tqdm(dict(toeplitz_block_means.items()).items()) if verbose else dict(toeplitz_block_means.items()).items():
         diag_values = []
         for id in np.arange(block_size):
             # recompute mask each time to save memory
@@ -127,7 +127,7 @@ def sample_multivariate_gaussian(cholesky, key):
     sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
     return sampled_image
 
-def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, show_plot=True):
+def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, show_plot=True, verbose=True):
     """
     ensure the matrix is positive definite by adding a small value to the eigenvalues
     start small and iteratively increase the threshold until the matrix is positive definite
@@ -153,13 +153,15 @@ def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, s
         threshold = np.percentile(eigvals, cutoff_percentile)
         while threshold <= 0:
             cutoff_percentile += 1
-            print('Threshold is negative. Increasing cutoff percentile to {}'.format(cutoff_percentile))
+            if verbose:                 
+                print('Threshold is negative. Increasing cutoff percentile to {}'.format(cutoff_percentile))
             threshold = np.percentile(eigvals, cutoff_percentile)
     if show_plot:
          # plot vertical line at the threshold
         ax.axhline(threshold, color='green', linestyle='--')
     while onp.min(eigvals) <= 0:
-        print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
+        if verbose:
+            print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
         eigvals = onp.where(eigvals < threshold, threshold, eigvals)
         # new_matrix = eigvecs @ onp.diag(eigvals) @ eigvecs.T
         # eigvals, eigvecs = onp.linalg.eigh(new_matrix)
