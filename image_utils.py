@@ -11,16 +11,34 @@ import jax.numpy as np
 import jax
 import warnings
 
-def add_shot_noise(images):
+
+def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None):
     """
-    Add synthetic shot noise to a single or stack of noiselss images
-    images should be in units of photons
-    Images use the Gaussian approximation to the Poisson distribution
+    Add poisson noise or additive Gaussian noise to a stack of noiseless images
+
+    images : ndarray NxHxW or Nx(num pixels) array of images or image patches
+    ensure_positive : bool, whether to ensure the noisy images are nonnegative
+    gaussian_sigma : float, if not None, add IID gaussian noise with this sigma. Otherwise add poisson noise.
+    key : jax.random.PRNGKey, if not None, use this key to generate the noise. Otherwise generate a new key.
     """
-    noisy_images = images + onp.random.randn(*images.shape) * onp.sqrt(images)
-    # ensure non-negative
-    noisy_images = np.where(noisy_images < 0, 0, noisy_images)
+    if key is None:
+        key = jax.random.PRNGKey(onp.random.randint(0, 100000))
+    if gaussian_sigma is not None:
+        # Additive gaussian
+        noisy_images = images + jax.random.normal(key, shape=images.shape) * gaussian_sigma
+    else:
+        # Poisson
+        noisy_images = images + jax.random.poisson(key, shape=images.shape, lam=images)
+    if ensure_positive:
+        noisy_images = np.where(noisy_images < 0, 0, noisy_images)
     return noisy_images
+
+def add_shot_noise(images):
+    raise Exception('This function is deprecated. Use add_noise instead.')
+
+
+def add_gaussian_noise(images, sigma):
+    raise Exception('This function is deprecated. Use add_noise instead.')
 
 def compute_eigenvalues(image_patches):   
     """
@@ -117,15 +135,6 @@ def compute_stationary_cov_mat(patches, verbose=True):
 
     return stationary_cov_mat
 
-def sample_multivariate_gaussian(cholesky, key):
-    """
-    Generate a sample from multivariate gaussian with zero mean given the cholesky decomposition of its covariance matrix
-    """
-    mvn_sample = jax.random.multivariate_normal(key, np.zeros(cholesky.shape[0]), np.eye(cholesky.shape[0]))
-    # mvn_sample = onp.random.normal(size=cholesky.shape[0])
-    sample = np.array(cholesky) @ mvn_sample
-    sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
-    return sampled_image
 
 def make_positive_definite(A, eigenvalue_floor, show_plot=True, verbose=True):
     """
@@ -139,6 +148,8 @@ def make_positive_definite(A, eigenvalue_floor, show_plot=True, verbose=True):
     eigvals, eigvecs = np.linalg.eigh(A)
     eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
     new_matrix = eigvecs @ np.diag(eigvals) @ eigvecs.T
+    if np.linalg.eigvalsh(new_matrix).min() < 0:
+        raise ValueError('Covariance matrix is still not positive definite')
     if show_plot:
         fig, ax = plt.subplots(1, 1, figsize=(3, 3))
         ax.semilogy(eigvals)
@@ -169,8 +180,21 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
         directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
         This is much slower
     """
-    key = jax.random.PRNGKey(onp.random.randint(0, 10000) if seed is None else seed)
-
+    if np.linalg.eigvalsh(cov_mat).min() < 0:
+        raise ValueError('Covariance matrix is not positive definite')
+    key = jax.random.PRNGKey(onp.random.randint(0, 100000) if seed is None else seed)
+    # Use jax to do it all at once if possible
+    if not prefer_iterative_sampling and sample_size <= int(np.sqrt(cov_mat.shape[0])):
+        samples = jax.random.multivariate_normal(key, np.zeros(cov_mat.shape[0]), cov_mat, shape=(num_samples,))
+        # crop if needed
+        if sample_size < int(np.sqrt(cov_mat.shape[0])):
+            samples = samples[:, :sample_size, :sample_size]
+        # add mean
+        if mean is not None:
+            samples += mean
+        if ensure_nonnegative:
+            samples = np.where(samples < 0, 0, samples)
+        return samples
     # precompute everything that will be the same for all samples
     patch_size = int(np.sqrt(cov_mat.shape[0]))
     vectorized_masks = []

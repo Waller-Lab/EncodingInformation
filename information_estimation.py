@@ -7,6 +7,15 @@ from jax.scipy.special import digamma, gammaln
 from functools import partial
 import jax.numpy as np
 
+
+
+def analytic_multivariate_gaussian_entropy(cov_matrix):
+    """
+    Numerically stable computation of the analytics entropy of a multivariate gaussian
+    """
+    d = cov_matrix.shape[0]
+    entropy = 0.5 * d * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(np.linalg.eigvalsh(cov_matrix)))
+    return entropy
  
 def nearest_neighbors_entropy_estimate(X, k=3):
     """
