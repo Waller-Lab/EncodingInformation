@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import jax
 import numpy as np
 from pathlib import Path
 import matplotlib.gridspec as gridspec
@@ -274,13 +275,14 @@ def add_shot_noise_to_experimenal_data(image_stack, photon_fraction):
     that would be expected for the desired photon count
     This also reduces the total number of (average) photons in the image by the photon_fraction
     """
+    seed = np.random.randint(0, 100000)
+    key = jax.random.PRNGKey(seed)
     if photon_fraction > 1 or photon_fraction <= 0:
         raise Exception('photon_fraction must be less than 1 and greater than 0')
-    additional_sd = np.sqrt(photon_fraction * image_stack) - photon_fraction * np.sqrt(image_stack)
-    simulated_images = image_stack * photon_fraction + additional_sd * np.random.randn(*image_stack.shape)
-    positive = np.array(simulated_images)
-    positive[positive < 0] = 0 # cant have negative counts
-    return np.array(positive)
+    additional_sd = jax.numpy.sqrt(photon_fraction * image_stack) - photon_fraction * jax.numpy.sqrt(image_stack)
+    simulated_images = image_stack * photon_fraction + additional_sd * jax.random.normal(key, image_stack.shape)
+    positive = np.where(simulated_images > 0, simulated_images, 0)
+    return positive
 
 def load_image_with_synthetic_shot_noise(bsccm, index, channel, photon_fraction):
     """

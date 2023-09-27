@@ -127,47 +127,34 @@ def sample_multivariate_gaussian(cholesky, key):
     sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
     return sampled_image
 
-def make_positive_definite(A, cutoff_percentile=25, eigenvalue_threshold=None, show_plot=True, verbose=True):
+def make_positive_definite(A, amount_to_add, show_plot=True, verbose=True):
     """
-    ensure the matrix is positive definite by adding a small value to the eigenvalues
-    start small and iteratively increase the threshold until the matrix is positive definite
+    Ensure the matrix A is positive definite by adding a small amount to the diagonal
+    (Tikhonov regularization)
 
     A : matrix to make positive definite
-    cutoff_percentile : all eigenvalues below this percentile will be increased to it
-    eigenvalue_threshold : if not None, use this as the initial threshold instead of the cutoff_percentile
+    amount_to_add : amount to add to the diagonal
     show_plot : whether to show a plot of the eigenvalue spectrum and cutoff threshold
     """
     # jax.numpy and regular numpy have different behavior when computing eigenvalues
     # and gives different results
     # eigvals, eigvecs = onp.linalg.eigh(A)
     eigvals, eigvecs = np.linalg.eigh(A)
+    # while onp.min(eigvals) <= 0:
+    #     if verbose:
+    #         print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
+    #     eigvals = onp.where(eigvals < threshold, threshold, eigvals)
+    #     # new_matrix = eigvecs @ onp.diag(eigvals) @ eigvecs.T
+    eigvals, eigvecs = onp.linalg.eigh(A)
+    new_matrix = eigvecs @ np.diag(eigvals + amount_to_add) @ eigvecs.T
     if show_plot:
         fig, ax = plt.subplots(1, 1, figsize=(3, 3))
         ax.semilogy(eigvals)
         ax.set(title='Eigenvalue spectrum', xlabel='Eigenvalue index', ylabel='Eigenvalue')
-    if np.min(eigvals) > 0:
-        return A
-    if eigenvalue_threshold is not None:
-        threshold = eigenvalue_threshold
-    else:
-        threshold = np.percentile(eigvals, cutoff_percentile)
-        while threshold <= 0:
-            cutoff_percentile += 1
-            if verbose:                 
-                print('Threshold is negative. Increasing cutoff percentile to {}'.format(cutoff_percentile))
-            threshold = np.percentile(eigvals, cutoff_percentile)
-    if show_plot:
-         # plot vertical line at the threshold
-        ax.axhline(threshold, color='green', linestyle='--')
-    while onp.min(eigvals) <= 0:
-        if verbose:
-            print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
-        eigvals = onp.where(eigvals < threshold, threshold, eigvals)
-        # new_matrix = eigvecs @ onp.diag(eigvals) @ eigvecs.T
-        # eigvals, eigvecs = onp.linalg.eigh(new_matrix)
-        new_matrix = eigvecs @ np.diag(eigvals) @ eigvecs.T
-        eigvals, eigvecs = np.linalg.eigh(new_matrix)
-        threshold *= 2
+        new_evs = np.linalg.eigvalsh(new_matrix)
+        ax.semilogy(new_evs)
+        ax.set(title='Eigenvalue spectrum after regularization', xlabel='Eigenvalue index', ylabel='Eigenvalue')
+    
     return new_matrix
 
 
