@@ -127,26 +127,18 @@ def sample_multivariate_gaussian(cholesky, key):
     sampled_image = sample.reshape((int(np.sqrt(sample.size)), int(np.sqrt(sample.size))))
     return sampled_image
 
-def make_positive_definite(A, amount_to_add, show_plot=True, verbose=True):
+def make_positive_definite(A, eigenvalue_floor, show_plot=True, verbose=True):
     """
     Ensure the matrix A is positive definite by adding a small amount to the diagonal
     (Tikhonov regularization)
 
     A : matrix to make positive definite
-    amount_to_add : amount to add to the diagonal
+    eigenvalue_floor : float, make all eigenvalues of the matrix at least this large
     show_plot : whether to show a plot of the eigenvalue spectrum and cutoff threshold
     """
-    # jax.numpy and regular numpy have different behavior when computing eigenvalues
-    # and gives different results
-    # eigvals, eigvecs = onp.linalg.eigh(A)
     eigvals, eigvecs = np.linalg.eigh(A)
-    # while onp.min(eigvals) <= 0:
-    #     if verbose:
-    #         print('Matrix not positive definite. Adding {} to eigenvalues'.format(threshold))
-    #     eigvals = onp.where(eigvals < threshold, threshold, eigvals)
-    #     # new_matrix = eigvecs @ onp.diag(eigvals) @ eigvecs.T
-    eigvals, eigvecs = onp.linalg.eigh(A)
-    new_matrix = eigvecs @ np.diag(eigvals + amount_to_add) @ eigvecs.T
+    eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+    new_matrix = eigvecs @ np.diag(eigvals) @ eigvecs.T
     if show_plot:
         fig, ax = plt.subplots(1, 1, figsize=(3, 3))
         ax.semilogy(eigvals)

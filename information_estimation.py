@@ -50,7 +50,7 @@ def nearest_neighbors_distance(X, k):
     return kth_nn_dist
 
 
-def gaussian_entropy_estimate(X, stationary=True, add_to_eigenvalues=10, show_plot=False, return_cov_mat=False,
+def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1, show_plot=False, return_cov_mat=False,
                               verbose=False):
     """
     Estimate the entropy (in nats) of samples from a distribution of images by approximating 
@@ -59,20 +59,19 @@ def gaussian_entropy_estimate(X, stationary=True, add_to_eigenvalues=10, show_pl
 
     X : ndarray, shape (n_samples, W, H) or (n_samples, num_features)
     stationary : bool, whether to assume the distribution is stationary
-    add_to_eigenvalues : float, add this amount to the eigenvalues of the covariance matrix
-                to regularize it and make it positive definite.
+    eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large
     show_plot : bool, whether to show a plot of the eigenvalues and threshold used 
         to make the covariance matrix positive definite.
     return_cov_mat : bool, whether to return the estimated covariance matrix
     """
     X = X.reshape(X.shape[0], -1)
     return _do_gaussian_entropy_estimate(X, X.shape[1], stationary=stationary, 
-                                          add_to_eigenvalues=add_to_eigenvalues, show_plot=show_plot, 
+                                          eigenvalue_floor=eigenvalue_floor, show_plot=show_plot, 
                                           return_cov_mat=return_cov_mat, verbose=verbose)
 
 # Cant JIT this one because make_positive_definite cant be jitted do to conditionals
 # @partial(jit, static_argnums=(1,2,3))
-def _do_gaussian_entropy_estimate(X, D, stationary=True, add_to_eigenvalues=10, show_plot=False, return_cov_mat=False, verbose=False):
+def _do_gaussian_entropy_estimate(X, D, stationary=True, eigenvalue_floor=1, show_plot=False, return_cov_mat=False, verbose=False):
     """
     Just-in-time compiled helper function for gaussian_entropy_estimate.
     """
@@ -90,8 +89,7 @@ def _do_gaussian_entropy_estimate(X, D, stationary=True, add_to_eigenvalues=10, 
         sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))                        
     else:
         cov_mat = compute_stationary_cov_mat(zero_centered.T, verbose=verbose)
-        cov_mat = make_positive_definite(cov_mat, add_to_eigenvalues, show_plot=show_plot, verbose=verbose)
-
+        cov_mat = make_positive_definite(cov_mat, eigenvalue_floor, show_plot=show_plot, verbose=verbose)
         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e))
     if return_cov_mat:
@@ -124,7 +122,7 @@ def compute_conditional_entropy(images, gaussian_noise_sigma=None):
         return np.mean(np.sum(n_pixels * 0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2), axis=1))
     
 def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, 
-                                add_to_eigenvalues=10, show_eigenvalue_plot=False, confidence_interval=None, 
+                                eigenvalue_floor=1, show_eigenvalue_plot=False, confidence_interval=None, 
                                 num_bootstrap_samples=100, verbose=False):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by making a Gaussian approximation
@@ -134,7 +132,7 @@ def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_
     noisy : ndarray NxHxW array of images or image patches
     clean_images : ndarray NxHxW array of images or image patches
     use_stationary_model : bool, whether to assume the distribution is stationary
-    add_to_eigenvalues : float, add this amount to the eigenvalues of the covariance matrix
+    eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large in the stationary model
     show_eigenvalue_plot : bool, whether to show a plot of the eigenvalues of the estimated
         stationary covariance matrix and the correction applied to make it positive definite.
     confidence_interval : float, if not None, compute the confidence interval for the
@@ -148,7 +146,7 @@ def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_
         h_y_given_x = compute_conditional_entropy(clean_images_if_available)
         h_y_given_x_per_pixel_bits = h_y_given_x / (np.log(2) * (clean_images_if_available.shape[-2] * clean_images_if_available.shape[-1]))
         h_y_gaussian = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, 
-                                                add_to_eigenvalues=add_to_eigenvalues, show_plot=show_eigenvalue_plot)
+                                                eigenvalue_floor=eigenvalue_floor, show_plot=show_eigenvalue_plot)
         h_y_gaussian_per_pixel_bits = h_y_gaussian / (np.log(2) * (noisy_images.shape[-2] * noisy_images.shape[-1]))
         mutual_info = h_y_gaussian_per_pixel_bits - h_y_given_x_per_pixel_bits
         if verbose:
@@ -159,7 +157,7 @@ def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_
 
     # compute per pixels entropies in bits
     if confidence_interval is None:        
-        return do_the_estimating(noisy_images, clean_images_if_available, verbose=True)
+        return do_the_estimating(noisy_images, clean_images_if_available, verbose=verbose)
     else:
         if show_eigenvalue_plot:
             warnings.warn("Showing eigenvalue plots with bootstrapped confidence intervals would open, like, a lot of plots. "
