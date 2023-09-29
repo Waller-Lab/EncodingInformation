@@ -12,33 +12,43 @@ import jax
 import warnings
 
 
-def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None):
+def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None, seed=None, batch_size=1000):
     """
     Add poisson noise or additive Gaussian noise to a stack of noiseless images
 
     images : ndarray NxHxW or Nx(num pixels) array of images or image patches
     ensure_positive : bool, whether to ensure the noisy images are nonnegative
     gaussian_sigma : float, if not None, add IID gaussian noise with this sigma. Otherwise add poisson noise.
-    key : jax.random.PRNGKey, if not None, use this key to generate the noise. Otherwise generate a new key.
+    key : jax.random.PRNGKey, if not None, use this key to generate the noise. Otherwise, generate a key based on the seed
+    seed: int, if key is None, use this seed to generate the key
+    batch_size : int, if the number of images is large, split them into batches to avoid memory issues
     """
+    if seed is None: 
+        seed = onp.random.randint(0, 100000)
     if key is None:
-        key = jax.random.PRNGKey(onp.random.randint(0, 100000))
-    if gaussian_sigma is not None:
-        # Additive gaussian
-        noisy_images = images + jax.random.normal(key, shape=images.shape) * gaussian_sigma
-    else:
-        # Poisson
-        noisy_images = images + jax.random.poisson(key, shape=images.shape, lam=images)
-    if ensure_positive:
-        noisy_images = np.where(noisy_images < 0, 0, noisy_images)
+        key = jax.random.PRNGKey(seed)
+
+    # Split the images into batches
+    num_images = images.shape[0]
+    num_batches = int(np.ceil(num_images / batch_size))
+    batches = np.array_split(images, num_batches)
+
+    # Add noise to each batch
+    noisy_batches = []
+    for batch in batches:
+        if gaussian_sigma is not None:
+            # Additive gaussian
+            noisy_batch = batch + jax.random.normal(key, shape=batch.shape) * gaussian_sigma
+        else:
+            # Poisson
+            noisy_batch = batch + jax.random.poisson(key, shape=batch.shape, lam=batch)
+        if ensure_positive:
+            noisy_batch = np.where(noisy_batch < 0, 0, noisy_batch)
+        noisy_batches.append(noisy_batch)
+
+    # Concatenate the noisy batches back into a single array
+    noisy_images = np.concatenate(noisy_batches, axis=0)
     return noisy_images
-
-def add_shot_noise(images):
-    raise Exception('This function is deprecated. Use add_noise instead.')
-
-
-def add_gaussian_noise(images, sigma):
-    raise Exception('This function is deprecated. Use add_noise instead.')
 
 def compute_eigenvalues(image_patches):   
     """
