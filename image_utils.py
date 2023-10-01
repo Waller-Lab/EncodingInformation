@@ -41,7 +41,7 @@ def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None, seed=
             noisy_batch = batch + jax.random.normal(key, shape=batch.shape) * gaussian_sigma
         else:
             # Poisson
-            noisy_batch = batch + jax.random.poisson(key, shape=batch.shape, lam=batch)
+            noisy_batch = jax.random.poisson(key, shape=batch.shape, lam=batch)
         if ensure_positive:
             noisy_batch = np.where(noisy_batch < 0, 0, noisy_batch)
         noisy_batches.append(noisy_batch)
@@ -60,16 +60,24 @@ def compute_eigenvalues(image_patches):
     evals = np.abs(evals)
     return evals
 
-def extract_patches(stack, patch_size, num_patches=1000, seed=None):
+def extract_patches(stack, patch_size, num_patches=1000, seed=None, verbose=False):
     patches = []
     if seed is not None:
         onp.random.seed(seed)
-    image_indices = onp.random.randint(0, stack.shape[0], num_patches)
-    x_indices = onp.random.randint(0, stack.shape[1] - patch_size + 1, num_patches)
-    y_indices = onp.random.randint(0, stack.shape[2] - patch_size + 1, num_patches)
-    for i in tqdm(range(num_patches)):
+    # image_indices = onp.random.randint(0, stack.shape[0], num_patches)
+    # x_indices = onp.random.randint(0, stack.shape[1] - patch_size + 1, num_patches)
+    # y_indices = onp.random.randint(0, stack.shape[2] - patch_size + 1, num_patches)
+    
+    image_indices = jax.random.randint(key=jax.random.PRNGKey(onp.random.randint(100000)), minval=0, maxval=stack.shape[0], shape=(num_patches,))
+    x_indices = jax.random.randint(key=jax.random.PRNGKey( onp.random.randint(100000)), minval=0, maxval=stack.shape[1] - patch_size + 1, shape=(num_patches,))
+    y_indices = jax.random.randint(key=jax.random.PRNGKey( onp.random.randint(100000)), minval=0, maxval=stack.shape[2] - patch_size + 1, shape=(num_patches,))
+    if verbose:
+        iterator = tqdm(range(num_patches))
+    else:
+        iterator = range(num_patches)
+    for i in iterator:
         patches.append(stack[image_indices[i], x_indices[i]:x_indices[i]+patch_size, y_indices[i]:y_indices[i]+patch_size])
-    return np.array(patches)
+    return jax.numpy.array(patches)
 
 def normalize_image_stack(stack):
     """
@@ -96,7 +104,7 @@ def compute_cov_mat(patches):
     return np.cov(vectorized_patches)
 
 # trying to add jit to this somehow makes it run slower
-def compute_stationary_cov_mat(patches, verbose=True):
+def compute_stationary_cov_mat(patches, verbose=False):
     """
     Uses images patches to estimate the covariance matrix of a stationary 2D process.
     The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
@@ -105,8 +113,7 @@ def compute_stationary_cov_mat(patches, verbose=True):
     be the same as each other within this structure.
     """
     cov_mat = compute_cov_mat(patches)
-    # split it into individual blocks
-    block_size = patches.shape[-1]
+    block_size = int(np.sqrt(cov_mat.shape[0]))
     # divide it into blocks
     blocks = [np.hsplit(row, cov_mat.shape[1]//block_size) for row in np.vsplit(cov_mat, cov_mat.shape[0]//block_size)]
 
@@ -171,6 +178,24 @@ def make_positive_definite(A, eigenvalue_floor, show_plot=True, verbose=True):
     return new_matrix
 
 
+def generate_multivariate_gaussian_samples(cov_mat, num_samples, mean=None, seed=None):
+    """
+    Generate samples from a 2D gaussian process with the given covariance matrix
+
+    Args:
+    cov_mat: jnp.ndarray, covariance matrix of the Gaussian distribution
+    num_samples: int, number of samples to generate
+    seed: int or jnp.ndarray, seed for the random number generator
+
+    Returns:
+    jnp.ndarray of shape (num_samples, cov_mat.shape[0]), samples from the multivariate Gaussian distribution
+    """
+    key = jax.random.PRNGKey(onp.random.randint(0, 100000) if seed is None else seed)
+    samples = jax.random.multivariate_normal(key, mean if mean is not None else np.array([0]), cov_mat, (num_samples,))
+    images = samples.reshape(num_samples, int(np.sqrt(cov_mat.shape[0])), int(np.sqrt(cov_mat.shape[0])))
+    return images
+
+
 def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, mean=None, 
                                                  ensure_nonnegative=False,
                                                  prefer_iterative_sampling=False, seed=None):
@@ -204,7 +229,7 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
             samples += mean
         if ensure_nonnegative:
             samples = np.where(samples < 0, 0, samples)
-        return samples
+        return samples.reshape(num_samples, sample_size, sample_size)
     # precompute everything that will be the same for all samples
     patch_size = int(np.sqrt(cov_mat.shape[0]))
     vectorized_masks = []

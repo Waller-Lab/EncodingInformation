@@ -15,7 +15,7 @@ def analytic_multivariate_gaussian_entropy(cov_matrix):
     """
     d = cov_matrix.shape[0]
     entropy = 0.5 * d * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(np.linalg.eigvalsh(cov_matrix)))
-    return entropy
+    return entropy / d
  
 def nearest_neighbors_entropy_estimate(X, k=3):
     """
@@ -62,7 +62,8 @@ def nearest_neighbors_distance(X, k):
 def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1, show_plot=False, return_cov_mat=False,
                               verbose=False):
     """
-    Estimate the entropy (in nats) of samples from a distribution of images by approximating 
+    Estimate the entropy in "nats" (differential entropy doesn't really have units) per pixel
+      of samples from a distribution of images by approximating 
     the distribution as a Gaussian.  i.e. Taking its covariance matrix and 
     computing the entropy of the Gaussian distribution with that same covariance matrix.
 
@@ -74,21 +75,13 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1, show_plot=
     return_cov_mat : bool, whether to return the estimated covariance matrix
     """
     X = X.reshape(X.shape[0], -1)
-    return _do_gaussian_entropy_estimate(X, X.shape[1], stationary=stationary, 
-                                          eigenvalue_floor=eigenvalue_floor, show_plot=show_plot, 
-                                          return_cov_mat=return_cov_mat, verbose=verbose)
-
-# Cant JIT this one because make_positive_definite cant be jitted do to conditionals
-# @partial(jit, static_argnums=(1,2,3))
-def _do_gaussian_entropy_estimate(X, D, stationary=True, eigenvalue_floor=1, show_plot=False, return_cov_mat=False, verbose=False):
-    """
-    Just-in-time compiled helper function for gaussian_entropy_estimate.
-    """
+    D = X.shape[1]
     # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
     zero_centered = X.T - np.mean(X.T, axis=1, keepdims=True)
     if not stationary:
         try:
             cov_mat = np.cov(zero_centered)
+            cov_mat = make_positive_definite(cov_mat, eigenvalue_floor, show_plot=show_plot, verbose=verbose)
         except:
             raise Exception("Couldn't compute covariance matrix")
             
@@ -100,16 +93,18 @@ def _do_gaussian_entropy_estimate(X, D, stationary=True, eigenvalue_floor=1, sho
         cov_mat = compute_stationary_cov_mat(zero_centered.T, verbose=verbose)
         cov_mat = make_positive_definite(cov_mat, eigenvalue_floor, show_plot=show_plot, verbose=verbose)
         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
-    gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e))
+    gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
     if return_cov_mat:
         return gaussian_entropy, cov_mat
     else:
         return gaussian_entropy
 
+
 @partial(jit, static_argnums=(1,))
 def compute_conditional_entropy(images, gaussian_noise_sigma=None):
     """
-    Compute the conditional entropy H(Y | X) in nats,
+    Compute the conditional entropy H(Y | X) in "nats" 
+    (differential entropy doesn't really have units...) per pixel,
     where Y is a random noisy realization of a random clean image X
 
     images : ndarray clean image HxW or images NxHxW
@@ -124,15 +119,65 @@ def compute_conditional_entropy(images, gaussian_noise_sigma=None):
 
     if gaussian_noise_sigma is None:
         # conditional entropy H(Y | x) for Poisson noise 
-        return np.mean((n_pixels * 0.5 * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(images), axis=1)))
+        return np.mean((n_pixels * 0.5 * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(images), axis=1))) / n_pixels
     else:
         # conditional entropy H(Y | x) for Gaussian noise
         # only depends on the gaussian sigma
-        return np.mean(np.sum(n_pixels * 0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2), axis=1))
+        return  0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2)
     
-def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, 
-                                eigenvalue_floor=1, show_eigenvalue_plot=False, confidence_interval=None, 
-                                num_bootstrap_samples=100, verbose=False):
+
+def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234):
+    """
+    Runs a bootstrap estimation procedure on the given data using the provided estimation function.
+
+    Parameters:
+    -----------
+    data : ndarray, shape (n_samples, ...) or a dictionary of ndarrays
+        The data to be used for the bootstrap estimation. If a dictionary is provided, each value in the dictionary
+        should be an ndarray with the same number of samples.
+    estimation_fn : function
+        The function to be used for estimating the desired quantity from the data. This function should take a single
+        argument, which is the data to be used for the estimation.
+    num_bootstrap_samples : int, optional (default=1000)
+        The number of bootstrap samples to generate.
+    confidence_interval : float, optional (default=90)
+        The confidence interval to use for the estimation, expressed as a percentage.
+    seed : int, optional (default=1234)
+        The random seed to use for generating the bootstrap samples.
+
+    Returns:
+    --------
+    mean : float
+        The mean estimate of the desired quantity across all bootstrap samples.
+    conf_int : list of floats
+        The lower and upper bounds of the confidence interval for the estimate, expressed as percentiles of the
+        bootstrap sample distribution.
+    """
+    key = jax.random.PRNGKey(onp.random.randint(0, 1000000))
+    N = data.shape[0] if not isinstance(data, dict) else data[list(data.keys())[0]].shape[0]
+    results = []
+    for i in tqdm(range(num_bootstrap_samples), desc="Running bootstraps"):
+        key, subkey = jax.random.split(key)
+        if not isinstance(data, dict):
+            data_sample = jax.random.choice(subkey, data, shape=(N,), replace=True)
+            results.append(estimation_fn(data_sample))
+        else:
+            data_samples = {}
+            for k, v in data.items():
+                key, subkey = jax.random.split(key)
+                data_samples[k] = jax.random.choice(subkey, v, shape=(N,), replace=True)
+            results.append(estimation_fn(**data_samples))
+        
+    results = np.array(results)
+    mean = np.mean(results)
+    conf_int = [np.percentile(results, 50 - confidence_interval/2),
+                np.percentile(results, 50 + confidence_interval/2)]
+    return mean, conf_int
+        
+    
+def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, 
+                                eigenvalue_floor=1, show_eigenvalue_plot=False, verbose=False,
+                                gaussian_noise_sigma=None):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by making a Gaussian approximation
     to the distribution of noisy images, and subtracting the conditional entropy of the clean images
@@ -144,49 +189,23 @@ def estimate_mutual_information(noisy_images, clean_images=None, use_stationary_
     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large in the stationary model
     show_eigenvalue_plot : bool, whether to show a plot of the eigenvalues of the estimated
         stationary covariance matrix and the correction applied to make it positive definite.
-    confidence_interval : float, if not None, compute the confidence interval for the
-        mutual information estimate using the bootstrap method.
+    verbose : bool, whether to print out the estimated values
+    gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
+            otherwise assume poisson noise.
+
     """
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
     if np.any(clean_images_if_available < 0):   
         warnings.warn(f"{np.sum(clean_images_if_available < 0) / clean_images_if_available.size:.2%} of pixels are negative.")
 
-    def do_the_estimating(noisy_images, clean_images_if_available, verbose=False):
-        h_y_given_x = compute_conditional_entropy(clean_images_if_available)
-        h_y_given_x_per_pixel_bits = h_y_given_x / (np.log(2) * (clean_images_if_available.shape[-2] * clean_images_if_available.shape[-1]))
-        h_y_gaussian = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, 
-                                                eigenvalue_floor=eigenvalue_floor, show_plot=show_eigenvalue_plot)
-        h_y_gaussian_per_pixel_bits = h_y_gaussian / (np.log(2) * (noisy_images.shape[-2] * noisy_images.shape[-1]))
-        mutual_info = h_y_gaussian_per_pixel_bits - h_y_given_x_per_pixel_bits
-        if verbose:
-            print(f"Estimated H(Y|X) = {h_y_given_x_per_pixel_bits:.3f} bits/pixel")
-            print(f"Estimated H(Y) = {h_y_gaussian_per_pixel_bits:.3f} bits/pixel")
-            print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
-        return mutual_info 
-
-    # compute per pixels entropies in bits
-    if confidence_interval is None:        
-        return do_the_estimating(noisy_images, clean_images_if_available, verbose=verbose)
-    else:
-        if show_eigenvalue_plot:
-            warnings.warn("Showing eigenvalue plots with bootstrapped confidence intervals would open, like, a lot of plots. "
-                    "So I'm going to go ahead and not do that.")
-            show_eigenvalue_plot = False
-        # compute bootstrap confidence interval
-        mutual_infos = []
-        key = jax.random.PRNGKey(0)
-
-        for i in tqdm(range(num_bootstrap_samples), desc="Running bootstraps"):
-            key, subkey = jax.random.split(key)
-            noisy_images_sample = jax.random.choice(key, noisy_images, shape=(noisy_images.shape[0],), replace=True)
-            key, subkey = jax.random.split(key)
-            clean_images_sample = jax.random.choice(key, clean_images_if_available, shape=(clean_images_if_available.shape[0],), replace=True)
-            mutual_infos.append(do_the_estimating(noisy_images_sample, clean_images_sample, verbose=False))        
-            
-        mutual_infos.append(do_the_estimating(noisy_images_sample, clean_images_sample, verbose=False))
-        mutual_infos = np.array(mutual_infos)
-        mutual_info = np.mean(mutual_infos)
-        conf_int = [np.percentile(mutual_infos, 50 - confidence_interval/2),
-                    np.percentile(mutual_infos, 50 + confidence_interval/2)]
-
-        return mutual_info, conf_int
+    h_y_given_x = compute_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma)
+    h_y_given_x_per_pixel_bits = h_y_given_x / np.log(2)
+    h_y_gaussian = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, 
+                                            eigenvalue_floor=eigenvalue_floor, show_plot=show_eigenvalue_plot)
+    h_y_gaussian_per_pixel_bits = h_y_gaussian / np.log(2)
+    mutual_info = h_y_gaussian_per_pixel_bits - h_y_given_x_per_pixel_bits
+    if verbose:
+        print(f"Estimated H(Y|X) = {h_y_given_x_per_pixel_bits:.3f} bits/pixel")
+        print(f"Estimated H(Y) = {h_y_gaussian_per_pixel_bits:.3f} bits/pixel")
+        print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
+    return mutual_info 
