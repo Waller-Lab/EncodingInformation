@@ -4,6 +4,7 @@ Functions for estimating entropy and mutual information
 from image_utils import *
 from jax import jit
 from jax.scipy.special import digamma, gammaln
+from scipy.special import factorial
 from functools import partial
 import jax.numpy as np
 
@@ -59,7 +60,7 @@ def nearest_neighbors_distance(X, k):
     return kth_nn_dist
 
 
-def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1, show_plot=False, return_cov_mat=False,
+def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_plot=False, return_cov_mat=False,
                               verbose=False):
     """
     Estimate the entropy in "nats" (differential entropy doesn't really have units) per pixel
@@ -100,8 +101,21 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1, show_plot=
         return gaussian_entropy
 
 
+
 @partial(jit, static_argnums=(1,))
-def compute_conditional_entropy(images, gaussian_noise_sigma=None):
+def poisson_entropy(lam, max_k=25):
+    k_values = np.arange(max_k)
+    lam_to_k = lam[..., None] ** k_values
+    log_k_factorials = gammaln(k_values + 1)
+    # k_fac = factorial(k_values)
+    k_fac = np.exp(log_k_factorials)
+    sum_term = np.sum(lam_to_k / k_fac * log_k_factorials, axis=-1 )
+    entropy = lam * (1 - np.log(lam)) + np.exp(-lam) * sum_term
+    entropy = np.where(lam <= 0, 0, entropy)
+    return entropy
+
+@partial(jit, static_argnums=(1, 2))
+def compute_conditional_entropy(images, gaussian_noise_sigma=None, poisson_approx_threshold=0):
     """
     Compute the conditional entropy H(Y | X) in "nats" 
     (differential entropy doesn't really have units...) per pixel,
@@ -110,16 +124,28 @@ def compute_conditional_entropy(images, gaussian_noise_sigma=None):
     images : ndarray clean image HxW or images NxHxW
     gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
             otherwise assume poisson noise.
+    poisson_approx_threshold : float, threshold for using the gaussian approximation for poisson noise
     """
     # vectorize
     images = images.reshape(-1, images.shape[-2] * images.shape[-1])
     n_pixels = images.shape[-1]
          
-    images = np.where(images <= 0, .1, images) #always at least .1 photon
+    # if np.any(images < 0):
+    #     warnings.warn(f"{np.sum(images < 0) / images.size:.2%} of pixels are negative.")
+    # images = np.where(images <= 0, 0, images) #always at least fraction of photon
 
     if gaussian_noise_sigma is None:
         # conditional entropy H(Y | x) for Poisson noise 
-        return np.mean((n_pixels * 0.5 * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(images), axis=1))) / n_pixels
+        gaussian_approx = 0.5 * (np.log(2 * np.pi * np.e) + np.log(images))
+        gaussian_approx = np.where(images <= 0, 0, gaussian_approx)
+        hybrid = np.where(images < poisson_approx_threshold,  poisson_entropy(images), gaussian_approx)
+        per_image_entropies = np.sum(hybrid, axis=1) / n_pixels
+        h_y_given_x = np.mean(per_image_entropies)
+
+        # add small amount of gaussian noise (e.g. read noise)
+        # read_noise_sigma = 1
+        # h_y_given_x += 0.5 * np.log(2 * np.pi * np.e * read_noise_sigma**2)
+        return h_y_given_x
     else:
         # conditional entropy H(Y | x) for Gaussian noise
         # only depends on the gaussian sigma
@@ -197,6 +223,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
     if np.any(clean_images_if_available < 0):   
         warnings.warn(f"{np.sum(clean_images_if_available < 0) / clean_images_if_available.size:.2%} of pixels are negative.")
+    if np.mean(clean_images_if_available) < 20:
+        warnings.warn(f"Mean pixel value is {np.mean(clean_images_if_available):.2f}. Mutual information estimates may be inaccurate at low photon counts.")
 
     h_y_given_x = compute_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma)
     h_y_given_x_per_pixel_bits = h_y_given_x / np.log(2)
