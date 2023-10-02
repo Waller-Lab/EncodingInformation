@@ -196,7 +196,7 @@ def generate_multivariate_gaussian_samples(cov_mat, num_samples, mean=None, seed
     return images
 
 
-def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_samples, mean=None, 
+def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_size=None, mean=None, 
                                                  ensure_nonnegative=False,
                                                  prefer_iterative_sampling=False, seed=None):
     """
@@ -206,15 +206,19 @@ def generate_stationary_gaussian_process_samples(cov_mat, sample_size, num_sampl
     pixel is sampled conditional on the previous ones.
 
     cov_mat : The covariance matrix of a stationary Gaussian process
-    sample_size : int that is the one dimensional shape of a patch that the new
-        covariance matrix represents the size of the covariance matrix is the patch size squared
     num_samples : int number of samples to generate
+
+    sample_size : int that is the one dimensional shape of a patch that the new
+        covariance matrix represents the size of the covariance matrix is the patch size squared.
+        if None, use the same patch size as the covariance matrix
     mean : mean of the Gaussian process. If None, use zero mean
     ensure_nonnegative : bool if true, ensure that all pixel values of sampls are nonnegative
     prefer_iterative_sampling : bool if true, dont directly sample the first (patch_size, patch_size) pixels
         directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
         This is much slower
     """
+    if sample_size is None:
+        sample_size = int(np.sqrt(cov_mat.shape[0]))
     if np.linalg.eigvalsh(cov_mat).min() < 0:
         raise ValueError('Covariance matrix is not positive definite')
     key = jax.random.PRNGKey(onp.random.randint(0, 100000) if seed is None else seed)
@@ -315,8 +319,6 @@ def _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, mea
                                                 max(j - patch_size + 1, 0):max(j - patch_size + 1, 0) + patch_size]
                 previous_values = relevant_window.reshape(-1)[vectorized_mask].reshape(-1, 1)
                 
-                if i == 9 and j == 10:
-                    pass
                 mean = mean_multipliers[i * sample_size + j] @ previous_values
                 variance = variances[i * sample_size + j]
                 sample = (jax.random.normal(key) * np.sqrt(variance) + mean).reshape(-1)[0]

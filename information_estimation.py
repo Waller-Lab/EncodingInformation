@@ -152,7 +152,7 @@ def compute_conditional_entropy(images, gaussian_noise_sigma=None, poisson_appro
         return  0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2)
     
 
-def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234):
+def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, verbose=False):
     """
     Runs a bootstrap estimation procedure on the given data using the provided estimation function.
 
@@ -170,6 +170,8 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
         The confidence interval to use for the estimation, expressed as a percentage.
     seed : int, optional (default=1234)
         The random seed to use for generating the bootstrap samples.
+    verbose : bool, optional (default=False)
+        Print progress bar
 
     Returns:
     --------
@@ -182,7 +184,11 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
     key = jax.random.PRNGKey(onp.random.randint(0, 1000000))
     N = data.shape[0] if not isinstance(data, dict) else data[list(data.keys())[0]].shape[0]
     results = []
-    for i in tqdm(range(num_bootstrap_samples), desc="Running bootstraps"):
+    if verbose:
+        iterator = tqdm(range(num_bootstrap_samples), desc="Running bootstraps")
+    else:
+        iterator = range(num_bootstrap_samples)
+    for i in iterator:
         key, subkey = jax.random.split(key)
         if not isinstance(data, dict):
             data_sample = jax.random.choice(subkey, data, shape=(N,), replace=True)
