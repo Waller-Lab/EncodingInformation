@@ -265,7 +265,7 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
                 # sigma11_inv = np.linalg.inv(sigma_11)
                 # variance = (sigma_22 - sigma_21 @ sigma11_inv @ sigma_12) 
                 # mean_multiplier = sigma_21 @ sigma11_inv 
-                
+                print(variance)
                 variances.append(variance)
                 mean_multipliers.append(mean_multiplier)
 

@@ -279,7 +279,8 @@ def add_shot_noise_to_experimenal_data(image_stack, photon_fraction):
     key = jax.random.PRNGKey(seed)
     if photon_fraction > 1 or photon_fraction <= 0:
         raise Exception('photon_fraction must be less than 1 and greater than 0')
-    additional_sd = jax.numpy.sqrt(photon_fraction * image_stack) - photon_fraction * jax.numpy.sqrt(image_stack)
+    photon_fraction = float(photon_fraction) # just in case
+    additional_sd = np.sqrt(photon_fraction * image_stack - photon_fraction ** 2 * np.sqrt(image_stack))
     simulated_images = image_stack * photon_fraction + additional_sd * jax.random.normal(key, image_stack.shape)
     positive = np.where(simulated_images > 0, simulated_images, 0)
     return positive
