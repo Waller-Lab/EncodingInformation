@@ -196,6 +196,129 @@ def generate_multivariate_gaussian_samples(cov_mat, num_samples, mean=None, seed
     return images
 
 
+def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False):  
+    """
+    Compute the likelihood of a set of samples from a stationary process
+
+    :param samples: N x H x W array of samples
+    :param cov_mat: covariance matrix of the process
+    :param mean: float mean of the process
+    :param prefer_iterative: if True, compute likelihood iteratively, otherwise compute directly if possible
+
+    :return: N x 1 array of log likelihoods
+    """
+    # samples is not going to be the same size as the covariance matrix
+    # if sample is smaller than cov_mat, throw an excpetion
+    # if sample is larger than cov_mat, then compute likelihood iteratively
+    # if sample is the same size as cov_mat, then compute likelihood directly, unless prefer_iterative is True
+    # check that mean if float or 1 element array
+    if not isinstance(mean, float) and mean.shape != tuple():
+        raise ValueError('Mean must be a float or a 1 element array')
+    N_samples = samples.shape[0]
+    # check for expected shape
+    if samples.ndim != 3 or samples.shape[1] != samples.shape[2]:
+        raise ValueError('Samples must be N x H x W')
+    sample_size = samples.shape[1]
+
+    if np.linalg.eigvalsh(cov_mat).min() < 0:
+        raise ValueError('Covariance matrix is not positive definite')
+    # precompute everything that will be the same for all samples
+    patch_size = int(np.sqrt(cov_mat.shape[0]))
+    vectorized_masks = []
+    variances = []
+    mean_multipliers = []
+    for i in tqdm(np.arange(sample_size), desc='precomputing masks and variances'):
+        for j in np.arange(sample_size):
+            if not prefer_iterative and i < patch_size and j < patch_size:
+                # Add placeholders since these get sampled from the covariance matrix directly
+                variances.append(None)
+                mean_multipliers.append(None)
+                vectorized_masks.append(None)
+            else:
+                top_part = np.ones((min(i, patch_size - 1), patch_size), dtype=bool)
+                left_part = np.ones((1, min(j, patch_size - 1)), dtype=bool)
+                right_part = np.zeros((1, patch_size - min(j, patch_size - 1)), dtype=bool)
+                bottom_part = np.zeros((patch_size - min(i, patch_size - 1) - 1, patch_size), dtype=bool)
+                middle_row = np.hstack((left_part, right_part))
+                conditioning_mask = np.vstack((top_part, middle_row, bottom_part))
+
+                vectorized_mask = conditioning_mask.reshape(-1)
+                vectorized_masks.append(vectorized_mask)
+                # find the linear index in the covariance matrix of the pixel we want to predict
+                pixel_to_predict_index = np.min(np.array([i, patch_size - 1])) * patch_size + np.min(np.array([j, patch_size - 1]))
+                sigma_11 = cov_mat[vectorized_mask][:, vectorized_mask].reshape(pixel_to_predict_index, pixel_to_predict_index) 
+                sigma_12 = cov_mat[vectorized_mask][:, pixel_to_predict_index].reshape(-1, 1)
+                sigma_21 = sigma_12.reshape(1, -1)
+                sigma_22 = cov_mat[pixel_to_predict_index, pixel_to_predict_index].reshape(1, 1)
+
+                
+                # more numerically stable
+                if i == 0 and j == 0:
+                    # top left pixel is not conditioned on anything
+                    variance = sigma_22 
+                    mean_multiplier = np.zeros((1, 1))
+                else:
+                    x = jax.scipy.linalg.solve(sigma_11, sigma_12)
+                    variance = (sigma_22 - sigma_21 @ x) 
+                    mean_multiplier = jax.scipy.linalg.solve(sigma_11, sigma_21.T)
+
+                # sigma11_inv = np.linalg.inv(sigma_11)
+                # variance = (sigma_22 - sigma_21 @ sigma11_inv @ sigma_12) 
+                # mean_multiplier = sigma_21 @ sigma11_inv 
+                
+                variances.append(variance)
+                mean_multipliers.append(mean_multiplier)
+
+                if variances[-1] < 0:
+                    raise ValueError('Variance is negative {} {}'.format(i, j))
+
+    print('evaluating likelihood')
+
+    log_likelihoods = []
+    if not prefer_iterative:
+        # compute the log_likelihood to the top left image subpatch of the image directly
+        top_left_subpatch = samples[:, :patch_size, :patch_size].reshape(N_samples, -1)
+        direct = []
+        for sample in top_left_subpatch:
+            direct.append(jax.scipy.stats.multivariate_normal.logpdf(sample.reshape(-1), mean=mean * np.ones(cov_mat.shape[0]), cov=cov_mat))
+        direct = np.array(direct)
+        log_likelihoods.append(direct)
+
+    for i in tqdm(np.arange(sample_size), desc='computing log likelihoods'):
+        for j in np.arange(sample_size):
+
+            if not prefer_iterative and i < patch_size and j < patch_size :
+                # already did this
+                pass
+            elif i == 0 and j == 0:
+                # top left pixel is not conditioned on anything
+                variance = cov_mat[0, 0]
+                # compute likelihood of top left pixel
+                log_likelihoods.append(jax.scipy.stats.norm.logpdf(samples[:, i, j], loc=mean, scale=np.sqrt(variance)))
+            else:
+                vectorized_mask = vectorized_masks[i * sample_size + j]
+                # get the relevant window of previous values
+                relevant_window = samples[:, max(i - patch_size + 1, 0):max(i - patch_size + 1, 0) + patch_size, 
+                                                max(j - patch_size + 1, 0):max(j - patch_size + 1, 0) + patch_size]
+
+                previous_values = relevant_window.reshape(N_samples, -1)[:, vectorized_mask].reshape(N_samples, -1)
+                mean_to_use = mean + (mean_multipliers[i * sample_size + j].reshape(1, -1) @ (previous_values - mean).T).T
+                variance = variances[i * sample_size + j]
+                # print(variance)
+                # compute likelihood of pixel
+                # iterate over batch dimension
+                batch_likelihoods = []
+                
+                scale = np.sqrt(float(variance))
+                for k in np.arange(N_samples):
+                    mean_for_sample = mean_to_use[k]
+                    batch_likelihoods.append(jax.scipy.stats.norm.logpdf(samples[k, i, j], loc=mean_for_sample, scale=scale))                    
+                log_likelihoods.append(np.array(batch_likelihoods).flatten())
+
+    # print(np.array(log_likelihoods).reshape(N_samples, sample_size, sample_size))
+    return np.sum(np.array(log_likelihoods), axis=0)
+
+
 def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_size=None, mean=None, 
                                                  ensure_nonnegative=False,
                                                  prefer_iterative_sampling=False, seed=None):
@@ -242,6 +365,8 @@ def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_si
     for i in tqdm(np.arange(sample_size), desc='precomputing masks and variances'):
         for j in np.arange(sample_size):
             if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
+                raise Exception('why is there a -1 here? double check')
+
                 # Add placeholders since these get sampled from the covariance matrix directly
                 variances.append(None)
                 mean_multipliers.append(None)
@@ -263,11 +388,24 @@ def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_si
                 sigma_21 = sigma_12.reshape(1, -1)
                 sigma_22 = cov_mat[pixel_to_predict_index, pixel_to_predict_index].reshape(1, 1)
 
-                variances.append(sigma_22 - sigma_21 @ np.linalg.inv(sigma_11) @ sigma_12)
-                mean_multipliers.append(sigma_21 @ np.linalg.inv(sigma_11))
-                # print(i, j, np.linalg.det(sigma_11))
+                # more numerically stable
+                if i == 0 and j == 0:
+                    # top left pixel is not conditioned on anything
+                    variance = sigma_22 
+                    mean_multiplier = np.zeros((1, 1))
+                else:
+                    x = jax.scipy.linalg.solve(sigma_11, sigma_12)
+                    variance = (sigma_22 - sigma_21 @ x) 
+                    mean_multiplier = jax.scipy.linalg.solve(sigma_11, sigma_21.T)
 
-                # print(i,j, mean_multipliers[-1].mean())
+                # sigma11_inv = np.linalg.inv(sigma_11)
+                # variance = (sigma_22 - sigma_21 @ sigma11_inv @ sigma_12) 
+                # mean_multiplier = sigma_21 @ sigma11_inv 
+                
+                variances.append(variance)
+                mean_multipliers.append(mean_multiplier)
+
+
                 if variances[-1] < 0:
                     raise ValueError('Variance is negative {} {}'.format(i, j))
 
@@ -288,6 +426,7 @@ def _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, mea
     patch_size = int(np.sqrt(cov_mat.shape[0]))
     if not prefer_iterative_sampling:
         cholesky = onp.linalg.cholesky(cov_mat)
+        raise Exception('this is broken, change to generate_multivariate_gaussian_samples')
         sampled_image = sample_multivariate_gaussian(cholesky, key)
         key = jax.random.split(key)[1]
 
@@ -304,6 +443,7 @@ def _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, mea
     for i in tqdm(np.arange(sample_size), desc='generating sample'):
         for j in np.arange(sample_size):
             if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
+                raise Exception('why is there a -1 here? double check')
                 # use existing values
                 pass
             elif i == 0 and j == 0:
