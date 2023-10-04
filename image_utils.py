@@ -7,6 +7,7 @@ import numpy as onp
 from tqdm import tqdm
 from cleanplots import *
 import jax
+import jax.numpy as np
 
 
 def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None, seed=None, batch_size=1000):
