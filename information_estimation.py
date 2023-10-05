@@ -9,6 +9,8 @@ from functools import partial
 import jax.numpy as np
 from gaussian_process_utils import *
 
+from gaussian_process_utils import *
+
 
 
 def analytic_multivariate_gaussian_entropy(cov_matrix):
