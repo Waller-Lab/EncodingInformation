@@ -6,6 +6,9 @@ import jax.numpy as np
 from tqdm import tqdm
 import jax
 import matplotlib.pyplot as plt
+from jax import grad, jit
+import numpy as onp
+from functools import partial
 
 
 def compute_cov_mat(patches):
@@ -19,7 +22,7 @@ def compute_cov_mat(patches):
     return np.cov(vectorized_patches)
 
 # trying to add jit to this somehow makes it run slower
-def compute_stationary_cov_mat(patches, verbose=False):
+def compute_stationary_cov_mat(patches, eigenvalue_floor=1e-3, verbose=False):
     """
     Uses images patches to estimate the covariance matrix of a stationary 2D process.
     The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
@@ -65,35 +68,14 @@ def compute_stationary_cov_mat(patches, verbose=False):
         new_blocks.append(np.hstack(row))
     stationary_cov_mat = np.vstack(new_blocks)
 
+    if eigenvalue_floor is not None:
+        eigvals, eig_vecs = np.linalg.eigh(stationary_cov_mat)
+        eigvals, eigvecs = make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, block_size)
+        stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+
     return stationary_cov_mat
 
-
-def make_positive_definite(A, eigenvalue_floor, show_plot=False, verbose=False):
-    """
-    Ensure the matrix A is positive definite by adding a small amount to the diagonal
-    (Tikhonov regularization)
-
-    A : matrix to make positive definite
-    eigenvalue_floor : float, make all eigenvalues of the matrix at least this large
-    show_plot : whether to show a plot of the eigenvalue spectrum and cutoff threshold
-    """
-    eigvals, eigvecs = np.linalg.eigh(A)
-    eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
-    new_matrix = eigvecs @ np.diag(eigvals) @ eigvecs.T
-    if np.linalg.eigvalsh(new_matrix).min() < 0:
-        raise ValueError('Covariance matrix is still not positive definite')
-    if show_plot:
-        fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-        ax.semilogy(eigvals)
-        ax.set(title='Eigenvalue spectrum', xlabel='Eigenvalue index', ylabel='Eigenvalue')
-        new_evs = np.linalg.eigvalsh(new_matrix)
-        ax.semilogy(new_evs)
-        ax.set(title='Eigenvalue spectrum after regularization', xlabel='Eigenvalue index', ylabel='Eigenvalue')
-    
-    return new_matrix
-
-
-def generate_multivariate_gaussian_samples(cov_mat, num_samples, mean=None, seed=None):
+def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=None, key=None):
     """
     Generate samples from a 2D gaussian process with the given covariance matrix
 
@@ -101,12 +83,14 @@ def generate_multivariate_gaussian_samples(cov_mat, num_samples, mean=None, seed
     cov_mat: jnp.ndarray, covariance matrix of the Gaussian distribution
     num_samples: int, number of samples to generate
     seed: int or jnp.ndarray, seed for the random number generator
+    key: a jax.random.PRNGKey, if None, use the seed to generate one
 
     Returns:
     jnp.ndarray of shape (num_samples, cov_mat.shape[0]), samples from the multivariate Gaussian distribution
     """
-    key = jax.random.PRNGKey(onp.random.randint(0, 100000) if seed is None else seed)
-    samples = jax.random.multivariate_normal(key, mean if mean is not None else np.array([0]), cov_mat, (num_samples,))
+    if key is None:
+        key = jax.random.PRNGKey(onp.random.randint(0, 100000) if seed is None else seed)
+    samples = jax.random.multivariate_normal(key, mean_vec, cov_mat, (num_samples,))
     images = samples.reshape(num_samples, int(np.sqrt(cov_mat.shape[0])), int(np.sqrt(cov_mat.shape[0])))
     return images
 
@@ -128,7 +112,10 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
     # if sample is the same size as cov_mat, then compute likelihood directly, unless prefer_iterative is True
     # check that mean if float or 1 element array
     if not isinstance(mean, float) and mean.shape != tuple():
-        raise ValueError('Mean must be a float or a 1 element array')
+        if np.unique(mean).size != 1:
+            raise ValueError('Mean for stationary process cannot be an array with more than one unique value')
+        mean = mean[0]
+        
     N_samples = samples.shape[0]
     # check for expected shape
     if samples.ndim != 3 or samples.shape[1] != samples.shape[2]:
@@ -234,7 +221,7 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
     return np.sum(np.array(log_likelihoods), axis=0)
 
 
-def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_size=None, mean=None, 
+def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples, sample_size=None,
                                                  ensure_nonnegative=False,
                                                  prefer_iterative_sampling=False, seed=None):
     """
@@ -262,13 +249,10 @@ def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_si
     key = jax.random.PRNGKey(onp.random.randint(0, 100000) if seed is None else seed)
     # Use jax to do it all at once if possible
     if not prefer_iterative_sampling and sample_size <= int(np.sqrt(cov_mat.shape[0])):
-        samples = jax.random.multivariate_normal(key, np.zeros(cov_mat.shape[0]), cov_mat, shape=(num_samples,))
+        samples = jax.random.multivariate_normal(key, mean_vec, cov_mat, shape=(num_samples,))
         # crop if needed
         if sample_size < int(np.sqrt(cov_mat.shape[0])):
             samples = samples[:, :sample_size, :sample_size]
-        # add mean
-        if mean is not None:
-            samples += mean
         if ensure_nonnegative:
             samples = np.where(samples < 0, 0, samples)
         return samples.reshape(num_samples, sample_size, sample_size)
@@ -279,8 +263,8 @@ def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_si
     mean_multipliers = []
     for i in tqdm(np.arange(sample_size), desc='precomputing masks and variances'):
         for j in np.arange(sample_size):
-            if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
-                raise Exception('why is there a -1 here? double check')
+            if not prefer_iterative_sampling and i < patch_size and j < patch_size:
+                # raise Exception('why is there a -1 here? double check')
 
                 # Add placeholders since these get sampled from the covariance matrix directly
                 variances.append(None)
@@ -325,60 +309,171 @@ def generate_stationary_gaussian_process_samples(cov_mat, num_samples, sample_si
                     raise ValueError('Variance is negative {} {}'.format(i, j))
 
 
-    samples = []
+    
     print('generating samples')
-    for i in range(num_samples):
-        sample, key = _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, 
-                                        mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling)
-        if mean is not None:
-            sample += mean
-        if ensure_nonnegative:
-            sample = np.where(sample < 0, 0, sample)
-        samples.append(sample)
+    samples = _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectorized_masks, variances, 
+                                    mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling)
+    if ensure_nonnegative:
+        samples = np.where(samples < 0, 0, samples)
+    
     return samples
 
-def _generate_sample(cov_mat, key, sample_size, vectorized_masks, variances, mean_multipliers, prefer_iterative_sampling=False):
+def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectorized_masks, variances, mean_multipliers, prefer_iterative_sampling=False):
     patch_size = int(np.sqrt(cov_mat.shape[0]))
     if not prefer_iterative_sampling:
-        cholesky = onp.linalg.cholesky(cov_mat)
-        raise Exception('this is broken, change to generate_multivariate_gaussian_samples')
-        sampled_image = sample_multivariate_gaussian(cholesky, key)
-        key = jax.random.split(key)[1]
+        # sample the first (patch_size, patch_size) pixels directly from the covariance matrix
+        sampled_images = generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, key=key)
 
-        if sampled_image.shape[0] == sample_size:
-            return sampled_image, key
-        elif sampled_image.shape[0] > sample_size:
-            return sampled_image[:sample_size, :sample_size], key
+        # if the directly sampled image is sufficiently large for the sample size requested, return it
+        if sampled_images.shape[1] == sample_size:
+            return sampled_images
+        elif sampled_images.shape[1] > sample_size:
+            return sampled_images[..., :sample_size, :sample_size]
 
         # pad the right and bottom with zeros
-        sampled_image = np.pad(sampled_image, ((0, sample_size - sampled_image.shape[0]), (0, sample_size - sampled_image.shape[1])))
+        sampled_images = np.pad(sampled_images, ((0, 0), (0, sample_size - sampled_images.shape[-2]), (0, sample_size - sampled_images.shape[-1])))
     else:
-        sampled_image = np.zeros((sample_size, sample_size))
+        sampled_images = np.zeros((num_samples, sample_size, sample_size))
 
     for i in tqdm(np.arange(sample_size), desc='generating sample'):
         for j in np.arange(sample_size):
-            if not prefer_iterative_sampling and i < patch_size - 1 and j < patch_size - 1:
-                raise Exception('why is there a -1 here? double check')
+            if not prefer_iterative_sampling and i < patch_size  and j < patch_size :
+                # raise Exception('why is there a -1 here? double check')
                 # use existing values
                 pass
             elif i == 0 and j == 0:
-                # top left pixel is not conditioned on anything
-                mean = 0
-                sample = (jax.random.normal(key) * np.sqrt(cov_mat[0, 0]) + mean).reshape(-1)[0]
-                sampled_image = sampled_image.at[i, j].set(sample)
+                # top left pixel is not conditioned on anything                
+                samples = jax.random.normal(key, shape=(num_samples,)) * np.sqrt(cov_mat[0, 0]) + mean_vec[0]
+                sampled_images = sampled_images.at[:, i, j].set(samples)
                 key = jax.random.split(key)[1]
             else:
                 vectorized_mask = vectorized_masks[i * sample_size + j]
                 # get the relevant window of previous values
-                relevant_window = sampled_image[max(i - patch_size + 1, 0):max(i - patch_size + 1, 0) + patch_size, 
+                relevant_window = sampled_images[..., 
+                                                max(i - patch_size + 1, 0):max(i - patch_size + 1, 0) + patch_size, 
                                                 max(j - patch_size + 1, 0):max(j - patch_size + 1, 0) + patch_size]
-                previous_values = relevant_window.reshape(-1)[vectorized_mask].reshape(-1, 1)
+                previous_values = relevant_window.reshape(num_samples, -1)[:, vectorized_mask].reshape(num_samples, vectorized_mask.sum(), 1)
                 
-                mean = mean_multipliers[i * sample_size + j] @ previous_values
+                mean = (mean_multipliers[i * sample_size + j].reshape(1, -1) @ (previous_values - mean_vec[0]) + mean_vec[0]).flatten()
                 variance = variances[i * sample_size + j]
-                sample = (jax.random.normal(key) * np.sqrt(variance) + mean).reshape(-1)[0]
-                sampled_image = sampled_image.at[i, j].set(sample)
+                samples = (jax.random.normal(key, shape=(num_samples,)) * np.sqrt(variance) + mean)
+                sampled_images = sampled_images.at[:, i, j].set(samples.flatten())
                 key = jax.random.split(key)[1]
             
-    return sampled_image, jax.random.split(key)[1]
+    return sampled_images
     
+
+#####################################################
+####### Optimizing a stationary gaussian fit ########
+#####################################################
+
+
+def make_doubly_toeplitz(top_row, patch_size):
+    """
+    Make a doubly toeplitz matrix from its top row, which is the
+    minimum number of parameters needed to specify the matrix.
+    """
+    # split into rows
+    top_rows = np.split(top_row, patch_size)
+    # make into toeplitz blocks
+    blocks = []
+    for tr in top_rows:
+        blocks.append(toeplitz(tr))
+    # use blocks to construct doubl
+
+    rows = []
+    for i in range(len(blocks)):
+        row_blocks = [blocks[abs(i - j)] for j in range(len(blocks))]
+        row = np.hstack(row_blocks)
+        rows.append(row)
+    doubly_toeplitz_mat = np.vstack(rows)
+    return doubly_toeplitz_mat
+
+
+def gaussian_likelihood(cov_mat, mean_vec, batch):
+    """
+    Evaluate the log likelihood of a multivariate gaussian
+    for a batch of NxWXH samples.
+    """
+    log_likelihoods = []
+    for sample in batch:
+        ll = jax.scipy.stats.multivariate_normal.logpdf(sample.reshape(-1), mean=mean_vec, cov=cov_mat)
+        log_likelihoods.append(ll)
+    return np.array(log_likelihoods)
+
+def batch_nll(log_likelihoods):
+    return -np.mean(log_likelihoods)
+
+def loss_function(eigvals, eig_vecs, mean_vec, data):
+    cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+    ll = gaussian_likelihood(cov_mat, mean_vec, data)
+    return batch_nll(ll)
+
+def make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size):
+    """
+    Make sure eigenvalues are positive and matrix is doubly toeplitz
+    """
+    eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+    cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+    dt_cov_mat = make_doubly_toeplitz(cov_mat[0], patch_size)
+    eigvals, eig_vecs = np.linalg.eigh(dt_cov_mat)
+    eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+    return eigvals, eig_vecs
+
+# make a partial
+@partial(jit, static_argnums=(8,))
+def optmization_step(eigvals, eig_vecs, velocity, data, mean_vec, momentum, learning_rate, eigenvalue_floor, patch_size):
+    grad_fn = grad(loss_function, argnums=0)
+    eigenvalues_grad = grad_fn(eigvals, eig_vecs, mean_vec, data)
+    new_velocity = momentum * velocity - learning_rate * eigenvalues_grad
+    eigvals = eigvals + new_velocity
+    # prox operator: make sure make sure positive definite, make sure doubly toeplitz
+    eigvals, eig_vecs = make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size=patch_size)
+    loss = loss_function(eigvals, eig_vecs, mean_vec, data)
+    return eigvals, eig_vecs, new_velocity, loss
+
+
+def run_optimization(data, momentum, learning_rate, batch_size, eigenvalue_floor=1e-3, patience=100):
+    patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
+    # Initialize parameters, hyperparameters
+    mean_vec = np.ones(patch_size**2) * np.mean(data)
+    patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
+
+    # initialize covariance matrix so likelihood is not nan
+    cov_mat_initial = compute_stationary_cov_mat(data, eigenvalue_floor=eigenvalue_floor)
+
+    initial_evs, initial_eig_vecs = make_valid_stationary(*np.linalg.eigh(cov_mat_initial), eigenvalue_floor, patch_size)
+    print('Initial loss: ', loss_function(initial_evs, initial_eig_vecs, mean_vec, data[:batch_size]))
+
+    cov_mat_initial = initial_eig_vecs @ np.diag(initial_evs) @ initial_eig_vecs.T
+
+    if np.isnan(jax.scipy.stats.multivariate_normal.logpdf(data[0].flatten(), mean=mean_vec, cov=cov_mat_initial)):
+        raise ValueError("Initial likelihood is nan")
+    
+    # Training loop
+    eigvals = initial_evs
+    eig_vecs = initial_eig_vecs
+    velocity = np.zeros_like(eigvals)
+    best_loss = np.inf
+    key = jax.random.PRNGKey(onp.random.randint(0, 100000))
+    best_loss_iter = 0
+    for i in range(1000):
+        # select a random batch
+        batch_indices = jax.random.randint(key, shape=(batch_size,), minval=0, maxval=len(data))
+        key, subkey = jax.random.split(key)
+        batch = data[batch_indices]
+        
+        eigvals, eig_vecs, velocity, loss = optmization_step(eigvals, eig_vecs, velocity, 
+                                                             batch, mean_vec, momentum, learning_rate, eigenvalue_floor, patch_size)
+        print(f"Iteration {i+1}, Loss: {loss}", end='\r')
+        if loss < best_loss:
+            best_loss_iter = i
+            best_loss = loss
+            best_eigvals = eigvals
+            best_eig_vecs = eig_vecs
+        if i - best_loss_iter > patience:
+            break
+        
+    eigvals, eig_vecs = make_valid_stationary(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
+    best_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+    return best_cov_mat, cov_mat_initial, mean_vec, best_loss

@@ -85,7 +85,10 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_pl
     if not stationary:
         try:
             cov_mat = np.cov(zero_centered)
-            cov_mat = make_positive_definite(cov_mat, eigenvalue_floor, show_plot=show_plot, verbose=verbose)
+            if eigenvalue_floor is not None:
+                eigvals, eigvecs = np.linalg.eigh(cov_mat)
+                eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+                cov_mat = eigvecs @ np.diag(eigvals) @ eigvecs.T
         except:
             raise Exception("Couldn't compute covariance matrix")
             
@@ -94,8 +97,7 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_pl
             warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
         sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))                        
     else:
-        cov_mat = compute_stationary_cov_mat(zero_centered.T, verbose=verbose)
-        cov_mat = make_positive_definite(cov_mat, eigenvalue_floor, show_plot=show_plot, verbose=verbose)
+        cov_mat = compute_stationary_cov_mat(zero_centered.T, eigenvalue_floor=eigenvalue_floor, verbose=verbose)        
         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
     if return_cov_mat:

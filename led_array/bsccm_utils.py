@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import jax
-import numpy as np
+import numpy as onp
+import jax.numpy as np
 from pathlib import Path
 import matplotlib.gridspec as gridspec
 import os
@@ -175,7 +175,7 @@ def generate_synthetic_multi_led_images(bsccm_coherent, led_indices, edge_crop=0
 
 
 def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slides=False, indices=None,
-                      convert_units_to_photons=True, median_filter=False):
+                      convert_units_to_photons=True, median_filter=False, seed=None):
     """
     Load a stack of images from a BSCCM dataset
 
@@ -190,6 +190,12 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
     """
     if indices is None:
         indices = dataset.get_indices()[:num_images]
+    if seed is not None:
+        if indices is not None:
+            raise Exception('Cannot set seed if indices is not None')
+        np.random.seed(seed)
+        all_indices = dataset.get_indices()
+        indices = np.random.choice(all_indices, size=len(indices), replace=False)
     images = []
     for i in indices:
         if empty_slides:
@@ -241,7 +247,7 @@ def _convert_to_photons(image, gain_db, offset, quantum_efficiency):
     """
     electrons = (image.astype(float) - offset) / (10 ** (gain_db / 10))
     electrons = np.array(electrons)
-    electrons[electrons < 0] = 0
+    electrons = np.where(electrons > 0, electrons, 0)
     photons = np.array(electrons) / quantum_efficiency
     return photons
 
