@@ -433,21 +433,27 @@ def optmization_step(eigvals, eig_vecs, velocity, data, mean_vec, momentum, lear
     return eigvals, eig_vecs, new_velocity, loss
 
 
-def run_optimization(data, momentum, learning_rate, batch_size, eigenvalue_floor=1e-3, patience=100):
+def run_optimization(data, momentum, learning_rate, batch_size, eigenvalue_floor=1e-3, patience=50, validation_fraction=0.1, max_iters=4000):
     patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
     # Initialize parameters, hyperparameters
     mean_vec = np.ones(patch_size**2) * np.mean(data)
     patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
 
+    # Split data into training and validation sets
+    num_validation = int(len(data) * validation_fraction)
+    num_train = len(data) - num_validation
+    train_data = data[:num_train]
+    validation_data = data[num_train:]
+
     # initialize covariance matrix so likelihood is not nan
-    cov_mat_initial = compute_stationary_cov_mat(data, eigenvalue_floor=eigenvalue_floor)
+    cov_mat_initial = compute_stationary_cov_mat(train_data, eigenvalue_floor=eigenvalue_floor)
 
     initial_evs, initial_eig_vecs = make_valid_stationary(*np.linalg.eigh(cov_mat_initial), eigenvalue_floor, patch_size)
-    print('Initial loss: ', loss_function(initial_evs, initial_eig_vecs, mean_vec, data[:batch_size]))
+    print('Initial loss: ', loss_function(initial_evs, initial_eig_vecs, mean_vec, train_data[:batch_size]))
 
     cov_mat_initial = initial_eig_vecs @ np.diag(initial_evs) @ initial_eig_vecs.T
 
-    if np.isnan(jax.scipy.stats.multivariate_normal.logpdf(data[0].flatten(), mean=mean_vec, cov=cov_mat_initial)):
+    if np.isnan(jax.scipy.stats.multivariate_normal.logpdf(train_data[0].flatten(), mean=mean_vec, cov=cov_mat_initial)):
         raise ValueError("Initial likelihood is nan")
     
     # Training loop
@@ -457,23 +463,32 @@ def run_optimization(data, momentum, learning_rate, batch_size, eigenvalue_floor
     best_loss = np.inf
     key = jax.random.PRNGKey(onp.random.randint(0, 100000))
     best_loss_iter = 0
-    for i in range(1000):
+    train_loss_history = []
+    validation_loss_history = []
+    for i in range(max_iters):
         # select a random batch
-        batch_indices = jax.random.randint(key, shape=(batch_size,), minval=0, maxval=len(data))
+        batch_indices = jax.random.randint(key, shape=(batch_size,), minval=0, maxval=num_train)
         key, subkey = jax.random.split(key)
-        batch = data[batch_indices]
+        batch = train_data[batch_indices]
         
-        eigvals, eig_vecs, velocity, loss = optmization_step(eigvals, eig_vecs, velocity, 
+        eigvals, eig_vecs, velocity, train_loss = optmization_step(eigvals, eig_vecs, velocity, 
                                                              batch, mean_vec, momentum, learning_rate, eigenvalue_floor, patch_size)
-        print(f"Iteration {i+1}, Loss: {loss}", end='\r')
-        if loss < best_loss:
+
+        validation_loss = loss_function(eigvals, eig_vecs, mean_vec, validation_data)   
+        train_loss_history.append(train_loss)
+        validation_loss_history.append(validation_loss)
+
+        print(f"Iteration {i+1}, validation loss: {validation_loss}", end='\r')
+        if validation_loss < best_loss:
             best_loss_iter = i
-            best_loss = loss
+            best_loss = validation_loss
             best_eigvals = eigvals
             best_eig_vecs = eig_vecs
         if i - best_loss_iter > patience:
             break
+
         
     eigvals, eig_vecs = make_valid_stationary(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
     best_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-    return best_cov_mat, cov_mat_initial, mean_vec, best_loss
+    return best_cov_mat, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history
+

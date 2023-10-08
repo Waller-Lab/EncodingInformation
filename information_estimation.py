@@ -8,9 +8,7 @@ from scipy.special import factorial
 from functools import partial
 import jax.numpy as np
 from gaussian_process_utils import *
-
-from gaussian_process_utils import *
-
+import warnings
 
 
 def analytic_multivariate_gaussian_entropy(cov_matrix):
@@ -81,10 +79,9 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_pl
     X = X.reshape(X.shape[0], -1)
     D = X.shape[1]
     # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
-    zero_centered = X.T - np.mean(X.T, axis=1, keepdims=True)
     if not stationary:
         try:
-            cov_mat = np.cov(zero_centered)
+            cov_mat = compute_cov_mat(X)
             if eigenvalue_floor is not None:
                 eigvals, eigvecs = np.linalg.eigh(cov_mat)
                 eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
@@ -97,7 +94,7 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_pl
             warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
         sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))                        
     else:
-        cov_mat = compute_stationary_cov_mat(zero_centered.T, eigenvalue_floor=eigenvalue_floor, verbose=verbose)        
+        cov_mat = compute_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose)        
         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
     if return_cov_mat:
@@ -120,7 +117,7 @@ def poisson_entropy(lam, max_k=25):
     return entropy
 
 @partial(jit, static_argnums=(1, 2))
-def compute_conditional_entropy(images, gaussian_noise_sigma=None, poisson_approx_threshold=0):
+def compute_conditional_entropy(images, gaussian_noise_sigma=None, poisson_approx_threshold=10):
     """
     Compute the conditional entropy H(Y | X) in "nats" 
     (differential entropy doesn't really have units...) per pixel,
@@ -214,7 +211,7 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
     
 def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, 
                                 eigenvalue_floor=1, show_eigenvalue_plot=False, verbose=False,
-                                gaussian_noise_sigma=None):
+                                gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by making a Gaussian approximation
     to the distribution of noisy images, and subtracting the conditional entropy of the clean images
@@ -229,6 +226,9 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
     verbose : bool, whether to print out the estimated values
     gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
             otherwise assume poisson noise.
+    estimate_conditional_from_model_samples : bool, whether to estimate the conditional entropy from a model fit to them
+        rather than from the the data iteself.  
+        
 
     """
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
@@ -237,7 +237,17 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
     if np.mean(clean_images_if_available) < 20:
         warnings.warn(f"Mean pixel value is {np.mean(clean_images_if_available):.2f}. Mutual information estimates may be inaccurate at low photon counts.")
 
-    h_y_given_x = compute_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma)
+    if estimate_conditional_from_model_samples:
+        if not use_stationary_model:
+            raise NotImplementedError("Conditional entropy from marginal samples only implemented for stationary model")
+        vecotrized_images = clean_images_if_available.reshape(clean_images_if_available.shape[0], -1)
+        mean_vec = np.ones(vecotrized_images.shape[1]) * np.mean(vecotrized_images)
+        stationary_cov_mat = compute_stationary_cov_mat(vecotrized_images, eigenvalue_floor=eigenvalue_floor, verbose=verbose)        
+        samples = generate_stationary_gaussian_process_samples(mean_vec, stationary_cov_mat, 
+                                                               num_samples=clean_images_if_available.shape[0], ensure_nonnegative=True)
+        clean_images_if_available = samples.reshape(clean_images_if_available.shape)
+
+    h_y_given_x = compute_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma, poisson_approx_threshold=8)
     h_y_given_x_per_pixel_bits = h_y_given_x / np.log(2)
     h_y_gaussian = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, 
                                             eigenvalue_floor=eigenvalue_floor, show_plot=show_eigenvalue_plot)
