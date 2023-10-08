@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from jax import grad, jit
 import numpy as onp
 from functools import partial
+# import optax
 
 
 def compute_cov_mat(patches):
@@ -335,7 +336,7 @@ def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectoriz
     else:
         sampled_images = np.zeros((num_samples, sample_size, sample_size))
 
-    for i in tqdm(np.arange(sample_size), desc='generating sample'):
+    for i in tqdm(np.arange(sample_size)):
         for j in np.arange(sample_size):
             if not prefer_iterative_sampling and i < patch_size  and j < patch_size :
                 # raise Exception('why is there a -1 here? double check')
@@ -420,27 +421,28 @@ def make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size):
     eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
     return eigvals, eig_vecs
 
-# make a partial
-@partial(jit, static_argnums=(8,))
-def optmization_step(eigvals, eig_vecs, velocity, data, mean_vec, momentum, learning_rate, eigenvalue_floor, patch_size):
-    grad_fn = grad(loss_function, argnums=0)
-    eigenvalues_grad = grad_fn(eigvals, eig_vecs, mean_vec, data)
-    new_velocity = momentum * velocity - learning_rate * eigenvalues_grad
-    eigvals = eigvals + new_velocity
-    # prox operator: make sure make sure positive definite, make sure doubly toeplitz
-    eigvals, eig_vecs = make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size=patch_size)
-    loss = loss_function(eigvals, eig_vecs, mean_vec, data)
-    return eigvals, eig_vecs, new_velocity, loss
 
 
-def run_optimization(data, momentum, learning_rate, batch_size, eigenvalue_floor=1e-3, patience=50, validation_fraction=0.1, max_iters=4000):
+def run_optimization(data, optimizer, batch_size, eigenvalue_floor=1e-3, patience=20, validation_fraction=0.1, max_iters=1000, return_final=False):
     patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
     # Initialize parameters, hyperparameters
     mean_vec = np.ones(patch_size**2) * np.mean(data)
     patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
 
+    @jit
+    def optmization_step(opt_state, eigvals, eig_vecs, data, mean_vec, eigenvalue_floor):
+        grad_fn = grad(loss_function, argnums=0)
+        eigenvalues_grad = grad_fn(eigvals, eig_vecs, mean_vec, data)
+        updates, opt_state = optimizer.update(eigenvalues_grad, opt_state, eigvals)
+        eigvals = optax.apply_updates(eigvals, updates)
+        # prox operator: make sure make sure positive definite, make sure doubly toeplitz
+        eigvals, eig_vecs = make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size=patch_size)
+        loss = loss_function(eigvals, eig_vecs, mean_vec, data)
+        return eigvals, eig_vecs, opt_state, loss
+
+
     # Split data into training and validation sets
-    num_validation = int(len(data) * validation_fraction)
+    num_validation = max(int(len(data) * validation_fraction), 100)
     num_train = len(data) - num_validation
     train_data = data[:num_train]
     validation_data = data[num_train:]
@@ -457,9 +459,9 @@ def run_optimization(data, momentum, learning_rate, batch_size, eigenvalue_floor
         raise ValueError("Initial likelihood is nan")
     
     # Training loop
-    eigvals = initial_evs
+    eigenvalues = initial_evs
+    opt_state = optimizer.init(eigenvalues)
     eig_vecs = initial_eig_vecs
-    velocity = np.zeros_like(eigvals)
     best_loss = np.inf
     key = jax.random.PRNGKey(onp.random.randint(0, 100000))
     best_loss_iter = 0
@@ -471,24 +473,28 @@ def run_optimization(data, momentum, learning_rate, batch_size, eigenvalue_floor
         key, subkey = jax.random.split(key)
         batch = train_data[batch_indices]
         
-        eigvals, eig_vecs, velocity, train_loss = optmization_step(eigvals, eig_vecs, velocity, 
-                                                             batch, mean_vec, momentum, learning_rate, eigenvalue_floor, patch_size)
+        eigenvalues, eig_vecs, opt_state, train_loss = optmization_step(opt_state, eigenvalues, eig_vecs, batch, mean_vec, eigenvalue_floor)
 
-        validation_loss = loss_function(eigvals, eig_vecs, mean_vec, validation_data)   
         train_loss_history.append(train_loss)
+
+        validation_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data)   
         validation_loss_history.append(validation_loss)
 
         print(f"Iteration {i+1}, validation loss: {validation_loss}", end='\r')
         if validation_loss < best_loss:
             best_loss_iter = i
             best_loss = validation_loss
-            best_eigvals = eigvals
+            best_eigvals = eigenvalues
             best_eig_vecs = eig_vecs
         if i - best_loss_iter > patience:
             break
 
-        
-    eigvals, eig_vecs = make_valid_stationary(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
-    best_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+    if return_final:
+        final_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
+
+    eigenvalues, eig_vecs = make_valid_stationary(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
+    best_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
+    if return_final:
+        return best_cov_mat, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history, final_cov_mat
     return best_cov_mat, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history
 
