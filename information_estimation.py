@@ -61,7 +61,7 @@ def nearest_neighbors_distance(X, k):
     return kth_nn_dist
 
 
-def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_plot=False, return_cov_mat=False,
+def gaussian_entropy_estimate(X, stationary=True, iterative_estimator=False, eigenvalue_floor=1e-4, show_plot=False, return_cov_mat=False,
                               verbose=False):
     """
     Estimate the entropy in "nats" (differential entropy doesn't really have units) per pixel
@@ -71,6 +71,7 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_pl
 
     X : ndarray, shape (n_samples, W, H) or (n_samples, num_features)
     stationary : bool, whether to assume the distribution is stationary
+    iterative_estimator : bool, whether to optimize the estimate with iterative optimization
     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large
     show_plot : bool, whether to show a plot of the eigenvalues and threshold used 
         to make the covariance matrix positive definite.
@@ -81,7 +82,7 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_pl
     # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
     if not stationary:
         try:
-            cov_mat = compute_cov_mat(X)
+            cov_mat = estimate_cov_mat(X)
             if eigenvalue_floor is not None:
                 eigvals, eigvecs = np.linalg.eigh(cov_mat)
                 eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
@@ -94,7 +95,7 @@ def gaussian_entropy_estimate(X, stationary=True, eigenvalue_floor=1e-4, show_pl
             warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
         sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))                        
     else:
-        cov_mat = compute_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose)        
+        cov_mat = estimate_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose, use_optimization=iterative_estimator)        
         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
     if return_cov_mat:
@@ -209,8 +210,8 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
     return mean, conf_int
         
     
-def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, 
-                                eigenvalue_floor=1, show_eigenvalue_plot=False, verbose=False,
+def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, use_iterative_optimization=False,
+                                  eigenvalue_floor=1, show_eigenvalue_plot=False, verbose=False,
                                 gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by making a Gaussian approximation
@@ -220,6 +221,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
     noisy : ndarray NxHxW array of images or image patches
     clean_images : ndarray NxHxW array of images or image patches
     use_stationary_model : bool, whether to assume the distribution is stationary
+    use_iterative_optimization : bool, whether to use iterative optimization to estimate the covariance matrix
     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large in the stationary model
     show_eigenvalue_plot : bool, whether to show a plot of the eigenvalues of the estimated
         stationary covariance matrix and the correction applied to make it positive definite.
@@ -242,7 +244,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
             raise NotImplementedError("Conditional entropy from marginal samples only implemented for stationary model")
         vecotrized_images = clean_images_if_available.reshape(clean_images_if_available.shape[0], -1)
         mean_vec = np.ones(vecotrized_images.shape[1]) * np.mean(vecotrized_images)
-        stationary_cov_mat = compute_stationary_cov_mat(vecotrized_images, eigenvalue_floor=eigenvalue_floor, verbose=verbose)        
+        stationary_cov_mat = estimate_stationary_cov_mat(vecotrized_images, eigenvalue_floor=eigenvalue_floor, 
+                                                         use_optimization=use_iterative_optimization, verbose=verbose)        
         samples = generate_stationary_gaussian_process_samples(mean_vec, stationary_cov_mat, 
                                                                num_samples=clean_images_if_available.shape[0], ensure_nonnegative=True)
         clean_images_if_available = samples.reshape(clean_images_if_available.shape)

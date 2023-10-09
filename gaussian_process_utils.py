@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 from jax import grad, jit
 import numpy as onp
 from functools import partial
-# import optax
+import optax
 
 
-def compute_cov_mat(patches):
+def estimate_cov_mat(patches):
     """
     Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches
     """
@@ -22,16 +22,8 @@ def compute_cov_mat(patches):
     vectorized_patches = vectorized_patches - np.mean(vectorized_patches, axis=1, keepdims=True)
     return np.cov(vectorized_patches)
 
-# trying to add jit to this somehow makes it run slower
-def compute_stationary_cov_mat(patches, eigenvalue_floor=1e-3, verbose=False):
-    """
-    Uses images patches to estimate the covariance matrix of a stationary 2D process.
-    The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
-    of blocks, each of which itself is a toeplitz matrix. The raw covariance matrix calculated
-    from the patches is not doubly toeplitz, so we need to average over all elements that should 
-    be the same as each other within this structure.
-    """
-    cov_mat = compute_cov_mat(patches)
+def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False):
+    cov_mat = estimate_cov_mat(patches)
     block_size = int(np.sqrt(cov_mat.shape[0]))
     # divide it into blocks
     blocks = [np.hsplit(row, cov_mat.shape[1]//block_size) for row in np.vsplit(cov_mat, cov_mat.shape[0]//block_size)]
@@ -75,6 +67,22 @@ def compute_stationary_cov_mat(patches, eigenvalue_floor=1e-3, verbose=False):
         stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
 
     return stationary_cov_mat
+
+# trying to add jit to this somehow makes it run slower
+def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, use_optimization=False, verbose=False):
+    """
+    Uses images patches to estimate the covariance matrix of a stationary 2D process.
+    The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
+    of blocks, each of which itself is a toeplitz matrix. The raw covariance matrix calculated
+    from the patches is not doubly toeplitz, so we need to average over all elements that should 
+    be the same as each other within this structure.
+    """
+    if not use_optimization:
+        return _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose)
+    else:
+        mean_vec, cov_mat = fit_optimized_gaussian(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose)
+        return cov_mat
+
 
 def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=None, key=None):
     """
@@ -421,9 +429,15 @@ def make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size):
     eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
     return eigvals, eig_vecs
 
-
-
-def run_optimization(data, optimizer, batch_size, eigenvalue_floor=1e-3, patience=20, validation_fraction=0.1, max_iters=1000, return_final=False):
+def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=40, validation_fraction=0.1, 
+                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1000, return_everything=False):
+    optimizer = optax.chain(
+        # don't let update size exceed approx parameter size * Learning rate.
+        # this prevents tiny, incorrect eigenvalues from making things diverge
+        optax.clip(gradient_clip), 
+        optax.sgd(learning_rate, momentum=momentum, nesterov=False)
+    )
+    
     patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
     # Initialize parameters, hyperparameters
     mean_vec = np.ones(patch_size**2) * np.mean(data)
@@ -448,7 +462,7 @@ def run_optimization(data, optimizer, batch_size, eigenvalue_floor=1e-3, patienc
     validation_data = data[num_train:]
 
     # initialize covariance matrix so likelihood is not nan
-    cov_mat_initial = compute_stationary_cov_mat(train_data, eigenvalue_floor=eigenvalue_floor)
+    cov_mat_initial = estimate_stationary_cov_mat(train_data, eigenvalue_floor=eigenvalue_floor)
 
     initial_evs, initial_eig_vecs = make_valid_stationary(*np.linalg.eigh(cov_mat_initial), eigenvalue_floor, patch_size)
     print('Initial loss: ', loss_function(initial_evs, initial_eig_vecs, mean_vec, train_data[:batch_size]))
@@ -489,12 +503,12 @@ def run_optimization(data, optimizer, batch_size, eigenvalue_floor=1e-3, patienc
         if i - best_loss_iter > patience:
             break
 
-    if return_final:
-        final_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
-
     eigenvalues, eig_vecs = make_valid_stationary(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
     best_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
-    if return_final:
-        return best_cov_mat, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history, final_cov_mat
-    return best_cov_mat, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history
+    if not return_everything:
+        return mean_vec, best_cov_mat
+    final_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
+
+    return best_cov_mat, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history, final_cov_mat
+    
 
