@@ -10,6 +10,7 @@ from jax import grad, jit
 import numpy as onp
 from functools import partial
 import optax
+import warnings
 
 
 def estimate_cov_mat(patches):
@@ -22,54 +23,30 @@ def estimate_cov_mat(patches):
     vectorized_patches = vectorized_patches - np.mean(vectorized_patches, axis=1, keepdims=True)
     return np.cov(vectorized_patches)
 
-def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False):
+def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False, suppress_warning=False):
     cov_mat = estimate_cov_mat(patches)
     block_size = int(np.sqrt(cov_mat.shape[0]))
-    # divide it into blocks
-    blocks = [np.hsplit(row, cov_mat.shape[1]//block_size) for row in np.vsplit(cov_mat, cov_mat.shape[0]//block_size)]
 
-    toeplitz_blocks = {}
-    for i in range(len(blocks)):
-        for j in range(len(blocks[0])):
-            id = (i - j)
-            if id not in toeplitz_blocks:
-                toeplitz_blocks[id] = []
-            toeplitz_blocks[id].append(blocks[i][j])
+    stationary_cov_mat = average_diagonals_to_make_doubly_toeplitz(cov_mat, block_size, verbose=verbose)
 
-    # compute the mean of each block
-    toeplitz_block_means = {id: np.mean(np.stack(blocks, axis=0), axis=0) for id, blocks in toeplitz_blocks.items()}
-
-    # now repeat the process within each block
-    j, i = np.meshgrid(np.arange(block_size), np.arange(block_size))
-    differences = abs(i - j)
-    for block_id, block in tqdm(dict(toeplitz_block_means.items()).items()) if verbose else dict(toeplitz_block_means.items()).items():
-        diag_values = []
-        for id in np.arange(block_size):
-            # recompute mask each time to save memory
-            mask = differences == id
-            diag_values.append(np.sum(np.where(mask, block, 0)) / np.sum(mask))            
-        # create a new topelitz matrix from the diagonal values
-        toeplitz_block_means[block_id] = toeplitz(np.array(diag_values))
-
-    # now reconstruct the full doubly toeplitz matrix from the blocks
-    new_blocks = []
-    for i in range(len(blocks)):
-        row = []
-        for j in range(len(blocks[0])):
-            id = abs(i - j)
-            row.append(toeplitz_block_means[id])
-        new_blocks.append(np.hstack(row))
-    stationary_cov_mat = np.vstack(new_blocks)
-
+    # try to make both stationary and positive definite
     if eigenvalue_floor is not None:
+        # make positive definite
         eigvals, eig_vecs = np.linalg.eigh(stationary_cov_mat)
-        eigvals, eigvecs = make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, block_size)
+        eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
         stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+        doubly_toeplitz = average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
+        dt_eigs = np.linalg.eigvalsh(doubly_toeplitz)
+        if np.any(dt_eigs < 0) and not suppress_warning:
+            warnings.warn('Cannot make both doubly toeplitz and positive definite. Using positive definite matrix.'
+                          'Smallest eigenvalue is {}'.format(dt_eigs.min()))
 
     return stationary_cov_mat
 
 # trying to add jit to this somehow makes it run slower
-def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, use_optimization=False, verbose=False):
+def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, use_optimization=False, verbose=False, 
+                                patience=250, num_validation=100, batch_size=12,
+                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1500):
     """
     Uses images patches to estimate the covariance matrix of a stationary 2D process.
     The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
@@ -80,7 +57,10 @@ def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, use_optimization
     if not use_optimization:
         return _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose)
     else:
-        mean_vec, cov_mat = fit_optimized_gaussian(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose)
+        mean_vec, cov_mat = fit_optimized_gaussian(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose, 
+                                                    patience=patience, num_validation=num_validation, batch_size=batch_size,
+                                                    gradient_clip=gradient_clip, learning_rate=learning_rate,
+                                                    momentum=momentum, max_iters=max_iters)
         return cov_mat
 
 
@@ -375,29 +355,44 @@ def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectoriz
 #####################################################
 ####### Optimizing a stationary gaussian fit ########
 #####################################################
+@partial(jit, static_argnums=(1, 2))
+def average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=False):
+    # divide it into blocks
+    blocks = [np.hsplit(row, cov_mat.shape[1]//patch_size) for row in np.vsplit(cov_mat, cov_mat.shape[0]//patch_size)]
 
-
-def make_doubly_toeplitz(top_row, patch_size):
-    """
-    Make a doubly toeplitz matrix from its top row, which is the
-    minimum number of parameters needed to specify the matrix.
-    """
-    # split into rows
-    top_rows = np.split(top_row, patch_size)
-    # make into toeplitz blocks
-    blocks = []
-    for tr in top_rows:
-        blocks.append(toeplitz(tr))
-    # use blocks to construct doubl
-
-    rows = []
+    toeplitz_blocks = {}
     for i in range(len(blocks)):
-        row_blocks = [blocks[abs(i - j)] for j in range(len(blocks))]
-        row = np.hstack(row_blocks)
-        rows.append(row)
-    doubly_toeplitz_mat = np.vstack(rows)
-    return doubly_toeplitz_mat
+        for j in range(len(blocks[0])):
+            id = (i - j)
+            if id not in toeplitz_blocks:
+                toeplitz_blocks[id] = []
+            toeplitz_blocks[id].append(blocks[i][j])
 
+    # compute the mean of each block
+    toeplitz_block_means = {id: np.mean(np.stack(blocks, axis=0), axis=0) for id, blocks in toeplitz_blocks.items()}
+
+    # now repeat the process within each block
+    j, i = np.meshgrid(np.arange(patch_size), np.arange(patch_size))
+    differences = abs(i - j)
+    for block_id, block in tqdm(dict(toeplitz_block_means.items()).items(), desc='building toeplitz mat') if verbose else dict(toeplitz_block_means.items()).items():
+        diag_values = []
+        for id in np.arange(patch_size):
+            # recompute mask each time to save memory
+            mask = differences == id
+            diag_values.append(np.sum(np.where(mask, block, 0)) / np.sum(mask))            
+        # create a new topelitz matrix from the diagonal values
+        toeplitz_block_means[block_id] = toeplitz(np.array(diag_values))
+
+    # now reconstruct the full doubly toeplitz matrix from the blocks
+    new_blocks = []
+    for i in range(len(blocks)):
+        row = []
+        for j in range(len(blocks[0])):
+            id = abs(i - j)
+            row.append(toeplitz_block_means[id])
+        new_blocks.append(np.hstack(row))
+    doubly_toeplitz = np.vstack(new_blocks)
+    return doubly_toeplitz
 
 def gaussian_likelihood(cov_mat, mean_vec, batch):
     """
@@ -418,19 +413,23 @@ def loss_function(eigvals, eig_vecs, mean_vec, data):
     ll = gaussian_likelihood(cov_mat, mean_vec, data)
     return batch_nll(ll)
 
-def make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size):
+def try_to_make_doubly_toeplitz_and_positive_definite(eigvals, eig_vecs, eigenvalue_floor, patch_size):
     """
-    Make sure eigenvalues are positive and matrix is doubly toeplitz
+    Average along diagonals and block diagonals to make a doubly toeplitz matrix,
+    then make sure it is positive definite by setting all eigenvalues below
+    eigenvalue_floor to eigenvalue_floor to get rid of negative eigenvalues.
+
+    This won't neccesarily return a doubly toeplitz matrix, but it will be positive definite.
     """
-    eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
     cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-    dt_cov_mat = make_doubly_toeplitz(cov_mat[0], patch_size)
+    dt_cov_mat = average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size)
     eigvals, eig_vecs = np.linalg.eigh(dt_cov_mat)
     eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
     return eigvals, eig_vecs
 
-def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=40, validation_fraction=0.1, 
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1000, return_everything=False):
+def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=20, num_validation=100, 
+                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100, return_everything=False,
+                        verbose=True):
     optimizer = optax.chain(
         # don't let update size exceed approx parameter size * Learning rate.
         # this prevents tiny, incorrect eigenvalues from making things diverge
@@ -450,22 +449,25 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
         updates, opt_state = optimizer.update(eigenvalues_grad, opt_state, eigvals)
         eigvals = optax.apply_updates(eigvals, updates)
         # prox operator: make sure make sure positive definite, make sure doubly toeplitz
-        eigvals, eig_vecs = make_valid_stationary(eigvals, eig_vecs, eigenvalue_floor, patch_size=patch_size)
+        eigvals, eig_vecs = try_to_make_doubly_toeplitz_and_positive_definite(eigvals, eig_vecs, eigenvalue_floor, patch_size=patch_size)
         loss = loss_function(eigvals, eig_vecs, mean_vec, data)
         return eigvals, eig_vecs, opt_state, loss
 
 
     # Split data into training and validation sets
-    num_validation = max(int(len(data) * validation_fraction), 100)
+    if num_validation >= len(data):
+        raise ValueError("Number of validation samples cannot be greater than total number of samples")
     num_train = len(data) - num_validation
     train_data = data[:num_train]
     validation_data = data[num_train:]
 
     # initialize covariance matrix so likelihood is not nan
-    cov_mat_initial = estimate_stationary_cov_mat(train_data, eigenvalue_floor=eigenvalue_floor)
+    cov_mat_initial = _plugin_estimate_stationary_cov_mat(train_data, eigenvalue_floor=eigenvalue_floor, suppress_warning=True)
 
-    initial_evs, initial_eig_vecs = make_valid_stationary(*np.linalg.eigh(cov_mat_initial), eigenvalue_floor, patch_size)
-    print('Initial loss: ', loss_function(initial_evs, initial_eig_vecs, mean_vec, train_data[:batch_size]))
+    initial_evs, initial_eig_vecs = np.linalg.eigh(cov_mat_initial)
+    initial_loss = loss_function(initial_evs, initial_eig_vecs, mean_vec, validation_data)
+    if verbose:
+        print('Initial loss: ', initial_loss)
 
     cov_mat_initial = initial_eig_vecs @ np.diag(initial_evs) @ initial_eig_vecs.T
 
@@ -494,7 +496,8 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
         validation_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data)   
         validation_loss_history.append(validation_loss)
 
-        print(f"Iteration {i+1}, validation loss: {validation_loss}", end='\r')
+        if verbose:
+            print(f"Iteration {i+1}, validation loss: {validation_loss}", end='\r')
         if validation_loss < best_loss:
             best_loss_iter = i
             best_loss = validation_loss
@@ -503,12 +506,20 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
         if i - best_loss_iter > patience:
             break
 
-    eigenvalues, eig_vecs = make_valid_stationary(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
-    best_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
+    eigenvalues, eig_vecs = try_to_make_doubly_toeplitz_and_positive_definite(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
+    cov_mat_optimized = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
+    final_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data)
+    if initial_loss < final_loss:
+        warnings.warn("Optimization did not improve the validation loss, returning initial covariance matrix")
+        cov_mat_optimized = cov_mat_initial
+
+    if verbose:
+        print('\nFinal loss: ', final_loss)
+
     if not return_everything:
-        return mean_vec, best_cov_mat
+        return mean_vec, cov_mat_optimized
     final_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
 
-    return best_cov_mat, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history, final_cov_mat
+    return cov_mat_optimized, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history, final_cov_mat
     
 

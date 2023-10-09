@@ -175,7 +175,7 @@ def generate_synthetic_multi_led_images(bsccm_coherent, led_indices, edge_crop=0
 
 
 def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slides=False, indices=None,
-                      convert_units_to_photons=True, median_filter=False, seed=None):
+                      convert_units_to_photons=True, median_filter=False, seed=None, verbose=False):
     """
     Load a stack of images from a BSCCM dataset
 
@@ -197,7 +197,8 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
         all_indices = dataset.get_indices()
         indices = np.random.choice(all_indices, size=len(indices), replace=False)
     images = []
-    for i in indices:
+    iter = tqdm(indices) if verbose else indices
+    for i in iter:
         if empty_slides:
             images.append(dataset.get_background(i, percentile=50, channel=channel))
         else:
