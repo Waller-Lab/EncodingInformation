@@ -12,7 +12,6 @@ from functools import partial
 import optax
 import warnings
 
-
 def estimate_cov_mat(patches):
     """
     Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches
@@ -21,7 +20,7 @@ def estimate_cov_mat(patches):
     vectorized_patches = patches.reshape(patches.shape[0], -1).T
     # center on 0
     vectorized_patches = vectorized_patches - np.mean(vectorized_patches, axis=1, keepdims=True)
-    return np.cov(vectorized_patches)
+    return np.cov(vectorized_patches).reshape(vectorized_patches.shape[0], vectorized_patches.shape[0])
 
 def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False, suppress_warning=False):
     cov_mat = estimate_cov_mat(patches)
@@ -35,18 +34,22 @@ def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False
         eigvals, eig_vecs = np.linalg.eigh(stationary_cov_mat)
         eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
         stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+        if np.linalg.eigvalsh(stationary_cov_mat).min() < 0:
+            raise ValueError('Covariance matrix is not positive definite event after applying eigenvalue floor. This indicates numerical error.' +
+                             'Try raising the eigenvalue floor')
         doubly_toeplitz = average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
         dt_eigs = np.linalg.eigvalsh(doubly_toeplitz)
         if np.any(dt_eigs < 0) and not suppress_warning:
             warnings.warn('Cannot make both doubly toeplitz and positive definite. Using positive definite matrix.'
                           'Smallest eigenvalue is {}'.format(dt_eigs.min()))
 
+
     return stationary_cov_mat
 
 # trying to add jit to this somehow makes it run slower
-def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, use_optimization=False, verbose=False, 
-                                patience=250, num_validation=100, batch_size=12,
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1500):
+def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, optimize=False, verbose=False, return_mean=False,
+                                patience=20, num_validation=100, batch_size=12,
+                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100):
     """
     Uses images patches to estimate the covariance matrix of a stationary 2D process.
     The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
@@ -54,14 +57,17 @@ def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, use_optimization
     from the patches is not doubly toeplitz, so we need to average over all elements that should 
     be the same as each other within this structure.
     """
-    if not use_optimization:
-        return _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose)
+    if not optimize:
+        cov_mat = _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose)
+        mean_vec = np.mean(patches) * np.ones(cov_mat.shape[0])
     else:
         mean_vec, cov_mat = fit_optimized_gaussian(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose, 
                                                     patience=patience, num_validation=num_validation, batch_size=batch_size,
                                                     gradient_clip=gradient_clip, learning_rate=learning_rate,
-                                                    momentum=momentum, max_iters=max_iters)
-        return cov_mat
+                                                momentum=momentum, max_iters=max_iters)
+    if return_mean:
+        return mean_vec, cov_mat
+    return cov_mat
 
 
 def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=None, key=None):
@@ -156,7 +162,6 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
                 # sigma11_inv = np.linalg.inv(sigma_11)
                 # variance = (sigma_22 - sigma_21 @ sigma11_inv @ sigma_12) 
                 # mean_multiplier = sigma_21 @ sigma11_inv 
-                print(variance)
                 variances.append(variance)
                 mean_multipliers.append(mean_multiplier)
 
@@ -408,10 +413,18 @@ def gaussian_likelihood(cov_mat, mean_vec, batch):
 def batch_nll(log_likelihoods):
     return -np.mean(log_likelihoods)
 
-def loss_function(eigvals, eig_vecs, mean_vec, data):
+def loss_function(eigvals, eig_vecs, mean_vec, data, num_pixels):
+    """
+    Negative log likelihood of a multivariate gaussian per pixel
+    """
     cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
     ll = gaussian_likelihood(cov_mat, mean_vec, data)
-    return batch_nll(ll)
+    return batch_nll(ll) / num_pixels
+
+def make_positive_definite(cov_mat, eigenvalue_floor):
+    eigvals, eig_vecs = np.linalg.eigh(cov_mat)
+    eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+    return eig_vecs @ np.diag(eigvals) @ eig_vecs.T
 
 def try_to_make_doubly_toeplitz_and_positive_definite(eigvals, eig_vecs, eigenvalue_floor, patch_size):
     """
@@ -445,18 +458,21 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
     @jit
     def optmization_step(opt_state, eigvals, eig_vecs, data, mean_vec, eigenvalue_floor):
         grad_fn = grad(loss_function, argnums=0)
-        eigenvalues_grad = grad_fn(eigvals, eig_vecs, mean_vec, data)
+        eigenvalues_grad = grad_fn(eigvals, eig_vecs, mean_vec, data, patch_size**2)
         updates, opt_state = optimizer.update(eigenvalues_grad, opt_state, eigvals)
         eigvals = optax.apply_updates(eigvals, updates)
         # prox operator: make sure make sure positive definite, make sure doubly toeplitz
         eigvals, eig_vecs = try_to_make_doubly_toeplitz_and_positive_definite(eigvals, eig_vecs, eigenvalue_floor, patch_size=patch_size)
-        loss = loss_function(eigvals, eig_vecs, mean_vec, data)
+        loss = loss_function(eigvals, eig_vecs, mean_vec, data, patch_size**2)
         return eigvals, eig_vecs, opt_state, loss
 
 
     # Split data into training and validation sets
     if num_validation >= len(data):
-        raise ValueError("Number of validation samples cannot be greater than total number of samples")
+        # default to a 75/25 split
+        num_validation = int(len(data) * 0.25)
+        warnings.warn('Number of validation samples is larger than the number of samples. Defaulting to a 75/25 split')
+        
     num_train = len(data) - num_validation
     train_data = data[:num_train]
     validation_data = data[num_train:]
@@ -465,7 +481,7 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
     cov_mat_initial = _plugin_estimate_stationary_cov_mat(train_data, eigenvalue_floor=eigenvalue_floor, suppress_warning=True)
 
     initial_evs, initial_eig_vecs = np.linalg.eigh(cov_mat_initial)
-    initial_loss = loss_function(initial_evs, initial_eig_vecs, mean_vec, validation_data)
+    initial_loss = loss_function(initial_evs, initial_eig_vecs, mean_vec, validation_data, patch_size**2)
     if verbose:
         print('Initial loss: ', initial_loss)
 
@@ -489,11 +505,12 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
         key, subkey = jax.random.split(key)
         batch = train_data[batch_indices]
         
-        eigenvalues, eig_vecs, opt_state, train_loss = optmization_step(opt_state, eigenvalues, eig_vecs, batch, mean_vec, eigenvalue_floor)
+        eigenvalues, eig_vecs, opt_state, train_loss = optmization_step(
+            opt_state, eigenvalues, eig_vecs, batch, mean_vec, eigenvalue_floor)
 
         train_loss_history.append(train_loss)
 
-        validation_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data)   
+        validation_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data, patch_size**2)   
         validation_loss_history.append(validation_loss)
 
         if verbose:
@@ -508,13 +525,13 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
 
     eigenvalues, eig_vecs = try_to_make_doubly_toeplitz_and_positive_definite(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
     cov_mat_optimized = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
-    final_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data)
+    final_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data, patch_size**2)
     if initial_loss < final_loss:
         warnings.warn("Optimization did not improve the validation loss, returning initial covariance matrix")
         cov_mat_optimized = cov_mat_initial
 
     if verbose:
-        print('\nFinal loss: ', final_loss)
+        print('\Optimized loss: ', final_loss)
 
     if not return_everything:
         return mean_vec, cov_mat_optimized

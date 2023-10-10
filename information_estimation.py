@@ -61,7 +61,7 @@ def nearest_neighbors_distance(X, k):
     return kth_nn_dist
 
 
-def gaussian_entropy_estimate(X, stationary=True, iterative_estimator=False, eigenvalue_floor=1e-4, show_plot=False, return_cov_mat=False,
+def gaussian_entropy_estimate(X, stationary=True, optimize=False, eigenvalue_floor=1e-4,  return_cov_mat_and_mean=False,
                                patience=250, num_validation=100, batch_size=12,
                            gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1500,
                               verbose=False):
@@ -75,9 +75,7 @@ def gaussian_entropy_estimate(X, stationary=True, iterative_estimator=False, eig
     stationary : bool, whether to assume the distribution is stationary
     iterative_estimator : bool, whether to optimize the estimate with iterative optimization
     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large
-    show_plot : bool, whether to show a plot of the eigenvalues and threshold used 
-        to make the covariance matrix positive definite.
-    return_cov_mat : bool, whether to return the estimated covariance matrix
+    return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
     """
     X = X.reshape(X.shape[0], -1)
     D = X.shape[1]
@@ -95,15 +93,16 @@ def gaussian_entropy_estimate(X, stationary=True, iterative_estimator=False, eig
         evs = np.linalg.eigvalsh(cov_mat)
         if np.any(evs < 0):
             warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
-        sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))                        
+        sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))         
+        mean_vec = np.mean(X, axis=0)               
     else:
-        cov_mat = estimate_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose, use_optimization=iterative_estimator,
-                                               patience=patience, num_validation=num_validation, batch_size=batch_size,
+        mean_vec, cov_mat = estimate_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose, optimize=optimize, 
+                                               patience=patience, num_validation=num_validation, batch_size=batch_size, return_mean=True,
                                                gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters)       
         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
-    if return_cov_mat:
-        return gaussian_entropy, cov_mat
+    if return_cov_mat_and_mean:
+        return gaussian_entropy, cov_mat, mean_vec
     else:
         return gaussian_entropy
 
@@ -122,7 +121,7 @@ def poisson_entropy(lam, max_k=25):
     return entropy
 
 @partial(jit, static_argnums=(1, 2))
-def compute_conditional_entropy(images, gaussian_noise_sigma=None, poisson_approx_threshold=10):
+def estimate_conditional_entropy(images, gaussian_noise_sigma=None, poisson_approx_threshold=0):
     """
     Compute the conditional entropy H(Y | X) in "nats" 
     (differential entropy doesn't really have units...) per pixel,
@@ -215,10 +214,10 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
         
     
 def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, use_iterative_optimization=False,                                 
-                                  eigenvalue_floor=1e-3, show_eigenvalue_plot=False, verbose=False,
-                                gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
+                                  eigenvalue_floor=1e-3, gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
                                  patience=25, num_validation=100, batch_size=12,
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=200):
+                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100, return_cov_mat_and_mean=False,
+                                 poisson_approx_threshold=0,  verbose=False,):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by making a Gaussian approximation
     to the distribution of noisy images, and subtracting the conditional entropy of the clean images
@@ -229,9 +228,6 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
     use_stationary_model : bool, whether to assume the distribution is stationary
     use_iterative_optimization : bool, whether to use iterative optimization to estimate the covariance matrix
     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large in the stationary model
-    show_eigenvalue_plot : bool, whether to show a plot of the eigenvalues of the estimated
-        stationary covariance matrix and the correction applied to make it positive definite.
-    verbose : bool, whether to print out the estimated values
     gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
             otherwise assume poisson noise.
     estimate_conditional_from_model_samples : bool, whether to estimate the conditional entropy from a model fit to them
@@ -242,12 +238,17 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
     learning_rate : float, (if use_iterative_optimization=True) learning rate for gradient descent
     momentum : float, (if use_iterative_optimization=True) momentum for gradient descent
     max_iters : int, (if use_iterative_optimization=True) maximum number of iterations for gradient descent
+    return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
+    poisson_approx_threshold : float, don't use the gaussian approximation for poisson noise for values below this 
+        when estimating the conditional entropy
+    verbose : bool, whether to print out the estimated values
     """
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
     if np.any(clean_images_if_available < 0):   
         warnings.warn(f"{np.sum(clean_images_if_available < 0) / clean_images_if_available.size:.2%} of pixels are negative.")
-    if np.mean(clean_images_if_available) < 20:
-        warnings.warn(f"Mean pixel value is {np.mean(clean_images_if_available):.2f}. Mutual information estimates may be inaccurate at low photon counts.")
+    if np.mean(clean_images_if_available) < 20 and not estimate_conditional_from_model_samples:
+        warnings.warn(f"Mean pixel value is {np.mean(clean_images_if_available):.2f}. More accurate results can probably be obtained"
+                        "by setting estimate_conditional_from_model_samples=True")
 
     if estimate_conditional_from_model_samples:
         if not use_stationary_model:
@@ -255,24 +256,26 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
         vecotrized_images = clean_images_if_available.reshape(clean_images_if_available.shape[0], -1)
         mean_vec = np.ones(vecotrized_images.shape[1]) * np.mean(vecotrized_images)
         stationary_cov_mat = estimate_stationary_cov_mat(vecotrized_images, eigenvalue_floor=eigenvalue_floor, 
-                                                         use_optimization=use_iterative_optimization, verbose=verbose, 
+                                                         optimize=use_iterative_optimization, verbose=verbose, 
                                                          patience=patience, num_validation=num_validation, batch_size=batch_size,
                                                          gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters)        
         samples = generate_stationary_gaussian_process_samples(mean_vec, stationary_cov_mat, 
                                                                num_samples=clean_images_if_available.shape[0], ensure_nonnegative=True)
         clean_images_if_available = samples.reshape(clean_images_if_available.shape)
 
-    h_y_given_x = compute_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma, poisson_approx_threshold=8)
+    h_y_given_x = estimate_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma, poisson_approx_threshold=poisson_approx_threshold)
     h_y_given_x_per_pixel_bits = h_y_given_x / np.log(2)
-    h_y_gaussian = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, iterative_estimator=use_iterative_optimization,
-                                            eigenvalue_floor=eigenvalue_floor, show_plot=show_eigenvalue_plot, 
+    h_y_gaussian, cov_mat, mean_vec = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, optimize=use_iterative_optimization,
+                                            eigenvalue_floor=eigenvalue_floor,
                                                 patience=patience, num_validation=num_validation, batch_size=batch_size,
                                                   gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters,                                            
-                                            verbose=verbose)
+                                            verbose=verbose, return_cov_mat_and_mean=True)
     h_y_gaussian_per_pixel_bits = h_y_gaussian / np.log(2)
     mutual_info = h_y_gaussian_per_pixel_bits - h_y_given_x_per_pixel_bits
     if verbose:
         print(f"Estimated H(Y|X) = {h_y_given_x_per_pixel_bits:.3f} bits/pixel")
         print(f"Estimated H(Y) = {h_y_gaussian_per_pixel_bits:.3f} bits/pixel")
         print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
+    if return_cov_mat_and_mean:
+        return mutual_info, cov_mat, mean_vec
     return mutual_info 
