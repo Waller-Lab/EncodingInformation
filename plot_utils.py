@@ -6,7 +6,45 @@ from cleanplots import *
 import numpy as np
 from tqdm import tqdm
 from matplotlib.colors import LinearSegmentedColormap
-import matplotlib.patches as patches
+import matplotlib
+
+
+def plot_optimization_loss_history(train_loss_history, val_loss_history):
+
+    fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+    axs[0].semilogy(train_loss_history, '-o', label='train')
+    axs[0].legend()
+    axs[0].set(xlim=[0, len(train_loss_history)], xlabel='iteration', ylabel='Negative log likelihood')
+
+    axs[1].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
+
+    # ylim are 2x the range of the middle 80% of the data
+    ylim = np.percentile(val_loss_history, [15, 85])
+    diff = ylim[1] - ylim[0]
+    ylim = [ylim[0] - diff, ylim[1] + diff]
+    axs[2].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
+    axs[2].set_ylim(ylim)
+    axs[2].legend()
+
+    for a in axs:
+        clear_spines(a)
+
+def plot_eigenvalues(**kwargs):
+    """
+    Plot the eigenvalues of a set of covariance matrices
+
+    pass named arguments where the name is the label and the value is the covariance matrix
+    """
+    fig, axs = plt.subplots(1, 1, figsize=(4, 4))
+
+    for name in kwargs.keys():
+        cov_mat = kwargs[name]
+        eig_vals = np.linalg.eigvalsh(cov_mat)
+        axs.semilogy(eig_vals, '.-', label=name)
+    axs.legend()
+    clear_spines(axs)
+    axs.set_xlabel('Eigenvalue index')
+    axs.set_ylabel('Eigenvalue')
 
 
 def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=None, 
@@ -32,7 +70,7 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
         # plot a center point circle
         if plot_center_coords is not None:
             for center_coord in plot_center_coords:
-                ax.add_patch(patches.Circle(center_coord, 1, color=cmap(255)))
+                ax.add_patch(matplotlib.patches.Circle(center_coord, 1, color=cmap(255)))
 
 
         ax.set(xlabel='Photons at x1', ylabel='Photons at x2')
@@ -63,7 +101,7 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
         # plot a center point circle
         if plot_center_coords is not None:
             for i, plot_center_coord in enumerate(plot_center_coords):                
-                ax.add_patch(patches.Circle(plot_center_coord, 1, color=colors[i]))
+                ax.add_patch(matplotlib.patches.Circle(plot_center_coord, 1, color=colors[i]))
         
         ax.set(xlabel='Photons at x1', ylabel='Photons at x2')
         default_format(ax)
