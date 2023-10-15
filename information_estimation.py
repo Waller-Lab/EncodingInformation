@@ -7,7 +7,7 @@ from jax.scipy.special import digamma, gammaln
 from scipy.special import factorial
 from functools import partial
 import jax.numpy as np
-from gaussian_process_utils import *
+from gaussian_process import *
 import warnings
 
 
@@ -107,21 +107,8 @@ def gaussian_entropy_estimate(X, stationary=True, optimize=False, eigenvalue_flo
         return gaussian_entropy
 
 
-
 @partial(jit, static_argnums=(1,))
-def poisson_entropy(lam, max_k=25):
-    k_values = np.arange(max_k)
-    lam_to_k = lam[..., None] ** k_values
-    log_k_factorials = gammaln(k_values + 1)
-    # k_fac = factorial(k_values)
-    k_fac = np.exp(log_k_factorials)
-    sum_term = np.sum(lam_to_k / k_fac * log_k_factorials, axis=-1 )
-    entropy = lam * (1 - np.log(lam)) + np.exp(-lam) * sum_term
-    entropy = np.where(lam <= 0, 0, entropy)
-    return entropy
-
-@partial(jit, static_argnums=(1, 2))
-def estimate_conditional_entropy(images, gaussian_noise_sigma=None, poisson_approx_threshold=0):
+def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
     """
     Compute the conditional entropy H(Y | X) in "nats" 
     (differential entropy doesn't really have units...) per pixel,
@@ -130,7 +117,6 @@ def estimate_conditional_entropy(images, gaussian_noise_sigma=None, poisson_appr
     images : ndarray clean image HxW or images NxHxW
     gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
             otherwise assume poisson noise.
-    poisson_approx_threshold : float, threshold for using the gaussian approximation for poisson noise
     """
     # vectorize
     images = images.reshape(-1, images.shape[-2] * images.shape[-1])
@@ -144,8 +130,7 @@ def estimate_conditional_entropy(images, gaussian_noise_sigma=None, poisson_appr
         # conditional entropy H(Y | x) for Poisson noise 
         gaussian_approx = 0.5 * (np.log(2 * np.pi * np.e) + np.log(images))
         gaussian_approx = np.where(images <= 0, 0, gaussian_approx)
-        hybrid = np.where(images < poisson_approx_threshold,  poisson_entropy(images), gaussian_approx)
-        per_image_entropies = np.sum(hybrid, axis=1) / n_pixels
+        per_image_entropies = np.sum(gaussian_approx, axis=1) / n_pixels
         h_y_given_x = np.mean(per_image_entropies)
 
         # add small amount of gaussian noise (e.g. read noise)
@@ -216,8 +201,7 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
 def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, use_iterative_optimization=False,                                 
                                   eigenvalue_floor=1e-3, gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
                                  patience=25, num_validation=100, batch_size=12,
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100, return_cov_mat_and_mean=False,
-                                 poisson_approx_threshold=0,  verbose=False,):
+                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100, return_cov_mat_and_mean=False,  verbose=False,):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by making a Gaussian approximation
     to the distribution of noisy images, and subtracting the conditional entropy of the clean images
@@ -239,8 +223,6 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
     momentum : float, (if use_iterative_optimization=True) momentum for gradient descent
     max_iters : int, (if use_iterative_optimization=True) maximum number of iterations for gradient descent
     return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
-    poisson_approx_threshold : float, don't use the gaussian approximation for poisson noise for values below this 
-        when estimating the conditional entropy
     verbose : bool, whether to print out the estimated values
     """
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
@@ -263,7 +245,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
                                                                num_samples=clean_images_if_available.shape[0], ensure_nonnegative=True)
         clean_images_if_available = samples.reshape(clean_images_if_available.shape)
 
-    h_y_given_x = estimate_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma, poisson_approx_threshold=poisson_approx_threshold)
+    h_y_given_x = estimate_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma,)
     h_y_given_x_per_pixel_bits = h_y_given_x / np.log(2)
     h_y_gaussian, cov_mat, mean_vec = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, optimize=use_iterative_optimization,
                                             eigenvalue_floor=eigenvalue_floor,

@@ -99,7 +99,7 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
     :param mean: float mean of the process
     :param prefer_iterative: if True, compute likelihood iteratively, otherwise compute directly if possible
 
-    :return: N x 1 array of log likelihoods
+    :return: (N,) array of log likelihoods for each sample
     """
     # samples is not going to be the same size as the covariance matrix
     # if sample is smaller than cov_mat, throw an excpetion
@@ -211,7 +211,7 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
                     batch_likelihoods.append(jax.scipy.stats.norm.logpdf(samples[k, i, j], loc=mean_for_sample, scale=scale))                    
                 log_likelihoods.append(np.array(batch_likelihoods).flatten())
 
-    # print(np.array(log_likelihoods).reshape(N_samples, sample_size, sample_size))
+    # sum over all pixels to get a length N vector of log likelihoods for each sample
     return np.sum(np.array(log_likelihoods), axis=0)
 
 
@@ -472,6 +472,7 @@ def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=
         # default to a 75/25 split
         num_validation = int(len(data) * 0.25)
         warnings.warn('Number of validation samples is larger than the number of samples. Defaulting to a 75/25 split')
+        num_validation = max(num_validation, 1)
         
     num_train = len(data) - num_validation
     train_data = data[:num_train]

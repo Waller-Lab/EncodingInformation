@@ -10,6 +10,7 @@ import warnings
 from bsccm import BSCCM
 from tqdm import tqdm
 from scipy import ndimage
+import jax
 
 def load_data_from_config(config, data_dir):
     """
@@ -282,7 +283,7 @@ def add_shot_noise_to_experimenal_data(image_stack, photon_fraction):
     that would be expected for the desired photon count
     This also reduces the total number of (average) photons in the image by the photon_fraction
     """
-    seed = np.random.randint(0, 100000)
+    seed = onp.random.randint(0, 100000)
     key = jax.random.PRNGKey(seed)
     if photon_fraction > 1 or photon_fraction <= 0:
         raise Exception('photon_fraction must be less than 1 and greater than 0')
