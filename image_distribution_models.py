@@ -78,7 +78,8 @@ class PixelCNN(ProbabilisticImageModel):
         pass
 
     def fit(self, images, max_epochs=200, steps_per_epoch=100, val_iter_maker=None, patience=10, 
-            batch_size=64, num_val_samples=1000, verbose=True):
+            batch_size=64, num_val_samples=1000, num_hidden_channels=64, learning_rate=1e-2, num_mixture_components=40,
+            verbose=True):
         
         # add trailing channel dimension if necessary
         if images.ndim == 3:
@@ -91,6 +92,9 @@ class PixelCNN(ProbabilisticImageModel):
             # add trailing channel dimension if necessary
             if images.ndim == 3:
                 images = images[..., np.newaxis]
+            elif images.shape[-1] != 1:
+                raise ValueError("PixelCNN only supports single-channel images currently")
+                
 
             # split images into train and validation
             val_images = images[:num_val_samples]
@@ -106,8 +110,9 @@ class PixelCNN(ProbabilisticImageModel):
             return train_ds.as_numpy_iterator(), lambda : val_ds.as_numpy_iterator()
 
         train_iter, val_iter_maker = get_datasets(images, batch_size)
-        self._pixel_cnn, self.validation_loss_history = train_pixel_cnn(train_iter, val_iter_maker, steps_per_epoch, patience=patience,
-                                           max_epochs=max_epochs, c_in=1, c_hidden=64)
+        self._pixel_cnn_flax, self.validation_loss_history = train_pixel_cnn(train_iter, val_iter_maker, steps_per_epoch,
+                                            c_hidden=num_hidden_channels, num_mixture_components=num_mixture_components,
+                                        patience=patience, max_epochs=max_epochs, learning_rate=learning_rate, verbose=verbose)
 
 
     def compute_likelihood(self, data):
