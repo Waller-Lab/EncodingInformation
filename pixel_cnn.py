@@ -171,28 +171,10 @@ class PixelCNNFlaxImpl(nn.Module):
         self.conv_out = nn.Conv(self.c_hidden, kernel_size=(1, 1))
         
 
-        # # parameters for dense layers leading to mixture density
-        # self.dense_layers_mu = [
-        #     nn.Dense(256),
-        #     # nn.Dense(512),
-        # ]
-        # self.dense_layers_sigma = [
-        #     nn.Dense(256),
-        #     # nn.Dense(512),
-        # ]
-        # self.dense_layers_mix_logit = [
-        #     nn.Dense(256),
-        #     # nn.Dense(512),
-        # ]
-
         # parameters for mixture density 
         self.mu_dense = nn.Dense(self.num_mixture_components)
         self.sigma_dense = nn.Dense(self.num_mixture_components)
         self.mix_logit_dense = nn.Dense(self.num_mixture_components)
-
-        # self.mu = self.param('mu', nn.initializers.uniform(255), (28, 28, self.num_mixture_components))
-        # self.sigma = self.param('sigma', nn.initializers.constant(50), (28, 28, self.num_mixture_components))
-        # self.mix_logit = self.param('mix_logit', nn.initializers.constant(1), (28, 28, self.num_mixture_components))
 
             
 
@@ -211,33 +193,8 @@ class PixelCNNFlaxImpl(nn.Module):
         # see https://github.com/hardmaru/mdn_jax_tutorial/blob/master/mixture_density_networks_jax.ipynb
         # compute per-pixel negative log-likelihood
         nll = - logsumexp(mix_logit - logsumexp(mix_logit, axis=3, keepdims=True) + self.lognormal(x, mu, sigma), axis=3)
-        
-
-        # image_nll = (0.1 * first_column).sum((1,)) + (other_columns).sum((1,2))
-        
         # add up negative log-likelihoods for all pixels in each image
         image_nll = jnp.sum(nll, axis=(1,2))
-
-
-
-        # y = np.arange(0, self.train_data_max).reshape(-1, 1, 1, 1, 1)
-        # mu, sigma, log_mix = self.forward_pass(x_normalized)
-        # nll = - logsumexp(log_mix - logsumexp(log_mix, axis=-1, keepdims=True) + self.lognormal(y, mu, sigma), axis=-1)
-
-        regularizer = 0
-
-        # # regularize the standard deviation of the mixture components
-        # lam = 1e4
-        # regularizer += lam * ((sigma / self.train_data_std) ** 2).mean()
-
-        # # regularize the mixture components to be uniform
-        # lam = 1e16
-        # regularizer += (logsumexp(mix_logit) - 1 / self.num_mixture_components * mix_logit.sum(axis=3)).mean()
-
-
-        image_nll += regularizer
-
-
         return image_nll.mean()
     
 
@@ -268,33 +225,14 @@ class PixelCNNFlaxImpl(nn.Module):
         # Apply ELU before 1x1 convolution for non-linearity on residual connection
         out = self.conv_out(nn.elu(h_stack))
 
-        out_mu = out
-        out_sigma = out
-        out_mix_logit = out
+        mu = jnp.clip(self.mu_dense(out), 0, self.train_data_max) # must be positive and within data range
 
+        sigma = nn.activation.softplus( self.sigma_dense(out) )  # must be positive
+         # avoid having tiny components that overly concentrate mass, and don't need components larger than data variance
+        sigma = jnp.clip(sigma, 1, self.train_data_std )
 
-        # for i in range(len(self.dense_layers_mu)):
-        #     out_mu = nn.elu(self.dense_layers_mu[i](out_mu))
-        #     out_sigma = nn.elu(self.dense_layers_sigma[i](out_sigma))
-        #     out_mix_logit = nn.elu(self.dense_layers_mix_logit[i](out_mix_logit))
+        mix_logit = self.mix_logit_dense(out)
 
-
-        mu = jnp.clip(self.mu_dense(out_mu), 0, self.train_data_max) # must be positive and within data range
-        mu = jnp.clip(self.mu_dense(out_mu), 0, self.train_data_max) # must be positive and within data range
-
-        sigma = nn.activation.softplus( self.sigma_dense(out_sigma) )  # must be positive
-        sigma = jnp.clip(sigma, 1, self.train_data_std ) # avoid having tiny components that overly concentrate mass
-
-        mix_logit = self.mix_logit_dense(out_mix_logit)
-        # mix = jnp.exp(mix_logit - logsumexp(mix_logit, axis=-1, keepdims=True))
-        # mix = jnp.clip(mix, 0, 1 / self.num_mixture_components)
-        # mix_logit = jnp.log(mix + 1e-8)
-
-        # Repeat tensors by batch dimension size
-        batch_size = x.shape[0]
-        # mu = jnp.tile(self.mu, (batch_size, 1, 1, 1))
-        # sigma = jnp.tile(self.sigma, (batch_size, 1, 1, 1))
-        # mix_logit = jnp.tile(self.mix_logit, (batch_size, 1, 1, 1))
 
         return mu, sigma, mix_logit
 
@@ -316,6 +254,7 @@ class PixelCNNFlaxImpl(nn.Module):
         # get_logits = jax.jit(lambda inp: self.pred_logits(inp))
         get_logits = lambda inp: self.forward_pass(inp)
  
+        # TODO: redo this based on Gaussian mixture model
         # Generation loop
         for h in tqdm(range(img_shape[1]), leave=False):
             for w in range(img_shape[2]):
