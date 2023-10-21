@@ -1,13 +1,12 @@
 """
 Functions for estimating entropy and mutual information
 """
-from image_utils import *
+from encoding_information.image_utils import *
 from jax import jit
 from jax.scipy.special import digamma, gammaln
-from scipy.special import factorial
+
 from functools import partial
 import jax.numpy as np
-from gaussian_process import *
 import warnings
 
 

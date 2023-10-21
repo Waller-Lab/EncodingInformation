@@ -11,8 +11,11 @@ import numpy as onp
 from functools import partial
 import optax
 import warnings
+import flax.linen as nn
+from flax.training.train_state import TrainState
+from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, evaluate_nll
 
-def estimate_cov_mat(patches):
+def estimate_full_cov_mat(patches):
     """
     Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches
     """
@@ -22,11 +25,11 @@ def estimate_cov_mat(patches):
     vectorized_patches = vectorized_patches - np.mean(vectorized_patches, axis=1, keepdims=True)
     return np.cov(vectorized_patches).reshape(vectorized_patches.shape[0], vectorized_patches.shape[0])
 
-def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False, suppress_warning=False):
-    cov_mat = estimate_cov_mat(patches)
+def plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False, suppress_warning=False):
+    cov_mat = estimate_full_cov_mat(patches)
     block_size = int(np.sqrt(cov_mat.shape[0]))
 
-    stationary_cov_mat = average_diagonals_to_make_doubly_toeplitz(cov_mat, block_size, verbose=verbose)
+    stationary_cov_mat = _average_diagonals_to_make_doubly_toeplitz(cov_mat, block_size, verbose=verbose)
 
     # try to make both stationary and positive definite
     if eigenvalue_floor is not None:
@@ -35,9 +38,9 @@ def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False
         eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
         stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
         if np.linalg.eigvalsh(stationary_cov_mat).min() < 0:
-            raise ValueError('Covariance matrix is not positive definite event after applying eigenvalue floor. This indicates numerical error.' +
-                             'Try raising the eigenvalue floor')
-        doubly_toeplitz = average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
+            raise ValueError('Covariance matrix is not positive definite even after applying eigenvalue floor. This indicates numerical error.' +
+                             'Try raising the eigenvalue floor than the current value of {}'.format(eigenvalue_floor))
+        doubly_toeplitz = _average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
         dt_eigs = np.linalg.eigvalsh(doubly_toeplitz)
         if np.any(dt_eigs < 0) and not suppress_warning:
             warnings.warn('Cannot make both doubly toeplitz and positive definite. Using positive definite matrix.'
@@ -45,29 +48,6 @@ def _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False
 
 
     return stationary_cov_mat
-
-# trying to add jit to this somehow makes it run slower
-def estimate_stationary_cov_mat(patches, eigenvalue_floor=1e-3, optimize=False, verbose=False, return_mean=False,
-                                patience=20, num_validation=100, batch_size=12,
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100):
-    """
-    Uses images patches to estimate the covariance matrix of a stationary 2D process.
-    The covariance matrix of such a process will be doubly toeplitz--i.e. a toeplitz matrix
-    of blocks, each of which itself is a toeplitz matrix. The raw covariance matrix calculated
-    from the patches is not doubly toeplitz, so we need to average over all elements that should 
-    be the same as each other within this structure.
-    """
-    if not optimize:
-        cov_mat = _plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose)
-        mean_vec = np.mean(patches) * np.ones(cov_mat.shape[0])
-    else:
-        mean_vec, cov_mat = fit_optimized_gaussian(patches, eigenvalue_floor=eigenvalue_floor, verbose=verbose, 
-                                                    patience=patience, num_validation=num_validation, batch_size=batch_size,
-                                                    gradient_clip=gradient_clip, learning_rate=learning_rate,
-                                                momentum=momentum, max_iters=max_iters)
-    if return_mean:
-        return mean_vec, cov_mat
-    return cov_mat
 
 
 def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=None, key=None):
@@ -92,14 +72,14 @@ def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=
 
 def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False):  
     """
-    Compute the likelihood of a set of samples from a stationary process
+    Compute the log likelihood per pixel of a set of samples from a stationary process
 
     :param samples: N x H x W array of samples
     :param cov_mat: covariance matrix of the process
     :param mean: float mean of the process
     :param prefer_iterative: if True, compute likelihood iteratively, otherwise compute directly if possible
 
-    :return: (N,) array of log likelihoods for each sample
+    :return: average log_likelihood per pixel
     """
     # samples is not going to be the same size as the covariance matrix
     # if sample is smaller than cov_mat, throw an excpetion
@@ -211,8 +191,8 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
                     batch_likelihoods.append(jax.scipy.stats.norm.logpdf(samples[k, i, j], loc=mean_for_sample, scale=scale))                    
                 log_likelihoods.append(np.array(batch_likelihoods).flatten())
 
-    # sum over all pixels to get a length N vector of log likelihoods for each sample
-    return np.sum(np.array(log_likelihoods), axis=0)
+    # return average log likelihood per pixel
+    return np.mean(np.array(log_likelihoods)) / cov_mat.shape[0]
 
 
 def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples, sample_size=None,
@@ -361,7 +341,7 @@ def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectoriz
 ####### Optimizing a stationary gaussian fit ########
 #####################################################
 @partial(jit, static_argnums=(1, 2))
-def average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=False):
+def _average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=False):
     # divide it into blocks
     blocks = [np.hsplit(row, cov_mat.shape[1]//patch_size) for row in np.vsplit(cov_mat, cov_mat.shape[0]//patch_size)]
 
@@ -399,7 +379,7 @@ def average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=False
     doubly_toeplitz = np.vstack(new_blocks)
     return doubly_toeplitz
 
-def gaussian_likelihood(cov_mat, mean_vec, batch):
+def _gaussian_likelihood(cov_mat, mean_vec, batch):
     """
     Evaluate the log likelihood of a multivariate gaussian
     for a batch of NxWXH samples.
@@ -410,16 +390,15 @@ def gaussian_likelihood(cov_mat, mean_vec, batch):
         log_likelihoods.append(ll)
     return np.array(log_likelihoods)
 
-def batch_nll(log_likelihoods):
-    return -np.mean(log_likelihoods)
 
-def loss_function(eigvals, eig_vecs, mean_vec, data, num_pixels):
+def _nll_per_pixel(eigvals, eig_vecs, mean_vec, data, num_pixels):
     """
     Negative log likelihood of a multivariate gaussian per pixel
     """
     cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-    ll = gaussian_likelihood(cov_mat, mean_vec, data)
-    return batch_nll(ll) / num_pixels
+    ll = _gaussian_likelihood(cov_mat, mean_vec, data)
+    nll = -np.mean(ll) # average over batch
+    return nll / num_pixels
 
 def make_positive_definite(cov_mat, eigenvalue_floor):
     eigvals, eig_vecs = np.linalg.eigh(cov_mat)
@@ -435,109 +414,125 @@ def try_to_make_doubly_toeplitz_and_positive_definite(eigvals, eig_vecs, eigenva
     This won't neccesarily return a doubly toeplitz matrix, but it will be positive definite.
     """
     cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-    dt_cov_mat = average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size)
+    dt_cov_mat = _average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size)
     eigvals, eig_vecs = np.linalg.eigh(dt_cov_mat)
     eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
     return eigvals, eig_vecs
 
-def fit_optimized_gaussian(data, batch_size=12, eigenvalue_floor=1e-3, patience=20, num_validation=100, 
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100, return_everything=False,
-                        verbose=True):
-    optimizer = optax.chain(
-        # don't let update size exceed approx parameter size * Learning rate.
-        # this prevents tiny, incorrect eigenvalues from making things diverge
-        optax.clip(gradient_clip), 
-        optax.sgd(learning_rate, momentum=momentum, nesterov=False)
-    )
+ 
+
+#####################################################
+# Flax implementation of Gaussian process ######
+
+class _StationaryGaussianProcessFlaxImpl(nn.Module):
     
-    patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
-    # Initialize parameters, hyperparameters
-    mean_vec = np.ones(patch_size**2) * np.mean(data)
-    patch_size = int(np.sqrt(np.prod(np.array(data.shape)[1:])))
+    size: int
 
-    @jit
-    def optmization_step(opt_state, eigvals, eig_vecs, data, mean_vec, eigenvalue_floor):
-        grad_fn = grad(loss_function, argnums=0)
-        eigenvalues_grad = grad_fn(eigvals, eig_vecs, mean_vec, data, patch_size**2)
-        updates, opt_state = optimizer.update(eigenvalues_grad, opt_state, eigvals)
-        eigvals = optax.apply_updates(eigvals, updates)
-        # prox operator: make sure make sure positive definite, make sure doubly toeplitz
-        eigvals, eig_vecs = try_to_make_doubly_toeplitz_and_positive_definite(eigvals, eig_vecs, eigenvalue_floor, patch_size=patch_size)
-        loss = loss_function(eigvals, eig_vecs, mean_vec, data, patch_size**2)
-        return eigvals, eig_vecs, opt_state, loss
+    def setup(self):
+        self.eig_vals = self.param('eig_vals',  nn.initializers.zeros, (self.size,))
+        self.eig_vecs = self.param('eig_vecs',  nn.initializers.zeros, (self.size, self.size))
+        self.mean_vec = self.param('mean_vec', nn.initializers.zeros, (self.size,))
+
+    def __call__(self):
+        """
+        return the mean and covariance matrix of the Gaussian process as a function of the optimizable parameters
+        """
+        cov_mat = self.eig_vecs @ np.diag(self.eig_vals) @ self.eig_vecs.T
+        return self.mean_vec, cov_mat
+    
+
+    def compute_loss(self, mean_vec, cov_mat, images):
+        """ 
+        Compute average negative log likelihood per pixel averaged over batch
+        """
+        eig_vals, eig_vecs = np.linalg.eigh(cov_mat)
+        return _nll_per_pixel(eig_vals, eig_vecs, mean_vec, images, np.prod(np.array(images.shape[1:])))
 
 
-    # Split data into training and validation sets
-    if num_validation >= len(data):
-        # default to a 75/25 split
-        num_validation = int(len(data) * 0.25)
-        warnings.warn('Number of validation samples is larger than the number of samples. Defaulting to a 75/25 split')
-        num_validation = max(num_validation, 1)
+##################################################################################################
+#### Wrapper for the Flax implementation of Gaussian processes to the probabilistic image model API ######
+
+class StationaryGaussianProcess(ProbabilisticImageModel):
+
+    def __init__(self, images, eigenvalue_floor=1e-3):
+        """
+        Create a StationaryGaussianProcess model and initialize it to the plugin estimate of the stationary covariance matrix
+        """
+        self.image_shape = images.shape[1:]
+
+        self._flax_model = _StationaryGaussianProcessFlaxImpl(size=np.prod(np.array(self.image_shape)))
+        self.initial_params = self._flax_model.init(jax.random.PRNGKey(0)) # Note: this RNG doesnt actually matter because there's no random initialization
+
+        # initialize parameters
+        initial_cov_mat = plugin_estimate_stationary_cov_mat(images, eigenvalue_floor=eigenvalue_floor, suppress_warning=True)
+        mean_vec = np.ones(self.image_shape[0]**2) * np.mean(images)        
         
-    num_train = len(data) - num_validation
-    train_data = data[:num_train]
-    validation_data = data[num_train:]
+        eig_vals, eig_vecs = np.linalg.eigh(initial_cov_mat)
+        self.initial_params['params']['eig_vals'] = eig_vals
+        self.initial_params['params']['eig_vecs'] = eig_vecs
+        self.initial_params['params']['mean_vec'] = mean_vec
+        self._state = None
 
-    # initialize covariance matrix so likelihood is not nan
-    cov_mat_initial = _plugin_estimate_stationary_cov_mat(train_data, eigenvalue_floor=eigenvalue_floor, suppress_warning=True)
 
-    initial_evs, initial_eig_vecs = np.linalg.eigh(cov_mat_initial)
-    initial_loss = loss_function(initial_evs, initial_eig_vecs, mean_vec, validation_data, patch_size**2)
-    if verbose:
-        print('Initial loss: ', initial_loss)
 
-    cov_mat_initial = initial_eig_vecs @ np.diag(initial_evs) @ initial_eig_vecs.T
-
-    if np.isnan(jax.scipy.stats.multivariate_normal.logpdf(train_data[0].flatten(), mean=mean_vec, cov=cov_mat_initial)):
-        raise ValueError("Initial likelihood is nan")
-    
-    # Training loop
-    eigenvalues = initial_evs
-    opt_state = optimizer.init(eigenvalues)
-    eig_vecs = initial_eig_vecs
-    best_loss = np.inf
-    key = jax.random.PRNGKey(onp.random.randint(0, 100000))
-    best_loss_iter = 0
-    train_loss_history = []
-    validation_loss_history = []
-    for i in range(max_iters):
-        # select a random batch
-        batch_indices = jax.random.randint(key, shape=(batch_size,), minval=0, maxval=num_train)
-        key, subkey = jax.random.split(key)
-        batch = train_data[batch_indices]
+    def fit(self, train_images, learning_rate=1e2, max_epochs=200, steps_per_epoch=1,  patience=10, 
+            batch_size=12, num_val_samples=100, seed=0, 
+            eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
+            verbose=True):
         
-        eigenvalues, eig_vecs, opt_state, train_loss = optmization_step(
-            opt_state, eigenvalues, eig_vecs, batch, mean_vec, eigenvalue_floor)
+        
+        self._optimizer = optax.chain(
+            # don't let update size exceed approx parameter size * Learning rate.
+            # this prevents tiny, incorrect eigenvalues from making things diverge
+            optax.clip(gradient_clip), 
+            optax.sgd(learning_rate, momentum=momentum, nesterov=False)
+        )
 
-        train_loss_history.append(train_loss)
 
-        validation_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data, patch_size**2)   
-        validation_loss_history.append(validation_loss)
+        if self._state is None:
+            @jax.jit
+            def _train_step(state, imgs):
+                loss_fn = lambda params: state.apply_fn(params, imgs)
+                loss, grads = jax.value_and_grad(loss_fn)(state.params)
+                # mean vec and eig vecs are not updated via gradient descent, but instead by proximal step
+                grads['params']['eig_vecs'] = np.zeros_like(grads['params']['eig_vecs'])  
+                grads['params']['mean_vec'] = np.zeros_like(grads['params']['mean_vec'])  
+                state = state.apply_gradients(grads=grads)
 
-        if verbose:
-            print(f"Iteration {i+1}, validation loss: {validation_loss}", end='\r')
-        if validation_loss < best_loss:
-            best_loss_iter = i
-            best_loss = validation_loss
-            best_eigvals = eigenvalues
-            best_eig_vecs = eig_vecs
-        if i - best_loss_iter > patience:
-            break
+                # proximal step
+                eig_vals, eig_vecs = state.params['params']['eig_vals'], state.params['params']['eig_vecs']
+                state.params['params']['eig_vals'], state.params['params']['eig_vecs'] = try_to_make_doubly_toeplitz_and_positive_definite(
+                    eig_vals, eig_vecs, eigenvalue_floor, patch_size=self.image_shape[0])  
+                return state, loss
 
-    eigenvalues, eig_vecs = try_to_make_doubly_toeplitz_and_positive_definite(best_eigvals, best_eig_vecs, eigenvalue_floor, patch_size=patch_size)
-    cov_mat_optimized = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
-    final_loss = loss_function(eigenvalues, eig_vecs, mean_vec, validation_data, patch_size**2)
-    if initial_loss < final_loss:
-        warnings.warn("Optimization did not improve the validation loss, returning initial covariance matrix")
-        cov_mat_optimized = cov_mat_initial
 
-    if verbose:
-        print('\Optimized loss: ', final_loss)
+            def apply_fn(params, x):
+                output = self._flax_model.apply(params)
+                return self._flax_model.compute_loss(*output, x)
+            
+            self._state = TrainState.create(apply_fn=apply_fn, params=self.initial_params, tx=self._optimizer)
+        else:
+            # Fit has already been called and now we're optimizing some more
+            self._state = self._state.replace(tx=self._optimizer)
 
-    if not return_everything:
-        return mean_vec, cov_mat_optimized
-    final_cov_mat = eig_vecs @ np.diag(eigenvalues) @ eig_vecs.T
 
-    return cov_mat_optimized, cov_mat_initial, mean_vec, best_loss, train_loss_history, validation_loss_history, final_cov_mat
+        best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=num_val_samples,
+                                                    steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, train_step=_train_step, 
+                                                    verbose=verbose)
+        self._state = self._state.replace(params=best_params)
+        return val_loss_history
+
+
+    def compute_negative_log_likelihood(self, images):
+        eig_vals, eig_vecs = self._state.params['params']['eig_vals'], self._state.params['params']['eig_vecs']
+        cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
+        lls = compute_stationary_log_likelihood(images, cov_mat, self._state.params['params']['mean_vec'])
+        return -lls.mean()
     
-
+        
+    def generate_samples(self, num_samples, sample_size=None, ensure_nonnegative=True):
+        eig_vals, eig_vecs = self._state.params['params']['eig_vals'], self._state.params['params']['eig_vecs']
+        cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
+        samples = generate_stationary_gaussian_process_samples( self._state.params['params']['mean_vec'], cov_mat,
+                                                     num_samples, sample_size, ensure_nonnegative=ensure_nonnegative)
+        return samples
