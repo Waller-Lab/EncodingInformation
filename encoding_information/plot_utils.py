@@ -9,22 +9,19 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib
 
 
-def plot_optimization_loss_history(train_loss_history, val_loss_history):
+def plot_optimization_loss_history(val_loss_history):
 
-    fig, axs = plt.subplots(1, 3, figsize=(12, 4))
-    axs[0].semilogy(train_loss_history, '-o', label='train')
-    axs[0].legend()
-    axs[0].set(xlim=[0, len(train_loss_history)], xlabel='iteration', ylabel='Negative log likelihood')
-
-    axs[1].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
+    
+    axs[0].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
 
     # ylim are 2x the range of the middle 80% of the data
     ylim = np.percentile(val_loss_history, [15, 85])
     diff = ylim[1] - ylim[0]
     ylim = [ylim[0] - diff, ylim[1] + diff]
-    axs[2].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
-    axs[2].set_ylim(ylim)
-    axs[2].legend()
+    axs[1].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
+    axs[1].set_ylim(ylim)
+    axs[1].legend()
 
     for a in axs:
         clear_spines(a)

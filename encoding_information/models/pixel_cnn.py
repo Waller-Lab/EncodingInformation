@@ -295,7 +295,7 @@ class PixelCNN(ProbabilisticImageModel):
         return val_loss_history
 
 
-    def compute_negative_log_likelihood(self, data):
+    def compute_negative_log_likelihood(self, data, verbose=True):
         if data.ndim == 3:
             # add a trailing channel dimension if necessary
             data = data[..., np.newaxis]
@@ -309,7 +309,7 @@ class PixelCNN(ProbabilisticImageModel):
             raise ValueError("Data shape is different than image shape of trained model. This is not yet supported"
                              "Expected {}, got {}".format(self.image_shape, data.shape[1:3]))
 
-        return evaluate_nll(data, self._state, verbose=False)
+        return evaluate_nll(data, self._state, verbose=verbose)
 
     def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=123, verbose=True):
         key = jax.random.PRNGKey(seed)

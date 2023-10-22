@@ -46,7 +46,7 @@ class ProbabilisticImageModel(ABC):
         pass
     
     @abstractmethod
-    def compute_negative_log_likelihood(self, images):
+    def compute_negative_log_likelihood(self, images, verbose=True):
         """
         Compute the NLL of the images under the model
 
@@ -54,6 +54,8 @@ class ProbabilisticImageModel(ABC):
         ----------
         images : ndarray
             Array of images, shape (N, H, W)
+        verbose : bool, optional
+            Whether to print progress
 
         Returns
         -------
@@ -63,7 +65,7 @@ class ProbabilisticImageModel(ABC):
         pass
     
     @abstractmethod
-    def generate_samples(self, num_samples, sample_size=None, ):
+    def generate_samples(self, num_samples, sample_size=None, verbose=True):
         """
         Generate samples from the model
 
@@ -73,6 +75,8 @@ class ProbabilisticImageModel(ABC):
             Number of samples to generate
         sample_size : tuple, optional
             Size of each sample. If None, the size of the training images used
+        verbose : bool, optional
+            Whether to print progress
         """
         pass
 
@@ -124,10 +128,10 @@ def evaluate_nll(data_iterator, state, add_uniform_noise=True, seed=0, batch_siz
     """
     key = jax.random.PRNGKey(seed)
     total_nll, count = 0, 0
-    if verbose:
-        data_iterator = tqdm(data_iterator, desc='Computing loss')
     if isinstance(data_iterator, np.ndarray) or isinstance(data_iterator, onp.ndarray):
         data_iterator = np.array_split(data_iterator, batch_size)  # split into 32 batches
+    if verbose:
+        data_iterator = tqdm(data_iterator, desc='Computing loss')
     for batch in data_iterator:
         if add_uniform_noise:
             batch = batch + jax.random.uniform(key=key, minval=0, maxval=1, shape=batch.shape)
@@ -189,7 +193,9 @@ def train_model(train_images, state, batch_size, num_val_samples,
         val_loss_history.append(eval_nll)
         if verbose:
             print(f'Epoch {epoch_idx}: validation NLL: {eval_nll:.2f}')
-        if eval_nll <= best_eval:
+        if patience is None:
+            best_params = state.params # no early stopping
+        elif eval_nll <= best_eval:
             best_eval_epoch = epoch_idx
             best_eval = eval_nll
             best_params = state.params
