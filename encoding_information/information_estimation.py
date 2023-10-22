@@ -4,6 +4,8 @@ Functions for estimating entropy and mutual information
 from encoding_information.image_utils import *
 from jax import jit
 from jax.scipy.special import digamma, gammaln
+from encoding_information.models.gaussian_process import StationaryGaussianProcess
+from encoding_information.models.pixel_cnn import PixelCNN
 
 from functools import partial
 import jax.numpy as np
@@ -60,50 +62,51 @@ def nearest_neighbors_distance(X, k):
     return kth_nn_dist
 
 
-def gaussian_entropy_estimate(X, stationary=True, optimize=False, eigenvalue_floor=1e-4,  return_cov_mat_and_mean=False,
-                               patience=250, num_validation=100, batch_size=12,
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1500,
-                              verbose=False):
-    """
-    Estimate the entropy in "nats" (differential entropy doesn't really have units) per pixel
-      of samples from a distribution of images by approximating 
-    the distribution as a Gaussian.  i.e. Taking its covariance matrix and 
-    computing the entropy of the Gaussian distribution with that same covariance matrix.
+# TODO: figure out how this compares to the test set NLL bound method
+# def gaussian_entropy_estimate(X, stationary=True, optimize=False, eigenvalue_floor=1e-4,  return_cov_mat_and_mean=False,
+#                                patience=250, num_validation=100, batch_size=12,
+#                            gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1500,
+#                               verbose=False):
+#     """
+#     Estimate the entropy in "nats" (differential entropy doesn't really have units) per pixel
+#       of samples from a distribution of images by approximating 
+#     the distribution as a Gaussian.  i.e. Taking its covariance matrix and 
+#     computing the entropy of the Gaussian distribution with that same covariance matrix.
 
-    X : ndarray, shape (n_samples, W, H) or (n_samples, num_features)
-    stationary : bool, whether to assume the distribution is stationary
-    iterative_estimator : bool, whether to optimize the estimate with iterative optimization
-    eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large
-    return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
-    """
-    X = X.reshape(X.shape[0], -1)
-    D = X.shape[1]
-    # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
-    if not stationary:
-        try:
-            cov_mat = estimate_cov_mat(X)
-            if eigenvalue_floor is not None:
-                eigvals, eigvecs = np.linalg.eigh(cov_mat)
-                eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
-                cov_mat = eigvecs @ np.diag(eigvals) @ eigvecs.T
-        except:
-            raise Exception("Couldn't compute covariance matrix")
+#     X : ndarray, shape (n_samples, W, H) or (n_samples, num_features)
+#     stationary : bool, whether to assume the distribution is stationary
+#     iterative_estimator : bool, whether to optimize the estimate with iterative optimization
+#     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large
+#     return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
+#     """
+#     X = X.reshape(X.shape[0], -1)
+#     D = X.shape[1]
+#     # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
+#     if not stationary:
+#         try:
+#             cov_mat = estimate_cov_mat(X)
+#             if eigenvalue_floor is not None:
+#                 eigvals, eigvecs = np.linalg.eigh(cov_mat)
+#                 eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+#                 cov_mat = eigvecs @ np.diag(eigvals) @ eigvecs.T
+#         except:
+#             raise Exception("Couldn't compute covariance matrix")
             
-        evs = np.linalg.eigvalsh(cov_mat)
-        if np.any(evs < 0):
-            warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
-        sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))         
-        mean_vec = np.mean(X, axis=0)               
-    else:
-        mean_vec, cov_mat = estimate_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose, optimize=optimize, 
-                                               patience=patience, num_validation=num_validation, batch_size=batch_size, return_mean=True,
-                                               gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters)       
-        sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
-    gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
-    if return_cov_mat_and_mean:
-        return gaussian_entropy, cov_mat, mean_vec
-    else:
-        return gaussian_entropy
+#         evs = np.linalg.eigvalsh(cov_mat)
+#         if np.any(evs < 0):
+#             warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
+#         sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))         
+#         mean_vec = np.mean(X, axis=0)               
+#     else:
+#         mean_vec, cov_mat = estimate_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose, optimize=optimize, 
+#                                                patience=patience, num_validation=num_validation, batch_size=batch_size, return_mean=True,
+#                                                gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters)       
+#         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
+#     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
+#     if return_cov_mat_and_mean:
+#         return gaussian_entropy, cov_mat, mean_vec
+#     else:
+#         return gaussian_entropy
 
 
 @partial(jit, static_argnums=(1,))
@@ -197,31 +200,45 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
     return mean, conf_int
         
     
-def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary_model=True, use_iterative_optimization=False,                                 
-                                  eigenvalue_floor=1e-3, gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
-                                 patience=25, num_validation=100, batch_size=12,
-                           gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=100, return_cov_mat_and_mean=False,  verbose=False,):
+def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model='gaussian', test_set_fraction=0.1,
+                                  gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
+                                 patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params
+                                 use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, # gaussian params
+                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, # pixelcnn params
+                                 return_entropy_model=False, verbose=False,):
     """
-    Estimate the mutual information (in bits per pixel) of a stack of noisy images, by making a Gaussian approximation
-    to the distribution of noisy images, and subtracting the conditional entropy of the clean images
-    If clean_images is not provided, instead compute the conditional entropy of the noisy images.
+    Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
+    images using a probabilistic model (either a stationary Gaussian process or a PixelCNN) and subtracting the conditional entropy
+    assuming Poisson distributed shot noise, or additive Gaussian noise. Uses clean_images to estimate the conditional entropy
+    if provided. Otherwise, approximates the conditional entropy from the noisy images themselves.
 
-    noisy : ndarray NxHxW array of images or image patches
+    noisy_images : ndarray NxHxW array of images or image patches
     clean_images : ndarray NxHxW array of images or image patches
-    use_stationary_model : bool, whether to assume the distribution is stationary
-    use_iterative_optimization : bool, whether to use iterative optimization to estimate the covariance matrix
-    eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large in the stationary model
-    gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
-            otherwise assume poisson noise.
+    entropy_model : str, which model to use for estimating the entropy of the noisy images. Either 'gaussian' or 'pixelcnn'
+    test_set_fraction : float, fraction of the noisy data to use a test set for computing the entropy upper bound
+
+    gaussian_noise_sigma : float, if not None, assume noisy images arose from additive gaussian noise with this sigma.
+                                     Otherwise assume poisson noise.
     estimate_conditional_from_model_samples : bool, whether to estimate the conditional entropy from a model fit to them
         rather than from the the data iteself.  
-    patience : int, (if use_iterative_optimization=True) how many iterations to wait for validation loss to improve
-    num_validation : int, (if use_iterative_optimization=True) how many samples to use for validation
-    gradient_clip : float, (if use_iterative_optimization=True) maximum gradient norm
-    learning_rate : float, (if use_iterative_optimization=True) learning rate for gradient descent
-    momentum : float, (if use_iterative_optimization=True) momentum for gradient descent
-    max_iters : int, (if use_iterative_optimization=True) maximum number of iterations for gradient descent
-    return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
+
+    patience : int, How many iterations to wait for validation loss to improve. If None, use the default for the chosen model
+    num_val_samples : int, How many samples to use for validation. If None, use the default for the chosen model
+    batch_size : int, The batch size to use for training. If None, use the default for the chosen model
+    max_epochs : int, The maximum number of epochs to train for. If None, use the default for the chosen model
+    learning_rate : float, If None, use the default for the chosen model
+
+    use_iterative_optimization : bool, (if entropy_model='gaussian') whether to use iterative optimization to refine 
+                                    the stationary Gaussian process estimate
+    eigenvalue_floor : float, (if entropy_model='gaussian') make the eigenvalues of the covariance matrix at least this large
+    gradient_clip : float, (if model='gaussian' and use_iterative_optimization=True) clip gradients to this value
+    momentum : float, (if model='gaussian' and use_iterative_optimization=True) momentum for gradient descent
+
+    steps_per_epoch : int, (if entropy_model='pixelcnn') number of steps per epoch
+    num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
+    num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
+
+    return_entropy_model : bool, whether to return the noisy image entropy model
     verbose : bool, whether to print out the estimated values
     """
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
@@ -231,32 +248,52 @@ def  estimate_mutual_information(noisy_images, clean_images=None, use_stationary
         warnings.warn(f"Mean pixel value is {np.mean(clean_images_if_available):.2f}. More accurate results can probably be obtained"
                         "by setting estimate_conditional_from_model_samples=True")
 
+    ### Estimate the conditional entropy H(Y | X) from the clean images (or samples from a model fit to them)
     if estimate_conditional_from_model_samples:
-        if not use_stationary_model:
-            raise NotImplementedError("Conditional entropy from marginal samples only implemented for stationary model")
-        vecotrized_images = clean_images_if_available.reshape(clean_images_if_available.shape[0], -1)
-        mean_vec = np.ones(vecotrized_images.shape[1]) * np.mean(vecotrized_images)
-        stationary_cov_mat = estimate_stationary_cov_mat(vecotrized_images, eigenvalue_floor=eigenvalue_floor, 
-                                                         optimize=use_iterative_optimization, verbose=verbose, 
-                                                         patience=patience, num_validation=num_validation, batch_size=batch_size,
-                                                         gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters)        
-        samples = generate_stationary_gaussian_process_samples(mean_vec, stationary_cov_mat, 
-                                                               num_samples=clean_images_if_available.shape[0], ensure_nonnegative=True)
-        clean_images_if_available = samples.reshape(clean_images_if_available.shape)
-
+        stationary_gp = StationaryGaussianProcess(clean_images_if_available, eigenvalue_floor=eigenvalue_floor)
+        if use_iterative_optimization:
+            val_loss_history = stationary_gp.fit(eigenvalue_floor=eigenvalue_floor, verbose=verbose, 
+                                                         patience=patience, num_val_samples=num_val_samples, batch_size=batch_size,
+                                                         gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_epochs=max_epochs)        
+        clean_images_if_available = stationary_gp.generate_samples(num_samples=clean_images_if_available.shape[0])
+        
     h_y_given_x = estimate_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma,)
-    h_y_given_x_per_pixel_bits = h_y_given_x / np.log(2)
-    h_y_gaussian, cov_mat, mean_vec = gaussian_entropy_estimate(noisy_images, stationary=use_stationary_model, optimize=use_iterative_optimization,
-                                            eigenvalue_floor=eigenvalue_floor,
-                                                patience=patience, num_validation=num_validation, batch_size=batch_size,
-                                                  gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters,                                            
-                                            verbose=verbose, return_cov_mat_and_mean=True)
-    h_y_gaussian_per_pixel_bits = h_y_gaussian / np.log(2)
-    mutual_info = h_y_gaussian_per_pixel_bits - h_y_given_x_per_pixel_bits
+
+    ### Fit an entropy model to the noisy images
+    training_set = noisy_images[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
+    test_set = noisy_images[-int(noisy_images.shape[0] * test_set_fraction):]
+    if entropy_model == 'gaussian':
+        noisy_image_model = StationaryGaussianProcess(training_set, eigenvalue_floor=eigenvalue_floor)
+        if use_iterative_optimization:
+            hyperparams = {}
+            # collect all hyperparams that are not None
+            for k, v in dict(patience=patience, num_val_samples=num_val_samples, batch_size=batch_size,
+                           gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_epochs=max_epochs).items():
+                if v is not None:
+                    hyperparams[k] = v
+            val_loss_history = noisy_image_model.fit(training_set, eigenvalue_floor=eigenvalue_floor, verbose=verbose, **hyperparams)        
+    elif entropy_model == 'pixelcnn':
+        arch_args = dict(num_hidden_channels=num_hidden_channels, num_mixture_components=num_mixture_components)
+        arch_args = {k: v for k, v in arch_args.items() if v is not None}
+        noisy_image_model = PixelCNN(**arch_args)
+        # collect all hyperparams that are not None
+        hyperparams = {}
+        for k, v in dict(patience=patience, num_val_samples=num_val_samples, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
+                             learning_rate=learning_rate, max_epochs=max_epochs).items():
+                if v is not None:
+                 hyperparams[k] = v
+        noisy_image_model.fit(training_set, verbose=verbose, **hyperparams)
+    else:
+        raise ValueError(f"Unrecognized entropy model {entropy_model}")
+  
+    ### Estimate the entropy of the noisy images using the upper bound provided by the entropy model negative log likelihood
+    h_y_upper_bound = noisy_image_model.compute_negative_log_likelihood(test_set, verbose=verbose)
+
+    mutual_info = (h_y_upper_bound - h_y_given_x) / np.log(2)
     if verbose:
-        print(f"Estimated H(Y|X) = {h_y_given_x_per_pixel_bits:.3f} bits/pixel")
-        print(f"Estimated H(Y) = {h_y_gaussian_per_pixel_bits:.3f} bits/pixel")
+        print(f"Estimated H(Y|X) = {h_y_given_x:.3f} differential entropy/pixel")
+        print(f"Estimated H(Y) (upper bound) = {h_y_upper_bound:.3f} differential entropy/pixel")
         print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
-    if return_cov_mat_and_mean:
-        return mutual_info, cov_mat, mean_vec
+    if return_entropy_model:
+        return mutual_info, noisy_image_model
     return mutual_info 

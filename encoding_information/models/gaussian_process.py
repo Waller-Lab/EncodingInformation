@@ -70,7 +70,7 @@ def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=
     return images
 
 
-def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False):  
+def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False, verbose=False):  
     """
     Compute the log likelihood per pixel of a set of samples from a stationary process
 
@@ -78,6 +78,7 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
     :param cov_mat: covariance matrix of the process
     :param mean: float mean of the process
     :param prefer_iterative: if True, compute likelihood iteratively, otherwise compute directly if possible
+    :param verbose: if True, print progress
 
     :return: average log_likelihood per pixel
     """
@@ -104,7 +105,8 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
     vectorized_masks = []
     variances = []
     mean_multipliers = []
-    for i in tqdm(np.arange(sample_size), desc='precomputing masks and variances'):
+    iter = tqdm(np.arange(sample_size), desc='precomputing masks and variances') if verbose else np.arange(sample_size)
+    for i in iter:
         for j in np.arange(sample_size):
             if not prefer_iterative and i < patch_size and j < patch_size:
                 # Add placeholders since these get sampled from the covariance matrix directly
@@ -148,7 +150,8 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
                 if variances[-1] < 0:
                     raise ValueError('Variance is negative {} {}'.format(i, j))
 
-    print('evaluating likelihood')
+    if verbose:
+        print('evaluating likelihood')
 
     log_likelihoods = []
     if not prefer_iterative:
@@ -160,7 +163,8 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
         direct = np.array(direct)
         log_likelihoods.append(direct)
 
-    for i in tqdm(np.arange(sample_size), desc='computing log likelihoods'):
+    iter = tqdm(np.arange(sample_size), desc='computing log likelihoods') if verbose else np.arange(sample_size)
+    for i in iter:
         for j in np.arange(sample_size):
 
             if not prefer_iterative and i < patch_size and j < patch_size :
@@ -197,7 +201,7 @@ def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=F
 
 def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples, sample_size=None,
                                                  ensure_nonnegative=False,
-                                                 prefer_iterative_sampling=False, seed=None):
+                                                 prefer_iterative_sampling=False, seed=None, verbose=False):
     """
     Given a covariance matrix of a stationary Gaussian process, generate samples from it. If the sample_size
     is less than or equal to the patch size used to generate the covariance matrix, this will be relatively
@@ -215,6 +219,8 @@ def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples,
     prefer_iterative_sampling : bool if true, dont directly sample the first (patch_size, patch_size) pixels
         directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
         This is much slower
+    seed : int , seed for the random number generator
+    verbose : bool if true, print progress
     """
     if sample_size is None:
         sample_size = int(np.sqrt(cov_mat.shape[0]))
@@ -235,7 +241,8 @@ def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples,
     vectorized_masks = []
     variances = []
     mean_multipliers = []
-    for i in tqdm(np.arange(sample_size), desc='precomputing masks and variances'):
+    iter = tqdm(np.arange(sample_size), desc='precomputing masks and variances') if verbose else np.arange(sample_size)
+    for i in iter:
         for j in np.arange(sample_size):
             if not prefer_iterative_sampling and i < patch_size and j < patch_size:
                 # raise Exception('why is there a -1 here? double check')
@@ -283,16 +290,17 @@ def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples,
                     raise ValueError('Variance is negative {} {}'.format(i, j))
 
 
-    
-    print('generating samples')
+    if verbose:
+        print('generating samples')
     samples = _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectorized_masks, variances, 
-                                    mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling)
+                                    mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling, verbose=verbose)
     if ensure_nonnegative:
         samples = np.where(samples < 0, 0, samples)
     
     return samples
 
-def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectorized_masks, variances, mean_multipliers, prefer_iterative_sampling=False):
+def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectorized_masks, variances, 
+                      mean_multipliers, prefer_iterative_sampling=False, verbose=False):
     patch_size = int(np.sqrt(cov_mat.shape[0]))
     if not prefer_iterative_sampling:
         # sample the first (patch_size, patch_size) pixels directly from the covariance matrix
@@ -309,7 +317,8 @@ def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectoriz
     else:
         sampled_images = np.zeros((num_samples, sample_size, sample_size))
 
-    for i in tqdm(np.arange(sample_size)):
+    iter = tqdm(np.arange(sample_size), desc='generating samples') if verbose else np.arange(sample_size)
+    for i in iter:
         for j in np.arange(sample_size):
             if not prefer_iterative_sampling and i < patch_size  and j < patch_size :
                 # raise Exception('why is there a -1 here? double check')
@@ -475,9 +484,8 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 
 
 
-    def fit(self, train_images, learning_rate=1e2, max_epochs=200, steps_per_epoch=1,  patience=10, 
-            batch_size=12, num_val_samples=100, seed=0, 
-            eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
+    def fit(self, train_images, learning_rate=1e2, max_epochs=40, steps_per_epoch=1,  patience=5, 
+            batch_size=12, num_val_samples=100, eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
             verbose=True):
         
         
@@ -489,23 +497,22 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         )
 
 
+        @jax.jit
+        def _train_step(state, imgs):
+            loss_fn = lambda params: state.apply_fn(params, imgs)
+            loss, grads = jax.value_and_grad(loss_fn)(state.params)
+            # mean vec and eig vecs are not updated via gradient descent, but instead by proximal step
+            grads['params']['eig_vecs'] = np.zeros_like(grads['params']['eig_vecs'])  
+            grads['params']['mean_vec'] = np.zeros_like(grads['params']['mean_vec'])  
+            state = state.apply_gradients(grads=grads)
+
+            # proximal step
+            eig_vals, eig_vecs = state.params['params']['eig_vals'], state.params['params']['eig_vecs']
+            state.params['params']['eig_vals'], state.params['params']['eig_vecs'] = try_to_make_doubly_toeplitz_and_positive_definite(
+                eig_vals, eig_vecs, eigenvalue_floor, patch_size=self.image_shape[0])  
+            return state, loss
+                                                
         if self._state is None:
-            @jax.jit
-            def _train_step(state, imgs):
-                loss_fn = lambda params: state.apply_fn(params, imgs)
-                loss, grads = jax.value_and_grad(loss_fn)(state.params)
-                # mean vec and eig vecs are not updated via gradient descent, but instead by proximal step
-                grads['params']['eig_vecs'] = np.zeros_like(grads['params']['eig_vecs'])  
-                grads['params']['mean_vec'] = np.zeros_like(grads['params']['mean_vec'])  
-                state = state.apply_gradients(grads=grads)
-
-                # proximal step
-                eig_vals, eig_vecs = state.params['params']['eig_vals'], state.params['params']['eig_vecs']
-                state.params['params']['eig_vals'], state.params['params']['eig_vecs'] = try_to_make_doubly_toeplitz_and_positive_definite(
-                    eig_vals, eig_vecs, eigenvalue_floor, patch_size=self.image_shape[0])  
-                return state, loss
-
-
             def apply_fn(params, x):
                 output = self._flax_model.apply(params)
                 return self._flax_model.compute_loss(*output, x)
@@ -523,16 +530,33 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         return val_loss_history
 
 
-    def compute_negative_log_likelihood(self, images):
-        eig_vals, eig_vecs = self._state.params['params']['eig_vals'], self._state.params['params']['eig_vecs']
+    def compute_negative_log_likelihood(self, images, verbose=True):
+        eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
-        lls = compute_stationary_log_likelihood(images, cov_mat, self._state.params['params']['mean_vec'])
+        lls = compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
         return -lls.mean()
     
         
-    def generate_samples(self, num_samples, sample_size=None, ensure_nonnegative=True):
-        eig_vals, eig_vecs = self._state.params['params']['eig_vals'], self._state.params['params']['eig_vecs']
+    def generate_samples(self, num_samples, sample_size=None, ensure_nonnegative=True, seed=None, verbose=True):
+        eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
-        samples = generate_stationary_gaussian_process_samples( self._state.params['params']['mean_vec'], cov_mat,
-                                                     num_samples, sample_size, ensure_nonnegative=ensure_nonnegative)
+        samples = generate_stationary_gaussian_process_samples( 
+                    mean_vec, cov_mat, num_samples, sample_size, ensure_nonnegative=ensure_nonnegative, seed=seed, verbose=verbose)
         return samples
+
+    def get_cov_mat(self):
+        eig_vals, eig_vecs, mean_vec = self._get_current_params()
+        cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
+        return cov_mat
+
+    def _get_current_params(self):
+        """
+        Return the initial or optimized params
+        """
+        if self._state is None:
+            eig_vals, eig_vecs = self.initial_params['params']['eig_vals'], self.initial_params['params']['eig_vecs']
+            mean_vec = self.initial_params['params']['mean_vec']
+        else:
+            eig_vals, eig_vecs = self._state.params['params']['eig_vals'], self._state.params['params']['eig_vecs']
+            mean_vec = self._state.params['params']['mean_vec']
+        return eig_vals, eig_vecs, mean_vec
