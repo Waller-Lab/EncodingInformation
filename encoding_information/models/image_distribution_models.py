@@ -116,8 +116,8 @@ def _make_dataset_generators(images, batch_size, num_val_samples, add_uniform_no
         train_ds = train_ds.map(add_uniform_noise_fn)
         val_ds = val_ds.map(add_uniform_noise_fn)
 
-    train_ds = train_ds.repeat().shuffle(1024).batch(batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
-    val_ds = val_ds.shuffle(1024).batch(batch_size, drop_remainder=True).prefetch(tf.data.AUTOTUNE)
+    train_ds = train_ds.repeat().shuffle(1024).batch(batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
+    val_ds = val_ds.shuffle(1024).batch(batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
 
     return train_ds.as_numpy_iterator(), lambda : val_ds.as_numpy_iterator()
 
@@ -125,6 +125,8 @@ def _make_dataset_generators(images, batch_size, num_val_samples, add_uniform_no
 def evaluate_nll(data_iterator, state, add_uniform_noise=True, seed=0, batch_size=32, verbose=True):
     """
     Compute negative log likelihood over many batches
+
+    batch_size only comes into play if data_iterator is a numpy array
     """
     key = jax.random.PRNGKey(seed)
     total_nll, count = 0, 0

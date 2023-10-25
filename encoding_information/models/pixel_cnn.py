@@ -162,6 +162,8 @@ class _PixelCNNFlaxImpl(nn.Module):
 
         self.normalize = PreprocessLayer(mean=self.train_data_mean, std=self.train_data_std)
 
+        if not isinstance(self.num_hidden_channels, int):
+            raise ValueError("num_hidden_channels must be an integer")
         # Initial convolutions skipping the center pixel
         self.conv_vstack = VerticalStackConvolution(self.num_hidden_channels, kernel_size=3, mask_center=True)
         self.conv_hstack = HorizontalStackConvolution(self.num_hidden_channels, kernel_size=3, mask_center=True)
@@ -279,7 +281,7 @@ class PixelCNN(ProbabilisticImageModel):
             self._flax_model = _PixelCNNFlaxImpl(num_hidden_channels=self.num_hidden_channels, num_mixture_components=self.num_mixture_components,
                                     train_data_mean=np.mean(train_images), train_data_std=np.std(train_images),
                                     train_data_min=np.min(train_images), train_data_max=np.max(train_images))
-            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[0])
+            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3]) # pass in an intial batch
             
             self._optimizer = optax.adam(learning_rate)
 
