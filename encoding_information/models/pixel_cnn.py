@@ -334,6 +334,8 @@ class PixelCNN(ProbabilisticImageModel):
                 j_in_cropped_image = j - j_limits[0]
 
                 key, key2 = jax.random.split(key)
+                if verbose:
+                    print(i, j, i_in_cropped_image, j_in_cropped_image, conditioning_images.shape)
                 mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images)
                 # only sampling one pixel at a time
                 mu = mu[:, i_in_cropped_image, j_in_cropped_image, :]
