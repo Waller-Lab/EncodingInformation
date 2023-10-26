@@ -320,30 +320,32 @@ class PixelCNN(ProbabilisticImageModel):
         if type(sample_shape) == int:
             sample_shape = (sample_shape, sample_shape)
 
-        if sample_shape != self.image_shape:
-            raise ValueError("Sample shape is different than image shape of trained model. This is not yet supported"
-                             "Expected {}, got {}".format(self.image_shape, sample_shape))
-        
-        img = onp.zeros((num_samples, *self.image_shape)) - 1
-        samples_arange = np.arange(num_samples)
+        sampled_images = onp.zeros((num_samples, *sample_shape))
         for i in tqdm(np.arange(sample_shape[0]), desc='Generating samples') if verbose else np.arange(sample_shape[0]):
             for j in np.arange(sample_shape[1]):
+                i_limits = max(0, i - self.image_shape[0]), min(sample_shape[0], i + 1)
+                j_limits = max(0, j - self.image_shape[1]), min(sample_shape[1], j + 1)
+
+                conditioning_images = sampled_images[:, i_limits[0]:i_limits[1], j_limits[0]:j_limits[1]]
+                i_in_cropped_image = i - i_limits[0]
+                j_in_cropped_image = j - j_limits[0]
+
                 key, key2 = jax.random.split(key)
-                mu, sigma, mix_logit = self._flax_model.apply(self._state.params, img)
+                mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images)
                 # only sampling one pixel at a time
-                mu = mu[:, i, j, :]
-                sigma = sigma[:, i, j, :]
-                mix_logit = mix_logit[:, i, j, :]
+                mu = mu[:, i_in_cropped_image, j_in_cropped_image, :]
+                sigma = sigma[:, i_in_cropped_image, j_in_cropped_image, :]
+                mix_logit = mix_logit[:, i_in_cropped_image, j_in_cropped_image, :]
 
                 # mix_probs = np.exp(mix_logit - logsumexp(mix_logit, axis=-1, keepdims=True))
                 component_indices = jax.random.categorical(key, mix_logit, axis=-1)
                 # draw categorical sample
-                sample_mus = mu[samples_arange, component_indices]
-                sample_sigmas = sigma[samples_arange, component_indices]
+                sample_mus = mu[np.arange(num_samples), component_indices]
+                sample_sigmas = sigma[np.arange(num_samples), component_indices]
                 sample = jax.random.normal(key2, shape=sample_mus.shape) * sample_sigmas + sample_mus
-                img[:, i, j] = sample
+                sampled_images[:, i, j] = sample
 
         if ensure_nonnegative:
-            img = np.where(img < 0, 0, img)
-        return img
+            sampled_images = np.where(sampled_images < 0, 0, sampled_images)
+        return sampled_images
    

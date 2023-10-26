@@ -92,6 +92,8 @@ def _make_dataset_generators(images, batch_size, num_val_samples, add_uniform_no
     """
     Use tensorflow datasets to make fast data pipelines
     """
+    if num_val_samples > images.shape[0]:
+        raise ValueError("Number of validation samples must be less than the number of training samples")
     
     # add trailing channel dimension if necessary
     if images.ndim == 3:
@@ -166,7 +168,7 @@ def train_model(train_images, state, batch_size, num_val_samples,
     """
     Training loop with early stopping. Returns a callable with 
     """
-    if num_val_samples > train_images.shape[0]:
+    if num_val_samples >= train_images.shape[0]:
         raise ValueError("Number of validation samples must be less than the number of training samples")
     train_ds_iterator, val_loader_maker_fn = _make_dataset_generators(train_images, batch_size=batch_size, num_val_samples=num_val_samples)
 
