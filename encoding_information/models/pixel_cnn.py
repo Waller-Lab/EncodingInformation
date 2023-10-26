@@ -151,6 +151,7 @@ class _PixelCNNFlaxImpl(nn.Module):
     train_data_std : float = None
     train_data_min : float = None
     train_data_max : float = None
+    sigma_min : float = 1
 
     def setup(self):
         if None in [self.train_data_mean, self.train_data_std, self.train_data_min, self.train_data_max]:
@@ -162,6 +163,8 @@ class _PixelCNNFlaxImpl(nn.Module):
 
         self.normalize = PreprocessLayer(mean=self.train_data_mean, std=self.train_data_std)
 
+        if not isinstance(self.num_hidden_channels, int):
+            raise ValueError("num_hidden_channels must be an integer")
         # Initial convolutions skipping the center pixel
         self.conv_vstack = VerticalStackConvolution(self.num_hidden_channels, kernel_size=3, mask_center=True)
         self.conv_hstack = HorizontalStackConvolution(self.num_hidden_channels, kernel_size=3, mask_center=True)
@@ -244,7 +247,7 @@ class _PixelCNNFlaxImpl(nn.Module):
 
         sigma = nn.activation.softplus( self.sigma_dense(out) )  # must be positive
          # avoid having tiny components that overly concentrate mass, and don't need components larger than data standard deviation
-        sigma = np.clip(sigma, 1, self.train_data_std )
+        sigma = np.clip(sigma, self.sigma_min, self.train_data_std )
 
         mix_logit = self.mix_logit_dense(out)
 
@@ -266,7 +269,7 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            batch_size=64, num_val_samples=1000,  seed=0, verbose=True):
+            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, verbose=True):
         train_images = train_images.astype(np.float32)
 
         # add trailing channel dimension if necessary
@@ -278,8 +281,8 @@ class PixelCNN(ProbabilisticImageModel):
         if self._flax_model is None:
             self._flax_model = _PixelCNNFlaxImpl(num_hidden_channels=self.num_hidden_channels, num_mixture_components=self.num_mixture_components,
                                     train_data_mean=np.mean(train_images), train_data_std=np.std(train_images),
-                                    train_data_min=np.min(train_images), train_data_max=np.max(train_images))
-            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[0])
+                                    train_data_min=np.min(train_images), train_data_max=np.max(train_images), sigma_min=sigma_min)
+            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3]) # pass in an intial batch
             
             self._optimizer = optax.adam(learning_rate)
 
@@ -311,37 +314,41 @@ class PixelCNN(ProbabilisticImageModel):
 
         return evaluate_nll(data, self._state, verbose=verbose)
 
-    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=123, verbose=True):
+    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
+        if seed is None:
+            seed = 123
         key = jax.random.PRNGKey(seed)
         if sample_shape is None:
             sample_shape = self.image_shape
         if type(sample_shape) == int:
             sample_shape = (sample_shape, sample_shape)
 
-        if sample_shape != self.image_shape:
-            raise ValueError("Sample shape is different than image shape of trained model. This is not yet supported"
-                             "Expected {}, got {}".format(self.image_shape, sample_shape))
-        
-        img = onp.zeros((num_samples, *self.image_shape)) - 1
-        samples_arange = np.arange(num_samples)
+        sampled_images = onp.zeros((num_samples, *sample_shape))
         for i in tqdm(np.arange(sample_shape[0]), desc='Generating samples') if verbose else np.arange(sample_shape[0]):
             for j in np.arange(sample_shape[1]):
+                i_limits = max(0, i - self.image_shape[0]), min(sample_shape[0], i + 1)
+                j_limits = max(0, j - self.image_shape[1]), min(sample_shape[1], j + 1)
+
+                conditioning_images = sampled_images[:, i_limits[0]:i_limits[1], j_limits[0]:j_limits[1]]
+                i_in_cropped_image = i - i_limits[0]
+                j_in_cropped_image = j - j_limits[0]
+
                 key, key2 = jax.random.split(key)
-                mu, sigma, mix_logit = self._flax_model.apply(self._state.params, img)
+                mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images)
                 # only sampling one pixel at a time
-                mu = mu[:, i, j, :]
-                sigma = sigma[:, i, j, :]
-                mix_logit = mix_logit[:, i, j, :]
+                mu = mu[:, i_in_cropped_image, j_in_cropped_image, :]
+                sigma = sigma[:, i_in_cropped_image, j_in_cropped_image, :]
+                mix_logit = mix_logit[:, i_in_cropped_image, j_in_cropped_image, :]
 
                 # mix_probs = np.exp(mix_logit - logsumexp(mix_logit, axis=-1, keepdims=True))
                 component_indices = jax.random.categorical(key, mix_logit, axis=-1)
                 # draw categorical sample
-                sample_mus = mu[samples_arange, component_indices]
-                sample_sigmas = sigma[samples_arange, component_indices]
+                sample_mus = mu[np.arange(num_samples), component_indices]
+                sample_sigmas = sigma[np.arange(num_samples), component_indices]
                 sample = jax.random.normal(key2, shape=sample_mus.shape) * sample_sigmas + sample_mus
-                img[:, i, j] = sample
+                sampled_images[:, i, j] = sample
 
         if ensure_nonnegative:
-            img = np.where(img < 0, 0, img)
-        return img
+            sampled_images = np.where(sampled_images < 0, 0, sampled_images)
+        return sampled_images
    

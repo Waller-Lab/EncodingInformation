@@ -29,7 +29,7 @@ def plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False,
     cov_mat = estimate_full_cov_mat(patches)
     block_size = int(np.sqrt(cov_mat.shape[0]))
 
-    stationary_cov_mat = _average_diagonals_to_make_doubly_toeplitz(cov_mat, block_size, verbose=verbose)
+    stationary_cov_mat = average_diagonals_to_make_doubly_toeplitz(cov_mat, block_size, verbose=verbose)
 
     # try to make both stationary and positive definite
     if eigenvalue_floor is not None:
@@ -40,7 +40,7 @@ def plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False,
         if np.linalg.eigvalsh(stationary_cov_mat).min() < 0:
             raise ValueError('Covariance matrix is not positive definite even after applying eigenvalue floor. This indicates numerical error.' +
                              'Try raising the eigenvalue floor than the current value of {}'.format(eigenvalue_floor))
-        doubly_toeplitz = _average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
+        doubly_toeplitz = average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
         dt_eigs = np.linalg.eigvalsh(doubly_toeplitz)
         if np.any(dt_eigs < 0) and not suppress_warning:
             warnings.warn('Cannot make both doubly toeplitz and positive definite. Using positive definite matrix.'
@@ -70,7 +70,7 @@ def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=
     return images
 
 
-def compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False, verbose=False):  
+def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False, verbose=False):  
     """
     Compute the log likelihood per pixel of a set of samples from a stationary process
 
@@ -350,7 +350,7 @@ def _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectoriz
 ####### Optimizing a stationary gaussian fit ########
 #####################################################
 @partial(jit, static_argnums=(1, 2))
-def _average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=False):
+def average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=False):
     # divide it into blocks
     blocks = [np.hsplit(row, cov_mat.shape[1]//patch_size) for row in np.vsplit(cov_mat, cov_mat.shape[0]//patch_size)]
 
@@ -388,7 +388,7 @@ def _average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=Fals
     doubly_toeplitz = np.vstack(new_blocks)
     return doubly_toeplitz
 
-def _gaussian_likelihood(cov_mat, mean_vec, batch):
+def gaussian_likelihood(cov_mat, mean_vec, batch):
     """
     Evaluate the log likelihood of a multivariate gaussian
     for a batch of NxWXH samples.
@@ -405,7 +405,7 @@ def _nll_per_pixel(eigvals, eig_vecs, mean_vec, data, num_pixels):
     Negative log likelihood of a multivariate gaussian per pixel
     """
     cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-    ll = _gaussian_likelihood(cov_mat, mean_vec, data)
+    ll = gaussian_likelihood(cov_mat, mean_vec, data)
     nll = -np.mean(ll) # average over batch
     return nll / num_pixels
 
@@ -423,7 +423,7 @@ def try_to_make_doubly_toeplitz_and_positive_definite(eigvals, eig_vecs, eigenva
     This won't neccesarily return a doubly toeplitz matrix, but it will be positive definite.
     """
     cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-    dt_cov_mat = _average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size)
+    dt_cov_mat = average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size)
     eigvals, eig_vecs = np.linalg.eigh(dt_cov_mat)
     eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
     return eigvals, eig_vecs
@@ -463,7 +463,7 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
 
 class StationaryGaussianProcess(ProbabilisticImageModel):
 
-    def __init__(self, images, eigenvalue_floor=1e-3):
+    def __init__(self, images, eigenvalue_floor=1e-3, verbose=False):
         """
         Create a StationaryGaussianProcess model and initialize it to the plugin estimate of the stationary covariance matrix
         """
@@ -473,7 +473,7 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         self.initial_params = self._flax_model.init(jax.random.PRNGKey(0)) # Note: this RNG doesnt actually matter because there's no random initialization
 
         # initialize parameters
-        initial_cov_mat = plugin_estimate_stationary_cov_mat(images, eigenvalue_floor=eigenvalue_floor, suppress_warning=True)
+        initial_cov_mat = plugin_estimate_stationary_cov_mat(images, eigenvalue_floor=eigenvalue_floor, suppress_warning=True, verbose=verbose)
         mean_vec = np.ones(self.image_shape[0]**2) * np.mean(images)        
         
         eig_vals, eig_vecs = np.linalg.eigh(initial_cov_mat)
@@ -495,7 +495,6 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
             optax.clip(gradient_clip), 
             optax.sgd(learning_rate, momentum=momentum, nesterov=False)
         )
-
 
         @jax.jit
         def _train_step(state, imgs):
@@ -533,15 +532,15 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
     def compute_negative_log_likelihood(self, images, verbose=True):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
-        lls = compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
+        lls = _compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
         return -lls.mean()
     
         
-    def generate_samples(self, num_samples, sample_size=None, ensure_nonnegative=True, seed=None, verbose=True):
+    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
         samples = generate_stationary_gaussian_process_samples( 
-                    mean_vec, cov_mat, num_samples, sample_size, ensure_nonnegative=ensure_nonnegative, seed=seed, verbose=verbose)
+                    mean_vec, cov_mat, num_samples, sample_shape, ensure_nonnegative=ensure_nonnegative, seed=seed, verbose=verbose)
         return samples
 
     def get_cov_mat(self):
