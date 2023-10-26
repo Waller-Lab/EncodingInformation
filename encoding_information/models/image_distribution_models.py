@@ -65,7 +65,7 @@ class ProbabilisticImageModel(ABC):
         pass
     
     @abstractmethod
-    def generate_samples(self, num_samples, sample_size=None, verbose=True):
+    def generate_samples(self, num_samples, sample_shape=None, verbose=True):
         """
         Generate samples from the model
 
@@ -73,8 +73,8 @@ class ProbabilisticImageModel(ABC):
         ----------
         num_samples : int
             Number of samples to generate
-        sample_size : tuple, optional
-            Size of each sample. If None, the size of the training images used
+        sample_shape : tuple, optional
+            shape of each sample. If None, the shape of the training images used
         verbose : bool, optional
             Whether to print progress
         """
@@ -124,7 +124,7 @@ def _make_dataset_generators(images, batch_size, num_val_samples, add_uniform_no
     return train_ds.as_numpy_iterator(), lambda : val_ds.as_numpy_iterator()
 
 
-def evaluate_nll(data_iterator, state, add_uniform_noise=True, seed=0, batch_size=32, verbose=True):
+def evaluate_nll(data_iterator, state, add_uniform_noise=True, seed=0, batch_size=16, verbose=True):
     """
     Compute negative log likelihood over many batches
 
@@ -133,8 +133,7 @@ def evaluate_nll(data_iterator, state, add_uniform_noise=True, seed=0, batch_siz
     key = jax.random.PRNGKey(seed)
     total_nll, count = 0, 0
     if isinstance(data_iterator, np.ndarray) or isinstance(data_iterator, onp.ndarray):
-        data_iterator = np.array_split(data_iterator, batch_size)  # split into 32 batches
-    if verbose:
+        data_iterator = np.array_split(data_iterator, len(data_iterator) // batch_size + 1)  # split into batches of batch_size or less
         data_iterator = tqdm(data_iterator, desc='Computing loss')
     for batch in data_iterator:
         if add_uniform_noise:

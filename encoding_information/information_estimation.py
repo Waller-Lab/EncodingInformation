@@ -252,9 +252,13 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     if estimate_conditional_from_model_samples:
         stationary_gp = StationaryGaussianProcess(clean_images_if_available, eigenvalue_floor=eigenvalue_floor)
         if use_iterative_optimization:
-            val_loss_history = stationary_gp.fit(eigenvalue_floor=eigenvalue_floor, verbose=verbose, 
-                                                         patience=patience, num_val_samples=num_val_samples, batch_size=batch_size,
-                                                         gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_epochs=max_epochs)        
+            hyperparams = {}
+            # collect all hyperparams that are not None
+            for k, v in dict(patience=patience, num_val_samples=num_val_samples, batch_size=batch_size,
+                           gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_epochs=max_epochs).items():
+                if v is not None:
+                    hyperparams[k] = v
+            val_loss_history = stationary_gp.fit(clean_images_if_available, eigenvalue_floor=eigenvalue_floor, verbose=verbose, **hyperparams)  
         clean_images_if_available = stationary_gp.generate_samples(num_samples=clean_images_if_available.shape[0])
         
     h_y_given_x = estimate_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma,)

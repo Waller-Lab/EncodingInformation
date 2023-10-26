@@ -388,7 +388,7 @@ def average_diagonals_to_make_doubly_toeplitz(cov_mat, patch_size, verbose=False
     doubly_toeplitz = np.vstack(new_blocks)
     return doubly_toeplitz
 
-def _gaussian_likelihood(cov_mat, mean_vec, batch):
+def gaussian_likelihood(cov_mat, mean_vec, batch):
     """
     Evaluate the log likelihood of a multivariate gaussian
     for a batch of NxWXH samples.
@@ -405,7 +405,7 @@ def _nll_per_pixel(eigvals, eig_vecs, mean_vec, data, num_pixels):
     Negative log likelihood of a multivariate gaussian per pixel
     """
     cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-    ll = _gaussian_likelihood(cov_mat, mean_vec, data)
+    ll = gaussian_likelihood(cov_mat, mean_vec, data)
     nll = -np.mean(ll) # average over batch
     return nll / num_pixels
 
@@ -536,11 +536,11 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         return -lls.mean()
     
         
-    def generate_samples(self, num_samples, sample_size=None, ensure_nonnegative=True, seed=None, verbose=True):
+    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
         samples = generate_stationary_gaussian_process_samples( 
-                    mean_vec, cov_mat, num_samples, sample_size, ensure_nonnegative=ensure_nonnegative, seed=seed, verbose=verbose)
+                    mean_vec, cov_mat, num_samples, sample_shape, ensure_nonnegative=ensure_nonnegative, seed=seed, verbose=verbose)
         return samples
 
     def get_cov_mat(self):

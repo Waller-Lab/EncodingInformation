@@ -151,6 +151,7 @@ class _PixelCNNFlaxImpl(nn.Module):
     train_data_std : float = None
     train_data_min : float = None
     train_data_max : float = None
+    sigma_min : float = 1
 
     def setup(self):
         if None in [self.train_data_mean, self.train_data_std, self.train_data_min, self.train_data_max]:
@@ -246,7 +247,7 @@ class _PixelCNNFlaxImpl(nn.Module):
 
         sigma = nn.activation.softplus( self.sigma_dense(out) )  # must be positive
          # avoid having tiny components that overly concentrate mass, and don't need components larger than data standard deviation
-        sigma = np.clip(sigma, 1, self.train_data_std )
+        sigma = np.clip(sigma, self.sigma_min, self.train_data_std )
 
         mix_logit = self.mix_logit_dense(out)
 
@@ -268,7 +269,7 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            batch_size=64, num_val_samples=1000,  seed=0, verbose=True):
+            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, verbose=True):
         train_images = train_images.astype(np.float32)
 
         # add trailing channel dimension if necessary
@@ -280,7 +281,7 @@ class PixelCNN(ProbabilisticImageModel):
         if self._flax_model is None:
             self._flax_model = _PixelCNNFlaxImpl(num_hidden_channels=self.num_hidden_channels, num_mixture_components=self.num_mixture_components,
                                     train_data_mean=np.mean(train_images), train_data_std=np.std(train_images),
-                                    train_data_min=np.min(train_images), train_data_max=np.max(train_images))
+                                    train_data_min=np.min(train_images), train_data_max=np.max(train_images), sigma_min=sigma_min)
             initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3]) # pass in an intial batch
             
             self._optimizer = optax.adam(learning_rate)
@@ -313,7 +314,9 @@ class PixelCNN(ProbabilisticImageModel):
 
         return evaluate_nll(data, self._state, verbose=verbose)
 
-    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=123, verbose=True):
+    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
+        if seed is None:
+            seed = 123
         key = jax.random.PRNGKey(seed)
         if sample_shape is None:
             sample_shape = self.image_shape
