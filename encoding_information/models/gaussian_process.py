@@ -291,7 +291,7 @@ def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples,
 
 
     if verbose:
-        print('generating samples')
+        print('generating stationary gaussian process samples')
     samples = _generate_samples(num_samples, cov_mat, mean_vec, key, sample_size, vectorized_masks, variances, 
                                     mean_multipliers, prefer_iterative_sampling=prefer_iterative_sampling, verbose=verbose)
     if ensure_nonnegative:
@@ -522,7 +522,7 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
             self._state = self._state.replace(tx=self._optimizer)
 
 
-        best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=num_val_samples,
+        best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
                                                     steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, train_step=_train_step, 
                                                     verbose=verbose)
         self._state = self._state.replace(params=best_params)

@@ -276,7 +276,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                 if v is not None:
                     hyperparams[k] = v
             val_loss_history = noisy_image_model.fit(training_set, eigenvalue_floor=eigenvalue_floor, verbose=verbose, **hyperparams)        
-    elif entropy_model == 'pixelcnn':
+    elif entropy_model == 'pixelcnn' or entropy_model == 'pixel_cnn':
         arch_args = dict(num_hidden_channels=num_hidden_channels, num_mixture_components=num_mixture_components)
         arch_args = {k: v for k, v in arch_args.items() if v is not None}
         noisy_image_model = PixelCNN(**arch_args)
