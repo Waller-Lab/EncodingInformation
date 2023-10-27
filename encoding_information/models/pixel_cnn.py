@@ -292,7 +292,7 @@ class PixelCNN(ProbabilisticImageModel):
 
             self._state = TrainState.create(apply_fn=apply_fn, params=initial_params, tx=self._optimizer)        
         
-        best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=num_val_samples,
+        best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
                                                     steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, verbose=verbose)
         self._state = self._state.replace(params=best_params)
         return val_loss_history
@@ -324,7 +324,7 @@ class PixelCNN(ProbabilisticImageModel):
             sample_shape = (sample_shape, sample_shape)
 
         sampled_images = onp.zeros((num_samples, *sample_shape))
-        for i in tqdm(np.arange(sample_shape[0]), desc='Generating samples') if verbose else np.arange(sample_shape[0]):
+        for i in tqdm(np.arange(sample_shape[0]), desc='Generating PixelCNN samples') if verbose else np.arange(sample_shape[0]):
             for j in np.arange(sample_shape[1]):
                 i_limits = max(0, i - self.image_shape[0]), min(sample_shape[0], i + 1)
                 j_limits = max(0, j - self.image_shape[1]), min(sample_shape[1], j + 1)
@@ -334,6 +334,8 @@ class PixelCNN(ProbabilisticImageModel):
                 j_in_cropped_image = j - j_limits[0]
 
                 key, key2 = jax.random.split(key)
+                if verbose:
+                    print(i, j, i_in_cropped_image, j_in_cropped_image, conditioning_images.shape)
                 mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images)
                 # only sampling one pixel at a time
                 mu = mu[:, i_in_cropped_image, j_in_cropped_image, :]
