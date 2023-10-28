@@ -140,8 +140,9 @@ def evaluate_nll(data_iterator, state, add_uniform_noise=True, seed=0, batch_siz
             batch = batch + jax.random.uniform(key=key, minval=0, maxval=1, shape=batch.shape)
             key = jax.random.split(key)[0]
         batch_nll_per_pixel = _eval_step(state, batch)
-        total_nll += batch_nll_per_pixel * batch[0].shape[0]
-        count += batch[0].shape[0]
+        total_nll += batch.shape[0] * batch_nll_per_pixel
+        count += batch.shape[0]
+    # compute average nll per pixel
     nll = (total_nll / count).item()
     return nll
 
