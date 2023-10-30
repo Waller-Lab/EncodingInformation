@@ -324,23 +324,24 @@ class PixelCNN(ProbabilisticImageModel):
             sample_shape = (sample_shape, sample_shape)
 
         sampled_images = onp.zeros((num_samples, *sample_shape))
-        for i in tqdm(np.arange(sample_shape[0]), desc='Generating PixelCNN samples') if verbose else np.arange(sample_shape[0]):
-            for j in np.arange(sample_shape[1]):
-                i_limits = max(0, i - self.image_shape[0]), min(sample_shape[0], i + 1)
-                j_limits = max(0, j - self.image_shape[1]), min(sample_shape[1], j + 1)
+        for i in tqdm(onp.arange(sample_shape[0]), desc='Generating PixelCNN samples') if verbose else np.arange(sample_shape[0]):
+            for j in onp.arange(sample_shape[1]):
+                i_limits = max(0, i - self.image_shape[0] + 1), max(self.image_shape[0], i+1)
+                j_limits = max(0, j - self.image_shape[1] + 1), max(self.image_shape[1], j+1)
 
                 conditioning_images = sampled_images[:, i_limits[0]:i_limits[1], j_limits[0]:j_limits[1]]
                 i_in_cropped_image = i - i_limits[0]
                 j_in_cropped_image = j - j_limits[0]
 
+                assert conditioning_images.shape[1:] == self.image_shape
+
                 key, key2 = jax.random.split(key)
-                if verbose:
-                    print(i, j, i_in_cropped_image, j_in_cropped_image, conditioning_images.shape)
                 mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images)
                 # only sampling one pixel at a time
-                mu = mu[:, i_in_cropped_image, j_in_cropped_image, :]
-                sigma = sigma[:, i_in_cropped_image, j_in_cropped_image, :]
-                mix_logit = mix_logit[:, i_in_cropped_image, j_in_cropped_image, :]
+                # make onp arrays for range checking
+                mu = onp.array(mu)[:, i_in_cropped_image, j_in_cropped_image, :]
+                sigma = onp.array(sigma)[:, i_in_cropped_image, j_in_cropped_image, :]
+                mix_logit = onp.array(mix_logit)[:, i_in_cropped_image, j_in_cropped_image, :]
 
                 # mix_probs = np.exp(mix_logit - logsumexp(mix_logit, axis=-1, keepdims=True))
                 component_indices = jax.random.categorical(key, mix_logit, axis=-1)

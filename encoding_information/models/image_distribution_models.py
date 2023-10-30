@@ -4,6 +4,7 @@ import jax.numpy as np
 import jax
 import numpy as onp
 from tqdm import tqdm
+import warnings
 
 
 class ProbabilisticImageModel(ABC):
@@ -140,8 +141,9 @@ def evaluate_nll(data_iterator, state, add_uniform_noise=True, seed=0, batch_siz
             batch = batch + jax.random.uniform(key=key, minval=0, maxval=1, shape=batch.shape)
             key = jax.random.split(key)[0]
         batch_nll_per_pixel = _eval_step(state, batch)
-        total_nll += batch_nll_per_pixel * batch[0].shape[0]
-        count += batch[0].shape[0]
+        total_nll += batch.shape[0] * batch_nll_per_pixel
+        count += batch.shape[0]
+    # compute average nll per pixel
     nll = (total_nll / count).item()
     return nll
 
@@ -193,6 +195,9 @@ def train_model(train_images, state, batch_size, num_val_samples,
         
         # uniform noise already added in the dataset generators
         eval_nll = evaluate_nll(val_loader_maker_fn(), state, add_uniform_noise=False, verbose=verbose) 
+        if np.isnan(eval_nll):
+            warnings.warn('NaN encountered in validation loss. Stopping early.')
+            break
         val_loss_history.append(eval_nll)
         if verbose:
             print(f'Epoch {epoch_idx}: validation NLL: {eval_nll:.2f}')
