@@ -105,8 +105,6 @@ class HorizontalStackConvolution(nn.Module):
         return self.conv(x)
 
 
-inp_img = np.zeros((1, 11, 11, 1), dtype=np.float32)
-
 class GatedMaskedConv(nn.Module):
     dilation : int = 1
 
@@ -269,7 +267,7 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, verbose=True):
+            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, do_lr_decay=False, verbose=True):
         train_images = train_images.astype(np.float32)
 
         # add trailing channel dimension if necessary
@@ -282,9 +280,16 @@ class PixelCNN(ProbabilisticImageModel):
             self._flax_model = _PixelCNNFlaxImpl(num_hidden_channels=self.num_hidden_channels, num_mixture_components=self.num_mixture_components,
                                     train_data_mean=np.mean(train_images), train_data_std=np.std(train_images),
                                     train_data_min=np.min(train_images), train_data_max=np.max(train_images), sigma_min=sigma_min)
-            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3]) # pass in an intial batch
+            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3]) # pass in an initial batch
             
-            self._optimizer = optax.adam(learning_rate)
+            if do_lr_decay:
+                lr_schedule = optax.exponential_decay(init_value=learning_rate,
+                                                    transition_steps=steps_per_epoch,
+                                                    decay_rate=0.99)
+
+                self._optimizer = optax.adam(lr_schedule)
+            else:
+                self._optimizer = optax.adam(learning_rate)
 
             def apply_fn(params, x):
                 output = self._flax_model.apply(params, x)
