@@ -15,11 +15,6 @@ import jax
 def load_data_from_config(config, data_dir):
     """
     Using the data fields in the config file, open important functions and metadata for accessing BSCCM
-        markers: list of marker names
-        image_target generator:
-        dataset_size:
-        display_range: dict with min and max to display for marker
-        image_from_index_function: for reading the image that will be produced at the kth position in the image_target_generator
     """
     bsccm = BSCCM(data_dir + '/{}/'.format(config['data']['dataset_name']), cache_index=True)
     markers, image_target_generator, dataset_size, display_range, indices = get_bsccm_image_marker_generator(bsccm, **config["data"] )
@@ -57,7 +52,7 @@ def get_targets_and_display_range(bsccm, use_two_spectrum_unmixing=False, batch=
     if use_two_spectrum_unmixing:
         #remove autofluor from targets
         markers = [s.split('_')[0] for s in two_spectra_model_names if 'autofluor' not in s]
-        non_autofluor_mask = [np.any([m in name for m in markers]) for name in two_spectra_model_names]
+        non_autofluor_mask = [onp.any([m in name for m in markers]) for name in two_spectra_model_names]
         targets = two_spectra_data[:, non_autofluor_mask]
     else:
         markers = [s.split('_')[0] for s in four_spectra_model_names if 'autofluor' not in s]
@@ -67,35 +62,35 @@ def get_targets_and_display_range(bsccm, use_two_spectrum_unmixing=False, batch=
             raise Exception('what is this')
             #using single stain data. 
             #set to nan all channels corresponding to antibody it wasn't stained with
-            marker_indices = [np.flatnonzero([marker in name for name in markers])[0]
+            marker_indices = [onp.flatnonzero([marker in name for name in markers])[0]
                           for marker in bsccm.index_dataframe.loc[indices, 'antibodies']]
-            nan_mask = np.ones_like(targets)
-            nan_mask *= np.nan
-            nan_mask[np.arange(targets.shape[0]), np.array(marker_indices)] = 1
+            nan_mask = onp.ones_like(targets)
+            nan_mask *= onp.nan
+            nan_mask[onp.arange(targets.shape[0]), onp.array(marker_indices)] = 1
             targets *= nan_mask
         
     # Reorder the columns to be consistent with supplied order of markers
     columns = []
     for marker in markers:
-        col_index = np.flatnonzero([marker in name for name in markers])[0]
+        col_index = onp.flatnonzero([marker in name for name in markers])[0]
         columns.append(targets[:, col_index])
-    targets = np.stack(columns, axis=1)  
+    targets = onp.stack(columns, axis=1)  
     
     columns = []
     display_range = {}
     
-    targets = np.log(targets)
+    targets = onp.log(targets)
     for marker_index in range(targets.shape[1]):
-        range_min = np.nanmin(targets[:, marker_index])
-        range_max = np.nanmax(targets[:, marker_index])
+        range_min = onp.nanmin(targets[:, marker_index])
+        range_max = onp.nanmax(targets[:, marker_index])
         pad = 0.05 * (range_max - range_min)
         display_range[markers[marker_index]] = (range_min - pad, range_max + pad)
 
     # Shuffle
     if shuffle:
-        shuffle_indices = np.arange(indices.size)
-        np.random.seed(shuffle_seed)
-        np.random.shuffle(shuffle_indices)
+        shuffle_indices = onp.arange(indices.size)
+        onp.random.seed(shuffle_seed)
+        onp.random.shuffle(shuffle_indices)
         targets = targets[shuffle_indices]
         indices = indices[shuffle_indices]
     
@@ -109,6 +104,8 @@ def get_bsccm_image_marker_generator(bsccm, channels,
                                      use_two_spectrum_unmixing=False, batch=0, shuffle=True, 
                                      shuffle_seed=123456,
                                      single_marker=None,
+                                     synthetic_noise=None,
+                                     median_filter=False,
                                      **kwargs):
     """
     Prepare a data generator that yields (image, markers) for BSCCM data
@@ -117,7 +114,28 @@ def get_bsccm_image_marker_generator(bsccm, channels,
     markers, targets, indices, display_range, dataset_size = get_targets_and_display_range(bsccm, 
                             use_two_spectrum_unmixing, batch, shuffle=shuffle, shuffle_seed=shuffle_seed)
         
-        
+    if synthetic_noise is not None:
+        photons_per_pixel = synthetic_noise['photons_per_pixel']
+        edge_crop = synthetic_noise['edge_crop']
+        median_filter = synthetic_noise['median_filter']
+        # print('Synthetic noise: ', synthetic_noise)
+
+        # read 1000 images to estimate photon count
+        images = load_bsccm_images(bsccm, channels[0], num_images=1000, edge_crop=edge_crop, convert_units_to_photons=True)
+        mean_photons_per_pixel = np.mean(images)
+        rescale_fraction = photons_per_pixel / mean_photons_per_pixel
+        if rescale_fraction > 1:
+            raise Exception('Rescale fraction must be less than 1')
+
+    def add_noise_to_image(image, index):
+        if len(channels) != 1:
+            raise Exception('Only single channel images supported for now')
+
+        if synthetic_noise is not None:
+            return add_shot_noise_to_experimenal_data(image, rescale_fraction, seed=index)
+        else:
+            return image
+
     def image_target_generator():
         """
         Generator functions that loads and supplies an image + targets
@@ -128,12 +146,14 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         for index, target in zip(indices, targets):
             if single_marker is None:
                 multi_channel_img = get_bsccm_image(bsccm, channels, index)
+                add_noise_to_image(multi_channel_img, index)
                 yield multi_channel_img, target.astype(np.float32)
             else:
                 # for speed saving ignore non requested markers, but return None to keep
                 # everything in same order for reproducible train/val/test split
                 if markers[np.argmax(np.logical_not(np.isnan(target.ravel())).astype(int))] == single_marker:
                     multi_channel_img = get_bsccm_image(bsccm, channels, index)
+                    add_noise_to_image(multi_channel_img, index)
                     yield multi_channel_img, target.astype(np.float32)
                 else:
                     yield blank_image, target.astype(np.float32)
@@ -277,13 +297,14 @@ def read_images_and_sample_intensities(bsccm, channel, x2_offset, N_images, phot
     x2 = np.array(x2).ravel()
     return x1, x2
 
-def add_shot_noise_to_experimenal_data(image_stack, photon_fraction):
+def add_shot_noise_to_experimenal_data(image_stack, photon_fraction, seed=None):
     """
     Add synthetic shot noise to an image stack by adding the additional noise 
     that would be expected for the desired photon count
     This also reduces the total number of (average) photons in the image by the photon_fraction
     """
-    seed = onp.random.randint(0, 100000)
+    if seed is not None:
+        seed = onp.random.randint(0, 100000)
     key = jax.random.PRNGKey(seed)
     if photon_fraction > 1 or photon_fraction <= 0:
         raise Exception('photon_fraction must be less than 1 and greater than 0')

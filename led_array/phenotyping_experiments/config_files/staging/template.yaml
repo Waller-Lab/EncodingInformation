@@ -1,0 +1,41 @@
+config_file_version: '2.4'
+data:
+  data_dir: /home/hpinkard_waller/data/
+  batch: 0
+  channels:
+  - DPC_Right
+  synthetic_noise:
+    photons_per_pixel: 300
+    edge_crop: 24
+    median_filter: false
+  dataset_name: BSCCM
+  shuffle_seed: 123456
+  use_two_spectrum_unmixing: true
+saving_dir: /home/hpinkard_waller/models/
+train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
+metadata:
+  experiment_name: equalized_photons_single_contrast
+  replicate: 0
+hyperparameters:
+  all_marker_training: true
+  arch: DN121
+  batch_size: 24
+  change_input_channels: true
+  density_output: true
+  learning_rate: 5.0e-05
+  max_epochs: 50000
+  mixture_type: gaussian
+  num_examples_for_normalization: 500
+  num_mixture_components: 19
+  optimizer: ADAM
+  overshoot_epochs: 20
+  seed: 123456
+  single_marker_early_stopping: false
+  single_marker_training: false
+  steps_per_epoch: 4000
+  test_fraction: 0.05
+  validation_fraction: 0.05
+options:
+  hog_memory: false
+  resume_training: false
+  immortal: false

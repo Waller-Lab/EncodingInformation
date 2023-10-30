@@ -105,8 +105,6 @@ class HorizontalStackConvolution(nn.Module):
         return self.conv(x)
 
 
-inp_img = np.zeros((1, 11, 11, 1), dtype=np.float32)
-
 class GatedMaskedConv(nn.Module):
     dilation : int = 1
 
