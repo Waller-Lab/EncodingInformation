@@ -37,9 +37,14 @@ def plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False,
         eigvals, eig_vecs = np.linalg.eigh(stationary_cov_mat)
         eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
         stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-        if np.linalg.eigvalsh(stationary_cov_mat).min() < 0:
-            raise ValueError('Covariance matrix is not positive definite even after applying eigenvalue floor. This indicates numerical error.' +
+        while np.linalg.eigvalsh(stationary_cov_mat).min() < 0:
+            warnings.warn('Covariance matrix is not positive definite even after applying eigenvalue floor. This indicates numerical error.' +
                              'Try raising the eigenvalue floor than the current value of {}'.format(eigenvalue_floor))
+            eigenvalue_floor *= 10
+            print('trying eigenvalue floor of {}'.format(eigenvalue_floor))
+            eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+            stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+
         doubly_toeplitz = average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
         dt_eigs = np.linalg.eigvalsh(doubly_toeplitz)
         if np.any(dt_eigs < 0) and not suppress_warning:
@@ -399,12 +404,10 @@ def gaussian_likelihood(cov_mat, mean_vec, batch):
         log_likelihoods.append(ll)
     return np.array(log_likelihoods)
 
-
-def _nll_per_pixel(eigvals, eig_vecs, mean_vec, data, num_pixels):
+def _nll_per_pixel_from_cov_mat(cov_mat, mean_vec, data, num_pixels):
     """
     Negative log likelihood of a multivariate gaussian per pixel
     """
-    cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
     ll = gaussian_likelihood(cov_mat, mean_vec, data)
     nll = -np.mean(ll) # average over batch
     return nll / num_pixels
@@ -454,8 +457,7 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
         """ 
         Compute average negative log likelihood per pixel averaged over batch
         """
-        eig_vals, eig_vecs = np.linalg.eigh(cov_mat)
-        return _nll_per_pixel(eig_vals, eig_vecs, mean_vec, images, np.prod(np.array(images.shape[1:])))
+        return _nll_per_pixel_from_cov_mat(cov_mat, mean_vec, images, np.prod(np.array(images.shape[1:])))
 
 
 ##################################################################################################
@@ -498,8 +500,10 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 
         @jax.jit
         def _train_step(state, imgs):
-            loss_fn = lambda params: state.apply_fn(params, imgs)
-            loss, grads = jax.value_and_grad(loss_fn)(state.params)
+            loss_fn = lambda params, imgs: state.apply_fn(params, imgs)
+            loss, grads = jax.value_and_grad(loss_fn, 0)(state.params, imgs)
+            jax.grad(loss_fn, 0)(state.params, imgs)
+
             # mean vec and eig vecs are not updated via gradient descent, but instead by proximal step
             grads['params']['eig_vecs'] = np.zeros_like(grads['params']['eig_vecs'])  
             grads['params']['mean_vec'] = np.zeros_like(grads['params']['mean_vec'])  
@@ -547,6 +551,10 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
         return cov_mat
+
+    def get_mean_vec(self):
+        eig_vals, eig_vecs, mean_vec = self._get_current_params()
+        return mean_vec
 
     def _get_current_params(self):
         """

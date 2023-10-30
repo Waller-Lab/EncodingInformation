@@ -26,14 +26,16 @@ def plot_optimization_loss_history(val_loss_history):
     for a in axs:
         clear_spines(a)
 
-def plot_eigenvalues(**kwargs):
+def plot_eigenvalues(*args, **kwargs):
     """
     Plot the eigenvalues of a set of covariance matrices
 
     pass named arguments where the name is the label and the value is the covariance matrix
     """
     fig, axs = plt.subplots(1, 1, figsize=(4, 4))
-
+    
+    for i, arg in enumerate(args):
+        kwargs[f'{i}'] = arg
     for name in kwargs.keys():
         cov_mat = kwargs[name]
         eig_vals = np.linalg.eigvalsh(cov_mat)
