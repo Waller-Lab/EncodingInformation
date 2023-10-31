@@ -27,4 +27,6 @@ analysis/autofocus/exported_model/*
 experiments/config_files/training
 experiments/config_files/pending
 
+imager_experiments/archive_code/*
+
 *.npy

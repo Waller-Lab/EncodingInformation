@@ -16,9 +16,10 @@ def tile_9_images(data_set):
 
 def generate_random_tiled_data(x_set, y_set, seed_value=-1):
     # takes a set of images and labels and returns a set of tiled images and corresponding labels
-    # when seed value is -1, the seed is random, otherwise it is the seed value
-    # if seed value changes each time, data comes out differently. if seed value is same, data comes out the same.
-    random_data = np.zeros((x_set.shape[0], 84, 84))
+    # the size of the output should be 3x the size of the input
+    vert_shape = x_set.shape[1] * 3
+    horiz_shape = x_set.shape[2] * 3
+    random_data = np.zeros((x_set.shape[0], vert_shape, horiz_shape)) # for mnist this was 84 x 84
     random_labels = np.zeros((y_set.shape[0], 1))
     if seed_value==-1:
         np.random.seed()
@@ -32,8 +33,11 @@ def generate_random_tiled_data(x_set, y_set, seed_value=-1):
     return random_data, random_labels
 
 def convolved_dataset(psf, random_tiled_data):
-    # takes a psf and a set of tiled images and returns a set of convolved images
-    psf_dataset = np.zeros((random_tiled_data.shape[0], 57, 57))
+    # takes a psf and a set of tiled images and returns a set of convolved images, convolved image size is 2n + 1? same size as the random data when it's cropped
+    # tile size is two images worth plus one extra index value
+    vert_shape = psf.shape[0] * 2 + 1
+    horiz_shape = psf.shape[1] * 2 + 1
+    psf_dataset = np.zeros((random_tiled_data.shape[0], vert_shape, horiz_shape)) # 57 x 57 for the case of mnist 28x28 images, 65 x 65 for the cifar 32 x 32 images
     for i in tqdm(range(random_tiled_data.shape[0])):
         psf_dataset[i] = scipy.signal.fftconvolve(psf, random_tiled_data[i], mode='valid')
     return psf_dataset
@@ -86,6 +90,8 @@ def tf_cast(data):
 def tf_labels(labels):
     # loads labels to a tensorflow array of type int64
     return tf.cast(labels, tf.int64)
+
+
 
 def run_model_simple(train_data, train_labels, test_data, test_labels, val_data, val_labels, seed_value=-1):
     if seed_value == -1:
@@ -257,7 +263,7 @@ def test_system(noise_level, psf_name, model_name, seed_values, data, labels, tr
                     
 
 def load_diffuser_psf():
-    diffuser_psf = skimage.io.imread('psfs/diffuser_psf.png')
+    diffuser_psf = skimage.io.imread('/home/lkabuli_waller/workspace/EncodingInformation/imager_experiments/psfs/diffuser_psf.png')
     diffuser_psf = diffuser_psf[:,:,1]
     diffuser_resize = diffuser_psf[200:500, 250:550]
     diffuser_resize = resize(diffuser_resize, (100, 100), anti_aliasing=True)  #resize(diffuser_psf, (28, 28))
@@ -266,7 +272,7 @@ def load_diffuser_psf():
     return diffuser_region
 
 def load_phlat_psf():
-    phlat_psf = skimage.io.imread('psfs/phlat_psf.png')
+    phlat_psf = skimage.io.imread('/home/lkabuli_waller/workspace/EncodingInformation/imager_experiments/psfs/phlat_psf.png')
     phlat_psf = phlat_psf[900:2900, 1500:3500, 1]
     phlat_psf = resize(phlat_psf, (200, 200), anti_aliasing=True)
     phlat_region = phlat_psf[10:38, 20:48]
@@ -285,7 +291,7 @@ def load_4_psf():
 
 # 6/9/23 added rml option
 def load_rml_psf():
-    rml_psf = skimage.io.imread('psfs/psf_8holes.png')
+    rml_psf = skimage.io.imread('/home/lkabuli_waller/workspace/EncodingInformation/imager_experiments/psfs/psf_8holes.png')
     rml_psf = rml_psf[1000:3000, 1500:3500]
     rml_psf_resize = resize(rml_psf, (100, 100), anti_aliasing=True)
     rml_psf_region = rml_psf_resize[40:100, :60]
@@ -294,7 +300,7 @@ def load_rml_psf():
     return rml_psf_region
 
 def load_rml_new_psf():
-    rml_psf = skimage.io.imread('psfs/psf_8holes.png')
+    rml_psf = skimage.io.imread('/home/lkabuli_waller/workspace/EncodingInformation/imager_experiments/psfs/psf_8holes.png')
     rml_psf = rml_psf[1000:3000, 1500:3500]
     rml_psf_small = resize(rml_psf, (85, 85), anti_aliasing=True)
     rml_psf_region = rml_psf_small[52:80, 10:38]
@@ -315,3 +321,34 @@ def load_two_lens():
     two_lens = scipy.ndimage.gaussian_filter(two_lens, sigma=0.8)
     two_lens /= np.sum(two_lens)
     return two_lens
+
+
+def load_single_lens_32():
+    one_lens = np.zeros((32, 32))
+    one_lens[16, 16] = 1
+    one_lens = scipy.ndimage.gaussian_filter(one_lens, sigma=0.8)
+    one_lens /= np.sum(one_lens)
+    return one_lens
+
+def load_four_lens_32():
+    psf = np.zeros((32, 32))
+    psf[22, 22] = 1
+    psf[15, 10] = 1
+    psf[5, 12] = 1
+    psf[28, 8] = 1
+    psf = scipy.ndimage.gaussian_filter(psf, sigma=1)
+    psf /= np.sum(psf)
+    return psf
+
+def load_diffuser_32():
+    diffuser_psf = skimage.io.imread('/home/lkabuli_waller/workspace/EncodingInformation/imager_experiments/psfs/diffuser_psf.png')
+    diffuser_psf = diffuser_psf[:,:,1]
+    diffuser_resize = diffuser_psf[200:500, 250:550]
+    diffuser_resize = resize(diffuser_resize, (100, 100), anti_aliasing=True)  #resize(diffuser_psf, (28, 28))
+    diffuser_region = diffuser_resize[:32, :32]
+    diffuser_region /=  np.sum(diffuser_region)
+    return diffuser_region
+
+
+
+### 10/15/2023: Make new versions of the model functions that train with Datasets - first attempt failed

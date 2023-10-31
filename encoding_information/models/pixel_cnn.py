@@ -267,7 +267,7 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, do_lr_decay=False, verbose=True):
+            sigma_min=1, batch_size=64, num_val_samples=1000, seed=0, do_lr_decay=False, verbose=True, lr_decay_value=0.95):
         train_images = train_images.astype(np.float32)
 
         # add trailing channel dimension if necessary
@@ -285,7 +285,7 @@ class PixelCNN(ProbabilisticImageModel):
             if do_lr_decay:
                 lr_schedule = optax.exponential_decay(init_value=learning_rate,
                                                     transition_steps=steps_per_epoch,
-                                                    decay_rate=0.99)
+                                                    decay_rate=lr_decay_value)
 
                 self._optimizer = optax.adam(lr_schedule)
             else:
