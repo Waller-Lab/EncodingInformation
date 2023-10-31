@@ -184,13 +184,15 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
     for i in iterator:
         key, subkey = jax.random.split(key)
         if not isinstance(data, dict):
-            data_sample = jax.random.choice(subkey, data, shape=(N,), replace=True)
+            random_indices = jax.random.choice(subkey, np.arange(data.shape[0]), shape=(N,), replace=True)
+            data_sample = data[random_indices, ...]
             results.append(estimation_fn(data_sample))
         else:
             data_samples = {}
             for k, v in data.items():
                 key, subkey = jax.random.split(key)
-                data_samples[k] = jax.random.choice(subkey, v, shape=(N,), replace=True)
+                random_indices = jax.random.choice(subkey, np.arange(data.shape[0]), shape=(N,), replace=True)
+                data_sample = data[random_indices, ...]
             results.append(estimation_fn(**data_samples))
         
     results = np.array(results)
