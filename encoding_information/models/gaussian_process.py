@@ -404,7 +404,7 @@ def gaussian_likelihood(cov_mat, mean_vec, batch):
         log_likelihoods.append(ll)
     return np.array(log_likelihoods)
 
-def _nll_per_pixel_from_cov_mat(cov_mat, mean_vec, data, num_pixels):
+def nll_per_pixel_from_cov_mat(cov_mat, mean_vec, data, num_pixels):
     """
     Negative log likelihood of a multivariate gaussian per pixel
     """
@@ -457,7 +457,7 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
         """ 
         Compute average negative log likelihood per pixel averaged over batch
         """
-        return _nll_per_pixel_from_cov_mat(cov_mat, mean_vec, images, np.prod(np.array(images.shape[1:])))
+        return nll_per_pixel_from_cov_mat(cov_mat, mean_vec, images, np.prod(np.array(images.shape[1:])))
 
 
 ##################################################################################################
