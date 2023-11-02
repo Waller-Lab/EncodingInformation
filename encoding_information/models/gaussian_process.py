@@ -556,6 +556,17 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         return mean_vec
 
+    def compute_analytic_entropy(self):
+        """
+        Compute the differential entropy per pixel of the Gaussian process
+        """
+        eig_vals, eig_vecs, mean_vec = self._get_current_params()
+        D = eig_vals.size
+        sum_log_evs = np.sum(np.log(eig_vals))
+        gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
+        return gaussian_entropy
+
+
     def _get_current_params(self):
         """
         Return the initial or optimized params

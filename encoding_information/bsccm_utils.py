@@ -121,7 +121,9 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         # print('Synthetic noise: ', synthetic_noise)
 
         # read 1000 images to estimate photon count
-        images = load_bsccm_images(bsccm, channels[0], num_images=1000, edge_crop=edge_crop, convert_units_to_photons=True)
+        indices = bsccm.get_indices(batch=batch) # make sure to estimate photon count from images that will actually be used
+        indices = np.random.choice(indices, size=1000, replace=False)
+        images = load_bsccm_images(bsccm, channels[0], indices=indices, edge_crop=edge_crop, convert_units_to_photons=True, median_filter=median_filter)
         mean_photons_per_pixel = np.mean(images)
         rescale_fraction = photons_per_pixel / mean_photons_per_pixel
         if rescale_fraction > 1:
@@ -132,7 +134,11 @@ def get_bsccm_image_marker_generator(bsccm, channels,
             raise Exception('Only single channel images supported for now')
 
         if synthetic_noise is not None:
-            return add_shot_noise_to_experimenal_data(image, rescale_fraction, seed=index)
+            if median_filter:
+                # this is assumed to be noiseless, so add full noise here
+                return add_noise(image * rescale_fraction, seed=index)
+            else:
+                return add_shot_noise_to_experimenal_data(image, rescale_fraction, seed=index)
         else:
             return image
 
@@ -210,7 +216,8 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
     median_filter: if True, apply a median filter to the image to simulate noiseless data
     """
     if indices is None:
-        indices = dataset.get_indices()[:num_images]
+        # default to batch 1 because the LED119 data is brighter for some reason
+        indices = dataset.get_indices(batch=1)[:num_images]
     if seed is not None:
         if indices is not None:
             raise Exception('Cannot set seed if indices is not None')
@@ -303,7 +310,7 @@ def add_shot_noise_to_experimenal_data(image_stack, photon_fraction, seed=None):
     that would be expected for the desired photon count
     This also reduces the total number of (average) photons in the image by the photon_fraction
     """
-    if seed is not None:
+    if seed is None:
         seed = onp.random.randint(0, 100000)
     key = jax.random.PRNGKey(seed)
     if photon_fraction > 1 or photon_fraction <= 0:

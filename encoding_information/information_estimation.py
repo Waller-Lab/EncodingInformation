@@ -62,53 +62,6 @@ def nearest_neighbors_distance(X, k):
     return kth_nn_dist
 
 
-# TODO: figure out how this compares to the test set NLL bound method
-# def gaussian_entropy_estimate(X, stationary=True, optimize=False, eigenvalue_floor=1e-4,  return_cov_mat_and_mean=False,
-#                                patience=250, num_validation=100, batch_size=12,
-#                            gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1500,
-#                               verbose=False):
-#     """
-#     Estimate the entropy in "nats" (differential entropy doesn't really have units) per pixel
-#       of samples from a distribution of images by approximating 
-#     the distribution as a Gaussian.  i.e. Taking its covariance matrix and 
-#     computing the entropy of the Gaussian distribution with that same covariance matrix.
-
-#     X : ndarray, shape (n_samples, W, H) or (n_samples, num_features)
-#     stationary : bool, whether to assume the distribution is stationary
-#     iterative_estimator : bool, whether to optimize the estimate with iterative optimization
-#     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large
-#     return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
-#     """
-#     X = X.reshape(X.shape[0], -1)
-#     D = X.shape[1]
-#     # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
-#     if not stationary:
-#         try:
-#             cov_mat = estimate_cov_mat(X)
-#             if eigenvalue_floor is not None:
-#                 eigvals, eigvecs = np.linalg.eigh(cov_mat)
-#                 eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
-#                 cov_mat = eigvecs @ np.diag(eigvals) @ eigvecs.T
-#         except:
-#             raise Exception("Couldn't compute covariance matrix")
-            
-#         evs = np.linalg.eigvalsh(cov_mat)
-#         if np.any(evs < 0):
-#             warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
-#         sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))         
-#         mean_vec = np.mean(X, axis=0)               
-#     else:
-#         mean_vec, cov_mat = estimate_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose, optimize=optimize, 
-#                                                patience=patience, num_validation=num_validation, batch_size=batch_size, return_mean=True,
-#                                                gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters)       
-#         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
-#     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
-#     if return_cov_mat_and_mean:
-#         return gaussian_entropy, cov_mat, mean_vec
-#     else:
-#         return gaussian_entropy
-
-
 @partial(jit, static_argnums=(1,))
 def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
     """
@@ -203,7 +156,7 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
 def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model='gaussian', test_set_fraction=0.1,
                                   gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
                                  patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params
-                                 use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, # gaussian params
+                                 use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, analytic_marginal_entropy=False,# gaussian params
                                  steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
@@ -233,6 +186,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     eigenvalue_floor : float, (if entropy_model='gaussian') make the eigenvalues of the covariance matrix at least this large
     gradient_clip : float, (if model='gaussian' and use_iterative_optimization=True) clip gradients to this value
     momentum : float, (if model='gaussian' and use_iterative_optimization=True) momentum for gradient descent
+    analytic_marginal_entropy : bool, (if model='gaussian') use the analytic entropy of the Gaussian fit for H(Y) instead
+                            of upper bounding it with the negative log likelihood of the Gaussian fit
 
     steps_per_epoch : int, (if entropy_model='pixelcnn') number of steps per epoch
     num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
@@ -290,13 +245,19 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     else:
         raise ValueError(f"Unrecognized entropy model {entropy_model}")
   
-    ### Estimate the entropy of the noisy images using the upper bound provided by the entropy model negative log likelihood
-    h_y_upper_bound = noisy_image_model.compute_negative_log_likelihood(test_set, verbose=verbose)
+    if analytic_marginal_entropy:
+        h_y = noisy_image_model.compute_analytic_entropy()
+    else:
+        ### Estimate the entropy of the noisy images using the upper bound provided by the entropy model negative log likelihood
+        h_y = noisy_image_model.compute_negative_log_likelihood(test_set, verbose=verbose)
 
-    mutual_info = (h_y_upper_bound - h_y_given_x) / np.log(2)
+    mutual_info = (h_y - h_y_given_x) / np.log(2)
     if verbose:
         print(f"Estimated H(Y|X) = {h_y_given_x:.3f} differential entropy/pixel")
-        print(f"Estimated H(Y) (upper bound) = {h_y_upper_bound:.3f} differential entropy/pixel")
+        if analytic_marginal_entropy:
+            print(f"Estimated H(Y) = {h_y:.3f} differential entropy/pixel")
+        else:
+            print(f"Estimated H(Y) (Upper bound) = {h_y:.3f} differential entropy/pixel")
         print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
     if return_entropy_model:
         return mutual_info, noisy_image_model
