@@ -29,6 +29,6 @@ experiments/config_files/pending
 
 
 *.cache
-
+*.cached
 
 *.npy
