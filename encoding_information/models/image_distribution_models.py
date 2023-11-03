@@ -170,7 +170,8 @@ def train_model(train_images, state, batch_size, num_val_samples,
     Training loop with early stopping. Returns a callable with 
     """
     if num_val_samples >= train_images.shape[0]:
-        raise ValueError("Number of validation samples must be less than the number of training samples")
+        num_val_samples = int(train_images.shape[0] * 0.1)
+        warnings.warn(f'Number of validation samples must be less than the number of training samples. Using {num_val_samples} validation samples instead.')
     train_ds_iterator, val_loader_maker_fn = _make_dataset_generators(train_images, batch_size=batch_size, num_val_samples=num_val_samples)
 
     if train_step is None:

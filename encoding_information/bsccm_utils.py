@@ -11,6 +11,7 @@ from bsccm import BSCCM
 from tqdm import tqdm
 from scipy import ndimage
 import jax
+from encoding_information.image_utils import add_noise
 
 def load_data_from_config(config, data_dir):
     """
@@ -116,14 +117,14 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         
     if synthetic_noise is not None:
         photons_per_pixel = synthetic_noise['photons_per_pixel']
+        # Note: edge crop is only used for computing the normalization, for consitency with the mutual informaiton analysis to follow in a later experiment
         edge_crop = synthetic_noise['edge_crop']
         median_filter = synthetic_noise['median_filter']
         # print('Synthetic noise: ', synthetic_noise)
 
         # read 1000 images to estimate photon count
-        indices = bsccm.get_indices(batch=batch) # make sure to estimate photon count from images that will actually be used
-        indices = np.random.choice(indices, size=1000, replace=False)
-        images = load_bsccm_images(bsccm, channels[0], indices=indices, edge_crop=edge_crop, convert_units_to_photons=True, median_filter=median_filter)
+        indices_subset = onp.random.choice(indices, size=1000, replace=False)
+        images = load_bsccm_images(bsccm, channels[0], indices=indices_subset, edge_crop=edge_crop, convert_units_to_photons=True, median_filter=median_filter)
         mean_photons_per_pixel = np.mean(images)
         rescale_fraction = photons_per_pixel / mean_photons_per_pixel
         if rescale_fraction > 1:

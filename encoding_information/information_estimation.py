@@ -98,7 +98,7 @@ def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
         return  0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2)
     
 
-def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, verbose=False):
+def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, return_median=True, verbose=False):
     """
     Runs a bootstrap estimation procedure on the given data using the provided estimation function.
 
@@ -116,13 +116,15 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
         The confidence interval to use for the estimation, expressed as a percentage.
     seed : int, optional (default=1234)
         The random seed to use for generating the bootstrap samples.
+    return_median : bool, optional (default=True)
+        Whether to return the median or mean estimate of the desired quantity across all bootstrap samples.
     verbose : bool, optional (default=False)
         Print progress bar
 
     Returns:
     --------
-    mean : float
-        The mean estimate of the desired quantity across all bootstrap samples.
+    mean/median : float
+        The median/mean estimate of the desired quantity across all bootstrap samples.
     conf_int : list of floats
         The lower and upper bounds of the confidence interval for the estimate, expressed as percentiles of the
         bootstrap sample distribution.
@@ -149,10 +151,10 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
             results.append(estimation_fn(**data_samples))
         
     results = np.array(results)
-    mean = np.mean(results)
+    m = np.mean(results) if not return_median else np.median(results)
     conf_int = [np.percentile(results, 50 - confidence_interval/2),
                 np.percentile(results, 50 + confidence_interval/2)]
-    return mean, conf_int
+    return m, conf_int
         
     
 def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model='gaussian', test_set_fraction=0.1,
