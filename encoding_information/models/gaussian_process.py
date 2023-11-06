@@ -486,9 +486,9 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 
 
 
-    def fit(self, train_images, learning_rate=1e2, max_epochs=40, steps_per_epoch=1,  patience=5, 
+    def fit(self, train_images, learning_rate=1e2, max_epochs=60, steps_per_epoch=1,  patience=15, 
             batch_size=12, num_val_samples=100, eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
-            verbose=True):
+            precondition_gradient=False, verbose=True):
         
         
         self._optimizer = optax.chain(
@@ -502,11 +502,27 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         def _train_step(state, imgs):
             loss_fn = lambda params, imgs: state.apply_fn(params, imgs)
             loss, grads = jax.value_and_grad(loss_fn, 0)(state.params, imgs)
-            jax.grad(loss_fn, 0)(state.params, imgs)
+            # jax.grad(loss_fn, 0)(state.params, imgs)
+
+            if precondition_gradient:
+                # Define a function that computes the log-likelihood from eigenvalues
+                def nll_from_eigenvalues(eigenvalues, imgs):
+                    params = {'params': {'eig_vecs': state.params['params']['eig_vecs'], 'mean_vec': state.params['params']['mean_vec'],
+                                'eig_vals': eigenvalues}}
+                    return state.apply_fn(params, imgs)
+
+                fi_fn = jax.jit(jax.hessian(nll_from_eigenvalues, 0))
+                # Now compute the Hessian for the initial eigenvalues to get the Fisher Information Matrix
+                fisher_information_matrix = fi_fn(state.params['params']['eig_vals'], imgs)
+
+                # precondition the eig_vals gradient
+                grads['params']['eig_vals'] = np.linalg.solve(fisher_information_matrix, grads['params']['eig_vals'])
+
 
             # mean vec and eig vecs are not updated via gradient descent, but instead by proximal step
             grads['params']['eig_vecs'] = np.zeros_like(grads['params']['eig_vecs'])  
             grads['params']['mean_vec'] = np.zeros_like(grads['params']['mean_vec'])  
+
             state = state.apply_gradients(grads=grads)
 
             # proximal step

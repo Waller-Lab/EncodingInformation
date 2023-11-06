@@ -7,19 +7,20 @@ from tqdm import tqdm
 from jax import value_and_grad, jit, vmap
 # from scipy.signal import resample as scipy_resample
 from jax.scipy.special import digamma
+import optax
 
 import imageio
 from mpl_toolkits.mplot3d import Axes3D
 
 
-UPSAMPLED_SIGNAL_LENGTH = 512
-NUM_NYQUIST_SAMPLES = 8
-OBJECT_LENGTH = 512
+UPSAMPLED_SIGNAL_LENGTH = 256
+NUM_NYQUIST_SAMPLES = 16
+OBJECT_LENGTH = 256
 
 def get_sampling_interval(num_samples):
     return 1 / num_samples
 
-def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_deltas=1):
+def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_deltas=1, sin_freq_range=[0, 1]):
     """
     Generate a random object of a given type. Objects sum to one 
     and have values between 0 and 1.
@@ -30,6 +31,11 @@ def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_delt
         delta_function = onp.zeros(object_size)
         for i in range(num_deltas):
             delta_function[onp.random.randint(object_size)] += 1 / num_deltas
+        return delta_function
+    elif type == 'random_amplitude_delta':
+        delta_function = onp.zeros(object_size)
+        for i in range(num_deltas):
+            delta_function[onp.random.randint(object_size)] += onp.random.rand() / num_deltas
         return delta_function
     elif type == 'pink_noise':
         magnitude = onp.concatenate([onp.array([1]), 1 / np.sqrt(onp.fft.rfftfreq(OBJECT_LENGTH, 1/OBJECT_LENGTH)[1:])])
@@ -42,6 +48,23 @@ def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_delt
         obj = onp.random.rand(object_size)
         if np.min(obj) < 0:
             obj -= np.min(obj)
+        return obj / onp.sum(obj)
+    elif type == 'random_pairs':
+        # generate two delta functions with random spacing
+        obj = onp.zeros(object_size)
+        x1_loc = onp.random.randint(object_size)
+        # x1_loc = 10
+        x2_loc = int(onp.random.normal(loc=x1_loc + 0.09 * object_size,
+                                   scale=object_size / 32)) % object_size
+        obj[x1_loc] = 0.5
+        obj[x2_loc] = 0.5
+        return obj
+    elif type == 'delta_in_some_places':
+        obj = onp.zeros(object_size)
+        obj[onp.random.randint(object_size / 2)] += 1
+        return obj
+    elif type == 'sinusoid':
+        obj = onp.sin(np.linspace(0, 2*np.pi, object_size) * onp.random.uniform(*sin_freq_range) + onp.random.rand() * 100000) + 1
         return obj / onp.sum(obj)
 
 def optimize_towards_target_signals(target_signals, input_signal, sampling_indices, initial_kernel=None, learning_rate=1e-3, ):                                    
@@ -173,6 +196,7 @@ def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40):
         target_signal = onp.zeros((yx.shape[0], NUM_NYQUIST_SAMPLES))
         target_signal[:, sampling_indices[0]] = yx[:, 0]
         target_signal[:, sampling_indices[1]] = yx[:, 1]
+        # make sure the signal sums to 1
     elif len(sampling_indices) == 3:
         y_grid, x_grid, z_grid = np.meshgrid(np.linspace(0, 1, sample_n), np.linspace(0, 1, sample_n), np.linspace(0, 1, sample_n))
         yxz = np.stack([y_grid.ravel(), x_grid.ravel(), z_grid.ravel()], axis=1)
@@ -184,15 +208,24 @@ def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40):
         target_signal[:, sampling_indices[2]] = yxz[:, 2]
     else:
         raise Exception('Not implemented')
-    return  np.array(target_signal)
+    for signal in target_signal:
+            remainder = 1 - signal[np.array(sampling_indices)].sum()
+            for index in range(signal.size):
+                if index not in sampling_indices:
+                    signal[index] = remainder / (signal.size - len(sampling_indices))
+    return np.array(target_signal)
 
 def generate_random_bandlimited_signal():
     return bandlimited_nonnegative_signal(random_unnormalized_signal())
 
 def generate_concentrated_signal(sampling_indices):
+    """
+    Make a signal that tries to concentrate the energy at the given sampling indices,
+    but is still non-negative, bandlimited, and has unit energy
+    """
     nyquist_samples = onp.zeros(NUM_NYQUIST_SAMPLES)
-    nyquist_samples[sampling_indices[0]] = 1
-    # nyquist_samples[sampling_indices[1]] = 1
+    for i in sampling_indices:
+        nyquist_samples[i] = 1
     signal = bandlimited_nonnegative_signal(nyquist_samples=np.array(nyquist_samples))
     return signal
 
@@ -291,9 +324,9 @@ def upsample_signal(nyquist_samples, upsampled_signal_length=UPSAMPLED_SIGNAL_LE
 
 def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, show_samples=True, 
                                 color_samples=False, vertical_line_indices=None, 
-                                sample_point_indices=None, horizontal_line_indices=None, y_max=1,
+                                sample_point_indices=None, horizontal_line_indices=None, 
                                  num_nyquist_samples=NUM_NYQUIST_SAMPLES, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH,
-                                 markersize=8, marker='o', random_colors=False, center=False, **kwargs):                                   
+                                 markersize=8, marker='o', random_colors=False, center=False, plot_lim=1, **kwargs):                                   
 
     num_nyquist_samples = signal.shape[-1]
 
@@ -340,11 +373,11 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
             plot_one_signal(signal[i], sample_point_indices=sample_point_indices, 
                                 color=None if not random_colors else onp.random.rand(3))
                 
+    clear_spines(ax)
+    ax.set(ylabel='Intensity', xlim=[0, 1], xlabel='Space', ylim=[0, plot_lim])
 
-    ax.set(ylabel='Intensity', xlim=[0, 1], xlabel='Space', ylim=None if y_max is None else [0, 1])
 
 
-    default_format(ax)
 
 def plot_object(ax, signal, **kwargs):
     for o in signal.reshape(-1, signal.shape[-1]):
@@ -370,7 +403,7 @@ def plot_intensity_coord_histogram(ax, signals, sample_point_indices=(3, 4), **k
     
 
 def plot_in_intensity_coordinates(ax, signal, markersize=30, random_colors=False,
-                                color=None, differentiate_colors=False, sample_point_indices=(3,4),
+                                color=None, differentiate_colors=False, sample_point_indices=(3,4), plot_lim=1,
                                 **kwargs):
     # plot the line y = -x + 
     # only plot this if there's nothing in the axes already
@@ -391,6 +424,7 @@ def plot_in_intensity_coordinates(ax, signal, markersize=30, random_colors=False
                
             #    size=markersize, color=color)
     ax.set_aspect('equal')
+    ax.set(xlim=[0, plot_lim], ylim=[0, plot_lim])
 
     default_format(ax)
     # plot again with x as marker
@@ -431,29 +465,43 @@ def real_imag_bandlimit_energy_norm_prox_fn(parameters):
 
 
 
-def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=False, normalize_energy=False,
-                     tolerance=1e-6, momentum=0.9, loss_improvement_patience=500):
+def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=False,
+                     tolerance=1e-6, momentum=0.9, loss_improvement_patience=500, max_epochs=100000,
+                     learning_rate_decay=None):
+    """
+    Run optimization with optax, return optimized parameters
+    """
 
     grad_fn = jit(value_and_grad(loss_fn))
+
+    learning_rate = learning_rate if learning_rate_decay is None else optax.exponential_decay(
+        learning_rate, transition_steps=1, decay_rate=learning_rate_decay, transition_begin=500)
+    optimizer = optax.sgd(learning_rate=learning_rate, momentum=momentum, nesterov=False)
+
+
+    
+    opt_state = optimizer.init(parameters)
 
     if verbose:
         print('initial loss', loss_fn(parameters))
 
     last_best_loss_index = 0
     best_loss = 1e10
-    velocity = np.zeros_like(parameters)
-    for i in range(100000):
+    best_params = np.copy(parameters)
+    for i in range(max_epochs):
         loss, gradient = grad_fn(parameters)
         if loss < best_loss - tolerance:
             best_loss = loss
             last_best_loss_index = i
+            best_params = np.copy(parameters)
         if i - last_best_loss_index > loss_improvement_patience or loss < tolerance:
             break
 
-        velocity = momentum * velocity + learning_rate * gradient
-        parameters -= velocity
-        # parameters -= learning_rate * gradient
+        # Update parameters using optax's update rule.
+        updates, opt_state = optimizer.update(gradient, opt_state)
+        parameters = optax.apply_updates(parameters, updates)
 
+        # Apply proximal function if provided.
         parameters = prox_fn(parameters)
 
         if verbose == 'very':
@@ -461,4 +509,4 @@ def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=Fal
         elif verbose:
             print(f'{i}: {loss:.7f}\r', end='')
 
-    return parameters
+    return best_params
