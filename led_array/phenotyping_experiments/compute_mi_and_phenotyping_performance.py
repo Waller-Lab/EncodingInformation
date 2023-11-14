@@ -17,6 +17,10 @@ config_file_path, saving_dir, config, hyperparameters, already_elapsed_time, \
 #######################################################
 ### Enter your training code here #####################
 
+# replace 'Analysis_' with ''
+model_dir = model_dir.replace('Analysis_', '')
+
+
 
 from cleanplots import *
 from tqdm import tqdm
@@ -52,18 +56,18 @@ def compute_nlls(model, test_dataset, max_num, markers):
     return np.array(negative_log_likelihoods), np.array(marker_indices)
 
 
-def estimate_mi(model_name, config, patch_size):
+def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=10000):
     saving_name = f'{model_name}_{patch_size}patch_mi_estimates'
 
         # check if already cached
-    if os.path.exists(f'.cached/{saving_name}.npz'):
+    if os.path.exists(f'{saving_dir}/analysis/{saving_name}.npz'):
         print(f'Loading cached results for {model_name} MI estimates')
-        return np.load(f'.cached/{saving_name}.npz')
+        return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
 
     median_filter = config['data']['synthetic_noise']['median_filter']
 
     markers, image_target_generator, dataset_size, display_range, indices = get_bsccm_image_marker_generator(bsccm, **config['data'])
-    images = load_bsccm_images(bsccm, indices=indices[:dataset_size], channel=config['data']['channels'][0], 
+    images = load_bsccm_images(bsccm, indices=indices[:num_images], channel=config['data']['channels'][0], 
                 convert_units_to_photons=True, edge_crop=config['data']['synthetic_noise']['edge_crop'],
                 median_filter=median_filter)
 
@@ -72,31 +76,35 @@ def estimate_mi(model_name, config, patch_size):
     if rescale_fraction > 1:
         raise Exception('Rescale fraction must be less than 1')
 
-    patches = extract_patches(images, patch_size=patch_size, num_patches=int(dataset_size * 2))
+    patches = extract_patches(images, patch_size=patch_size, num_patches=num_patches)
 
     if median_filter:
         # assume noiseless
         noisy_patches = add_noise(patches * rescale_fraction)
     else:
         noisy_patches = add_shot_noise_to_experimenal_data(patches, rescale_fraction)
+    clean_patches = patches * rescale_fraction
     
-    mi_pixel_cnn = estimate_mutual_information(noisy_patches, clean_images=patches if median_filter else None, 
+    mi_pixel_cnn = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None, 
                     entropy_model='pixel_cnn', verbose=True)
-    mi_gp = estimate_mutual_information(noisy_patches, clean_images=patches if median_filter else None,
+    mi_gp = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None,
                      entropy_model='gaussian', verbose=True)
 
     # save the cached results (both nlls and marker indices in a single file)
-    np.savez(f'.cached/{saving_name}', mi_pixel_cnn=mi_pixel_cnn, mi_gp=mi_gp)
-    return np.load(f'.cached/{saving_name}.npz')
+    # create save directory if it doesn't exist
+    if not os.path.exists(f'{saving_dir}/analysis'):
+        os.makedirs(f'{saving_dir}/analysis')
+    np.savez(f'{saving_dir}/analysis/{saving_name}', mi_pixel_cnn=mi_pixel_cnn, mi_gp=mi_gp)
+    return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
     
 
 def test_set_phenotyping_nll(model_name, config):
     saving_name = f'{model_name}_phenotyping_nll'
 
     # check if already cached
-    if os.path.exists(f'.cached/{saving_name}.npz'):
+    if os.path.exists(f'{saving_dir}/analysis/{saving_name}.npz'):
         print(f'Loading cached results for {model_name} phenotyping nlls')
-        return np.load(f'.cached/{saving_name}.npz')
+        return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
     
     markers, image_target_generator, dataset_size, display_range, indices = get_bsccm_image_marker_generator(bsccm, **config['data'])
     test_dataset, test_dataset_size = prepare_test_dataset(config['hyperparameters']['test_fraction'], image_target_generator, dataset_size)
@@ -106,14 +114,20 @@ def test_set_phenotyping_nll(model_name, config):
     nlls, marker_indices = compute_nlls(model, test_dataset, max_num=test_dataset_size, markers=markers)
 
     # save the cached results (both nlls and marker indices in a single file)
-    np.savez(f'.cached/{saving_name}', nlls=nlls, marker_indices=marker_indices)
-    return np.load(f'.cached/{saving_name}.npz')
+    # create save directory if it doesn't exist
+    if not os.path.exists(f'{saving_dir}/analysis'):
+        os.makedirs('f{saving_dir}/analysis')
+    np.savez(f'{saving_dir}/analysis/{saving_name}', nlls=nlls, marker_indices=marker_indices)
+    return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
     
+
 
 
 bsccm = BSCCM('/home/hpinkard_waller/data/BSCCM/')
 # remove the .yaml and take the file name
 model_name = config_file_path.split('/')[-1].split('.')[0]
+# remove leading 'Analysis_' from model name
+model_name = model_name.split('Analysis_')[-1]
 patch_size = config['patch_size']
 
 estimate_mi(model_name, config, patch_size)

@@ -41,6 +41,7 @@ def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None, seed=
         else:
             # Poisson
             noisy_batch = jax.random.poisson(key, shape=batch.shape, lam=batch).astype(np.float32)
+        key = jax.random.split(key)[1]
         if ensure_positive:
             noisy_batch = np.where(noisy_batch < 0, 0, noisy_batch)
         noisy_batches.append(noisy_batch)
