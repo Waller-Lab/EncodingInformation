@@ -12,10 +12,9 @@ import optax
 import imageio
 from mpl_toolkits.mplot3d import Axes3D
 
-
-UPSAMPLED_SIGNAL_LENGTH = 256
-NUM_NYQUIST_SAMPLES = 16
-OBJECT_LENGTH = 256
+NUM_NYQUIST_SAMPLES = 32
+UPSAMPLED_SIGNAL_LENGTH = 4 * NUM_NYQUIST_SAMPLES
+OBJECT_LENGTH = 4 * NUM_NYQUIST_SAMPLES
 
 def get_sampling_interval(num_samples):
     return 1 / num_samples
@@ -88,6 +87,40 @@ def optimize_towards_target_signals(target_signals, input_signal, sampling_indic
     output_signals = np.stack([conv_mat @ input_signal for conv_mat in conv_mats], axis=0)
     return optimized_kernels, output_signals
 
+@jit
+def signal_from_real_imag_param_vec(parameters):
+  # optimization is done with respect to real and imaginary parts of the fourier spectrum
+  real = parameters[:NUM_NYQUIST_SAMPLES // 2 + 1]
+  imag = parameters[NUM_NYQUIST_SAMPLES // 2 + 1:]
+  return signal_from_real_imag_params(real, imag)
+
+@partial(jit, static_argnums=(3,))
+def conv_forward_model(parameters, objects, erasure_mask, align_center=False):
+  kernel = signal_from_real_imag_param_vec(parameters)
+  if align_center:
+    kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
+  conv_mat = make_convolutional_encoder(kernel)
+  output_signals = (objects @ conv_mat.T)
+  return output_signals * erasure_mask.reshape(1, -1)
+
+
+def make_convolutional_forward_model_and_entropy_loss_fn_and_erasure(objects, erasure_mask):
+    @jit
+    def convolve_and_loss(parameters):
+        output_signals = conv_forward_model(parameters, objects, erasure_mask)
+
+        # don't include erased pixels in loss to avoid numerical errors
+        output_signals = output_signals[:, erasure_mask]
+
+        mean_subtracted = output_signals.T - np.mean(output_signals.T, axis=1, keepdims=True)
+        cov_mat = np.cov(mean_subtracted)
+        eig_vals = np.linalg.eigvalsh(cov_mat)
+        eig_vals = np.clip(eig_vals, 1e-10, None)
+        log_evs = np.log(eig_vals)
+
+        return -np.sum(log_evs)
+        
+    return convolve_and_loss
 
 @jit
 def signal_from_real_imag_params(real, imag):
@@ -323,19 +356,32 @@ def upsample_signal(nyquist_samples, upsampled_signal_length=UPSAMPLED_SIGNAL_LE
 
 
 def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, show_samples=True, 
-                                color_samples=False, vertical_line_indices=None, 
+                                color_samples=False, vertical_line_indices=None, full_height_vertical_lines=False,
                                 sample_point_indices=None, horizontal_line_indices=None, 
                                  num_nyquist_samples=NUM_NYQUIST_SAMPLES, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH,
-                                 markersize=8, marker='o', random_colors=False, center=False, plot_lim=1, **kwargs):                                   
+                                 markersize=8, marker='o', random_colors=False, center=False, plot_lim=1, color='k', 
+                                 colors=None, erasure_mask=None,
+                                 **kwargs):                                   
 
-    num_nyquist_samples = signal.shape[-1]
+    num_nyquist_samples = NUM_NYQUIST_SAMPLES
 
-    def plot_one_signal(signal, sample_point_indices=None, color=None):
-        x, x_upsampled, upsampled_signal = upsample_signal(signal, num_nyquist_samples=num_nyquist_samples, 
+    def plot_one_signal(signal, sample_point_indices=None, color=None, erasure_mask=erasure_mask):
+        if signal.size == num_nyquist_samples:
+            x, x_upsampled, upsampled_signal = upsample_signal(signal, num_nyquist_samples=num_nyquist_samples, 
                                                             upsampled_signal_length=upsampled_signal_length, return_domain=True)
+        else:
+            upsampled_signal = signal
+            x_upsampled = np.linspace(0, 1, upsampled_signal_length, endpoint=False)
+            x = np.linspace(0, 1, num_nyquist_samples, endpoint=False)
         if show_upsampled:
             if center:
                 upsampled_signal = np.roll(upsampled_signal, upsampled_signal.size // 2 - np.argmax(upsampled_signal))
+
+            if erasure_mask is not None:
+                erasure_mask = np.repeat(erasure_mask, UPSAMPLED_SIGNAL_LENGTH // NUM_NYQUIST_SAMPLES)
+                upsampled_signal *= erasure_mask.astype(float)
+        
+
             ax.plot(x_upsampled, upsampled_signal, label=label, linewidth=2.1, color=color, **kwargs)
             # get the color used for the line
             color = ax.get_lines()[-1].get_color()
@@ -354,7 +400,10 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
     if vertical_line_indices is not None:
         x = upsample_signal(signal, return_domain=True)[0]
         # find highest value over all signals at verical_line_indices
-        max_values = np.max(signal.reshape(-1, num_nyquist_samples)[..., vertical_line_indices], axis=0)
+        if full_height_vertical_lines:
+            max_values = np.ones(len(vertical_line_indices))
+        else:
+            max_values = np.max(signal.reshape(-1, num_nyquist_samples)[..., vertical_line_indices], axis=0)
         for i, max_val in zip(vertical_line_indices, max_values):
             # plot line going from 0 to max_val
             ax.plot([x[i], x[i]], [0, max_val], 'k--')
@@ -366,12 +415,14 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
             # plot line going from 0 to max_val
             ax.plot([0, x[x_index]], [y, y], 'k--')
             
+
     if len(signal.shape) == 1:
-        plot_one_signal(signal, sample_point_indices=sample_point_indices)
+        plot_one_signal(signal, sample_point_indices=sample_point_indices, color=color)
     else:
         for i in range(signal.shape[0]):
+            color = colors[i] if colors is not None else None
             plot_one_signal(signal[i], sample_point_indices=sample_point_indices, 
-                                color=None if not random_colors else onp.random.rand(3))
+                                color=color if not random_colors else onp.random.rand(3))
                 
     clear_spines(ax)
     ax.set(ylabel='Intensity', xlim=[0, 1], xlabel='Space', ylim=[0, plot_lim])
@@ -379,9 +430,9 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
 
 
 
-def plot_object(ax, signal, **kwargs):
-    for o in signal.reshape(-1, signal.shape[-1]):
-        ax.plot(np.linspace(0,1, o.size), o, **kwargs)
+def plot_object(ax, signal, colors=None, **kwargs):
+    for i, o in enumerate(signal.reshape(-1, signal.shape[-1])):
+        ax.plot(np.linspace(0,1, o.size), o, **kwargs, color=colors[i] if colors is not None else None)
     ax.set(xlabel='Space', ylabel='Intensity', xlim=[0, 1], xticks=[0,1], ylim=[0, signal.max()], yticks=[0, signal.max()])
     sparse_ticks(ax)
 
@@ -420,13 +471,14 @@ def plot_in_intensity_coordinates(ax, signal, markersize=30, random_colors=False
         # generate a list of random colors of length signal.shape[0]
         color = onp.random.rand(signal.shape[0], 3)
 
-    ax.scatter(signal[..., sample_point_indices[0]], signal[..., sample_point_indices[1]], s=markersize, color=color, **kwargs)
+    ax.scatter(signal[..., sample_point_indices[0]], signal[..., sample_point_indices[1]], s=markersize, 
+               c=color, **kwargs)
                
             #    size=markersize, color=color)
     ax.set_aspect('equal')
     ax.set(xlim=[0, plot_lim], ylim=[0, plot_lim])
 
-    default_format(ax)
+    clear_spines(ax)
     # plot again with x as marker
 
 def make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, sampling_indices=None):
