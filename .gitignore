@@ -27,4 +27,9 @@ analysis/autofocus/exported_model/*
 experiments/config_files/training
 experiments/config_files/pending
 
+
+*.cache
+*.cached
+*.cached_old
+
 *.npy
