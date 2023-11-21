@@ -5,6 +5,7 @@ import numpy as onp
 
 from tqdm import tqdm
 from jax import value_and_grad, jit, vmap
+import jax
 # from scipy.signal import resample as scipy_resample
 from jax.scipy.special import digamma
 import optax
@@ -13,28 +14,70 @@ import imageio
 from mpl_toolkits.mplot3d import Axes3D
 
 NUM_NYQUIST_SAMPLES = 32
-UPSAMPLED_SIGNAL_LENGTH = 4 * NUM_NYQUIST_SAMPLES
+UPSAMPLED_SIGNAL_LENGTH = 8 * NUM_NYQUIST_SAMPLES
 OBJECT_LENGTH = 4 * NUM_NYQUIST_SAMPLES
+
+@partial(jit, static_argnums=(1, 2))
+def compute_gaussian_differential_entropy_per_pixel(output_signals, ev_threshold=1e-10, average_values=True):
+    mean_subtracted = output_signals.T - np.mean(output_signals.T, axis=1, keepdims=True)
+    cov_mat = np.cov(mean_subtracted)
+    eig_vals = np.linalg.eigvalsh(cov_mat)
+    if ev_threshold is not None:
+        eig_vals = np.clip(eig_vals, ev_threshold, None)
+    log_evs = np.log(eig_vals)
+    log_ev_term = np.log(2 * np.pi * np.e) + log_evs
+    d = eig_vals.size
+    if average_values:
+        return 0.5 * np.sum(log_ev_term) / d  # Normalized by the number of dimensions
+    else: 
+        return 0.5 * log_ev_term 
+
+@jit
+def compute_mutual_information_per_pixel(noisy_output_signals, noise_sigma):
+    """
+    compute mutual information per pixel in bits assuming noise was generated from an additive gaussian
+    """
+    entropy = compute_gaussian_differential_entropy_per_pixel(noisy_output_signals, average_values=False)
+    entropy -= 0.5 * np.log(2 * np.pi * np.e * noise_sigma**2)
+    return np.mean(entropy)
 
 def get_sampling_interval(num_samples):
     return 1 / num_samples
 
-def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_deltas=1, sin_freq_range=[0, 1]):
+def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_deltas=1, sin_freq_range=[0, 1],
+                            gaussian_mixture_position=False, num_mixture_components=3, gaussian_mixture_seed=12345):
     """
     Generate a random object of a given type. Objects sum to one 
     and have values between 0 and 1.
     """
+
+    # create a gaussian mixture model over the object
+    if gaussian_mixture_position:
+        onp.random.seed(gaussian_mixture_seed)
+        means = onp.random.rand(num_mixture_components) * object_size
+        stds = onp.random.rand(num_mixture_components) * object_size / 6
+        weights = onp.random.rand(num_mixture_components)
+        weights /= weights.sum()
+        onp.random.seed(None)
+
+    def get_random_position():
+        if not gaussian_mixture_position:
+            return onp.random.randint(object_size)
+        else:
+            component = onp.random.choice(num_mixture_components, p=weights)
+            return int(onp.random.normal(loc=means[component], scale=stds[component])) % object_size
+
     if seed is not None:
         onp.random.seed(seed)
     if type == 'delta':
         delta_function = onp.zeros(object_size)
         for i in range(num_deltas):
-            delta_function[onp.random.randint(object_size)] += 1 / num_deltas
+            delta_function[get_random_position()] += 1 / num_deltas
         return delta_function
     elif type == 'random_amplitude_delta':
         delta_function = onp.zeros(object_size)
         for i in range(num_deltas):
-            delta_function[onp.random.randint(object_size)] += onp.random.rand() / num_deltas
+            delta_function[get_random_position()] += onp.random.rand() / num_deltas
         return delta_function
     elif type == 'pink_noise':
         magnitude = onp.concatenate([onp.array([1]), 1 / np.sqrt(onp.fft.rfftfreq(OBJECT_LENGTH, 1/OBJECT_LENGTH)[1:])])
@@ -48,20 +91,12 @@ def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_delt
         if np.min(obj) < 0:
             obj -= np.min(obj)
         return obj / onp.sum(obj)
-    elif type == 'random_pairs':
-        # generate two delta functions with random spacing
-        obj = onp.zeros(object_size)
-        x1_loc = onp.random.randint(object_size)
-        # x1_loc = 10
-        x2_loc = int(onp.random.normal(loc=x1_loc + 0.09 * object_size,
-                                   scale=object_size / 32)) % object_size
-        obj[x1_loc] = 0.5
-        obj[x2_loc] = 0.5
-        return obj
-    elif type == 'delta_in_some_places':
-        obj = onp.zeros(object_size)
-        obj[onp.random.randint(object_size / 2)] += 1
-        return obj
+    elif type == 'masked_white_noise':
+        obj = onp.random.rand(object_size)
+        if onp.min(obj) < 0:
+            obj -= onp.min(obj)
+        obj = obj * (onp.random.rand(object_size) > 0.8)
+        return obj / onp.sum(obj)
     elif type == 'sinusoid':
         obj = onp.sin(np.linspace(0, 2*np.pi, object_size) * onp.random.uniform(*sin_freq_range) + onp.random.rand() * 100000) + 1
         return obj / onp.sum(obj)
@@ -94,32 +129,44 @@ def signal_from_real_imag_param_vec(parameters):
   imag = parameters[NUM_NYQUIST_SAMPLES // 2 + 1:]
   return signal_from_real_imag_params(real, imag)
 
-@partial(jit, static_argnums=(3,))
-def conv_forward_model(parameters, objects, erasure_mask, align_center=False):
+def add_gaussian_noise_numpy(signal, noise_sigma):
+    return signal + onp.random.normal(0, noise_sigma, signal.shape)
+
+@partial(jit, static_argnums=(3, 4))
+def conv_forward_model_with_erasure(parameters, objects, erasure_mask, align_center=False, nyquist_sample_output=True):
+  kernel = signal_from_real_imag_param_vec(parameters)
+  if align_center:
+    kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
+  conv_mat = make_convolutional_encoder(kernel, sample=nyquist_sample_output)
+  output_signals = (objects @ conv_mat.T)
+  return output_signals * erasure_mask.reshape(1, -1)
+
+@partial(jit, static_argnums=(2,))
+def conv_forward_model(parameters, objects, align_center=False):
   kernel = signal_from_real_imag_param_vec(parameters)
   if align_center:
     kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
   conv_mat = make_convolutional_encoder(kernel)
   output_signals = (objects @ conv_mat.T)
-  return output_signals * erasure_mask.reshape(1, -1)
+
+  return output_signals
 
 
-def make_convolutional_forward_model_and_entropy_loss_fn_and_erasure(objects, erasure_mask):
+def make_convolutional_forward_model_with_mi_loss_and_erasure(objects, erasure_mask, nyquist_sample_output=True, noise_sigma=0):
+    
+    if np.sum(erasure_mask) == 0:
+        raise Exception('Erasure mask is empty')
     @jit
-    def convolve_and_loss(parameters):
-        output_signals = conv_forward_model(parameters, objects, erasure_mask)
+    def convolve_and_loss(parameters, key):
+        output_signals = conv_forward_model_with_erasure(parameters, objects, erasure_mask, nyquist_sample_output=nyquist_sample_output)
 
         # don't include erased pixels in loss to avoid numerical errors
         output_signals = output_signals[:, erasure_mask]
 
-        mean_subtracted = output_signals.T - np.mean(output_signals.T, axis=1, keepdims=True)
-        cov_mat = np.cov(mean_subtracted)
-        eig_vals = np.linalg.eigvalsh(cov_mat)
-        eig_vals = np.clip(eig_vals, 1e-10, None)
-        log_evs = np.log(eig_vals)
-
-        return -np.sum(log_evs)
-        
+        noisy_output_signals = output_signals + jax.random.normal(key, output_signals.shape) * noise_sigma
+    
+        return -compute_mutual_information_per_pixel(noisy_output_signals, noise_sigma=noise_sigma)
+    
     return convolve_and_loss
 
 @jit
@@ -184,7 +231,7 @@ def bandlimited_nonnegative_signal(nyquist_samples, normalize_energy=True,
  
     return np.squeeze(nyquist_samples)
 
-# @partial(jit, static_argnums=(1, 2))
+@partial(jit, static_argnums=(1, 2))
 def make_convolutional_encoder(kernel, object_length=OBJECT_LENGTH, sample=True):
     # upsample because we wan the size to be based on the input signal (i.e. the object)
     if object_length != NUM_NYQUIST_SAMPLES:
@@ -355,7 +402,7 @@ def upsample_signal(nyquist_samples, upsampled_signal_length=UPSAMPLED_SIGNAL_LE
         return upsampled_signal
 
 
-def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, show_samples=True, 
+def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, show_samples=False, 
                                 color_samples=False, vertical_line_indices=None, full_height_vertical_lines=False,
                                 sample_point_indices=None, horizontal_line_indices=None, 
                                  num_nyquist_samples=NUM_NYQUIST_SAMPLES, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH,
@@ -519,12 +566,16 @@ def real_imag_bandlimit_energy_norm_prox_fn(parameters):
 
 def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=False,
                      tolerance=1e-6, momentum=0.9, loss_improvement_patience=500, max_epochs=100000,
-                     learning_rate_decay=None):
+                     learning_rate_decay=None, key=None):
     """
     Run optimization with optax, return optimized parameters
     """
-
-    grad_fn = jit(value_and_grad(loss_fn))
+   
+    if key is not None:
+        grad_fn = jit(value_and_grad(loss_fn, argnums=0))
+    else:
+        grad_fn = jit(value_and_grad(loss_fn))
+    
 
     learning_rate = learning_rate if learning_rate_decay is None else optax.exponential_decay(
         learning_rate, transition_steps=1, decay_rate=learning_rate_decay, transition_begin=500)
@@ -535,18 +586,22 @@ def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=Fal
     opt_state = optimizer.init(parameters)
 
     if verbose:
-        print('initial loss', loss_fn(parameters))
+        print('initial loss', loss_fn(parameters) if key is None else loss_fn(parameters, key))
 
     last_best_loss_index = 0
     best_loss = 1e10
     best_params = np.copy(parameters)
     for i in range(max_epochs):
-        loss, gradient = grad_fn(parameters)
+        if key is not None:
+            key, subkey = jax.random.split(key)
+            loss, gradient = grad_fn(parameters, subkey)
+        else:
+            loss, gradient = grad_fn(parameters)
         if loss < best_loss - tolerance:
             best_loss = loss
             last_best_loss_index = i
             best_params = np.copy(parameters)
-        if i - last_best_loss_index > loss_improvement_patience or loss < tolerance:
+        if i - last_best_loss_index > loss_improvement_patience:
             break
 
         # Update parameters using optax's update rule.
