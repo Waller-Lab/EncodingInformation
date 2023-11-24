@@ -17,6 +17,39 @@ NUM_NYQUIST_SAMPLES = 32
 UPSAMPLED_SIGNAL_LENGTH = 8 * NUM_NYQUIST_SAMPLES
 OBJECT_LENGTH = 4 * NUM_NYQUIST_SAMPLES
 
+
+def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, erasure_mask=None, initial_kernel=None,
+                                 learning_rate=1e-2, learning_rate_decay=0.999, verbose=True,
+                                 loss_improvement_patience=2000, max_epochs=5000, num_nyquist_samples=NUM_NYQUIST_SAMPLES
+                                    , nyquist_sample_output=True
+                                 ):
+  objects = objects_fn()
+  if initial_kernel is None:
+    initial_kernel = bandlimited_nonnegative_signal(nyquist_samples=generate_random_bandlimited_signal(num_nyquist_samples=num_nyquist_samples),
+                                                        num_nyquist_samples=num_nyquist_samples)
+  initial_params = np.concatenate(real_imag_params_from_signal(initial_kernel, num_nyquist_samples=num_nyquist_samples))
+
+  if erasure_mask is None:
+    # no erasure mask, so we just use all the pixels
+    erasure_mask = np.ones(num_nyquist_samples)
+    erasure_mask = np.array(erasure_mask, dtype=bool)
+
+  loss_fn = make_convolutional_forward_model_with_mi_loss_and_erasure(
+      objects, erasure_mask, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples, nyquist_sample_output=nyquist_sample_output)
+  optimized_params = run_optimzation(loss_fn, lambda x : real_imag_bandlimit_energy_norm_prox_fn(x, num_nyquist_samples=num_nyquist_samples),
+                          initial_params, learning_rate=learning_rate, learning_rate_decay=learning_rate_decay, verbose=verbose,
+                          loss_improvement_patience=loss_improvement_patience, max_epochs=max_epochs,
+                          key=jax.random.PRNGKey(onp.random.randint(100000)))
+  test_objects = objects_fn()                        
+  optimized_mi = -make_convolutional_forward_model_with_mi_loss_and_erasure(test_objects, erasure_mask, noise_sigma=noise_sigma,
+                                                                            num_nyquist_samples=num_nyquist_samples, nyquist_sample_output=nyquist_sample_output
+                                                                            )(optimized_params, jax.random.PRNGKey(0))
+  initial_mi = -make_convolutional_forward_model_with_mi_loss_and_erasure(test_objects, erasure_mask, noise_sigma=noise_sigma,
+                                                                          num_nyquist_samples=num_nyquist_samples, nyquist_sample_output=nyquist_sample_output
+                                                                          )(initial_params, jax.random.PRNGKey(0))
+  return initial_kernel, initial_params, optimized_params, objects, initial_mi, optimized_mi
+
+
 @partial(jit, static_argnums=(1, 2))
 def compute_gaussian_differential_entropy_per_pixel(output_signals, ev_threshold=1e-10, average_values=True):
     mean_subtracted = output_signals.T - np.mean(output_signals.T, axis=1, keepdims=True)
@@ -39,6 +72,8 @@ def compute_mutual_information_per_pixel(noisy_output_signals, noise_sigma):
     """
     entropy = compute_gaussian_differential_entropy_per_pixel(noisy_output_signals, average_values=False)
     entropy -= 0.5 * np.log(2 * np.pi * np.e * noise_sigma**2)
+    # convert to bits
+    entropy /= np.log(2)
     return np.mean(entropy)
 
 def get_sampling_interval(num_samples):
@@ -101,76 +136,98 @@ def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_delt
         obj = onp.sin(np.linspace(0, 2*np.pi, object_size) * onp.random.uniform(*sin_freq_range) + onp.random.rand() * 100000) + 1
         return obj / onp.sum(obj)
 
-def optimize_towards_target_signals(target_signals, input_signal, sampling_indices, initial_kernel=None, learning_rate=1e-3, ):                                    
+def optimize_towards_target_signals(target_signals, input_signal, sampling_indices=None,
+                                     initial_kernel=None, learning_rate=3e-3,
+                                    learning_rate_decay=0.999, tolerance=1e-5,
+                                    transition_begin=800, verbose=False):                                    
     """
     Optimize a kernel to match a target signal
     """
-    # TODO: add options for different types of convolutionals
+
+    num_nyquist_samples = target_signals[0].shape[-1]
     if initial_kernel is None:
-        initial_kernel = bandlimited_nonnegative_signal(nyquist_samples=generate_random_bandlimited_signal())
+        initial_kernel = bandlimited_nonnegative_signal(nyquist_samples=generate_random_bandlimited_signal(num_nyquist_samples=num_nyquist_samples), 
+                                                        num_nyquist_samples=num_nyquist_samples)
 
     optimized_kernels = []
     for target_signal in tqdm(target_signals):
-        loss_fn = make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, sampling_indices=sampling_indices)
-        optimized_params = run_optimzation(loss_fn, real_imag_bandlimit_energy_norm_prox_fn, 
-                                np.concatenate(real_imag_params_from_signal(initial_kernel)), learning_rate=learning_rate, verbose=False)
-        optimized_kernels.append(signal_from_real_imag_params(*param_vector_to_real_imag(optimized_params)))
+        loss_fn = make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, 
+                                                               sampling_indices=sampling_indices, num_nyquist_samples=num_nyquist_samples)
+        optimized_params = run_optimzation(loss_fn, lambda x : real_imag_bandlimit_energy_norm_prox_fn(x, num_nyquist_samples=num_nyquist_samples),
+                                np.concatenate(real_imag_params_from_signal(initial_kernel, num_nyquist_samples=num_nyquist_samples)),
+                                transition_begin=transition_begin, learning_rate_decay=learning_rate_decay, tolerance=tolerance,
+                                loss_improvement_patience=1000, max_epochs=10000,
+                                  learning_rate=learning_rate, verbose=verbose)
+        optimized_kernel = conv_kernel_from_params(optimized_params, num_nyquist_samples=num_nyquist_samples)
+        optimized_kernels.append(optimized_kernel)
     optimized_kernels = np.array(optimized_kernels)
 
 
-    conv_mats = [make_convolutional_encoder(kernel) for kernel in optimized_kernels]
+    conv_mats = [make_convolutional_encoder(kernel, num_nyquist_samples=num_nyquist_samples) for kernel in optimized_kernels]
     output_signals = np.stack([conv_mat @ input_signal for conv_mat in conv_mats], axis=0)
     return optimized_kernels, output_signals
 
-@jit
-def signal_from_real_imag_param_vec(parameters):
+@partial(jit, static_argnums=(1,))
+def conv_kernel_from_params(params, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+    real_imag = param_vector_to_real_imag(params, num_nyquist_samples=num_nyquist_samples)
+    return signal_from_real_imag_params(*real_imag, num_nyquist_samples=num_nyquist_samples)
+
+@partial(jit, static_argnums=(1,))
+def signal_from_real_imag_param_vec(parameters, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
   # optimization is done with respect to real and imaginary parts of the fourier spectrum
-  real = parameters[:NUM_NYQUIST_SAMPLES // 2 + 1]
-  imag = parameters[NUM_NYQUIST_SAMPLES // 2 + 1:]
-  return signal_from_real_imag_params(real, imag)
+  real = parameters[:num_nyquist_samples // 2 + 1]
+  imag = parameters[num_nyquist_samples // 2 + 1:]
+  return signal_from_real_imag_params(real, imag, num_nyquist_samples=num_nyquist_samples)
 
 def add_gaussian_noise_numpy(signal, noise_sigma):
     return signal + onp.random.normal(0, noise_sigma, signal.shape)
 
-@partial(jit, static_argnums=(3, 4))
-def conv_forward_model_with_erasure(parameters, objects, erasure_mask, align_center=False, nyquist_sample_output=True):
-  kernel = signal_from_real_imag_param_vec(parameters)
+@partial(jit, static_argnums=(3, 4, 5))
+def conv_forward_model_with_erasure(parameters, objects, erasure_mask, align_center=False, nyquist_sample_output=True,
+                                    num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+  kernel = signal_from_real_imag_param_vec(parameters, num_nyquist_samples=num_nyquist_samples)
   if align_center:
     kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
-  conv_mat = make_convolutional_encoder(kernel, sample=nyquist_sample_output)
+  conv_mat = make_convolutional_encoder(kernel, sample=nyquist_sample_output, num_nyquist_samples=num_nyquist_samples)
   output_signals = (objects @ conv_mat.T)
   return output_signals * erasure_mask.reshape(1, -1)
 
-@partial(jit, static_argnums=(2,))
-def conv_forward_model(parameters, objects, align_center=False):
-  kernel = signal_from_real_imag_param_vec(parameters)
+@partial(jit, static_argnums=(2, 3))
+def conv_forward_model(parameters, objects, align_center=False, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+  kernel = signal_from_real_imag_param_vec(parameters, num_nyquist_samples=num_nyquist_samples)
   if align_center:
     kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
-  conv_mat = make_convolutional_encoder(kernel)
+  conv_mat = make_convolutional_encoder(kernel, num_nyquist_samples=num_nyquist_samples)
   output_signals = (objects @ conv_mat.T)
 
   return output_signals
 
 
-def make_convolutional_forward_model_with_mi_loss_and_erasure(objects, erasure_mask, nyquist_sample_output=True, noise_sigma=0):
+def make_convolutional_forward_model_with_mi_loss_and_erasure(objects, erasure_mask, noise_sigma, 
+                                                              nyquist_sample_output=True, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     
     if np.sum(erasure_mask) == 0:
         raise Exception('Erasure mask is empty')
     @jit
     def convolve_and_loss(parameters, key):
-        output_signals = conv_forward_model_with_erasure(parameters, objects, erasure_mask, nyquist_sample_output=nyquist_sample_output)
+        output_signals = conv_forward_model_with_erasure(parameters, objects, erasure_mask, 
+                                                         nyquist_sample_output=nyquist_sample_output, 
+                                                         num_nyquist_samples=num_nyquist_samples)
 
         # don't include erased pixels in loss to avoid numerical errors
         output_signals = output_signals[:, erasure_mask]
 
+        if noise_sigma is None:
+            raise Exception('Noise sigma must be specified')
+        
         noisy_output_signals = output_signals + jax.random.normal(key, output_signals.shape) * noise_sigma
     
         return -compute_mutual_information_per_pixel(noisy_output_signals, noise_sigma=noise_sigma)
     
     return convolve_and_loss
 
-@jit
-def signal_from_real_imag_params(real, imag):
+@partial(jit, static_argnums=(2,))
+def signal_from_real_imag_params(real, imag, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     """
     Generate signal with unit energy from real and imaginary parts of the spectrum
     """
@@ -178,28 +235,28 @@ def signal_from_real_imag_params(real, imag):
         raise Exception('Real must be one bigger than imaginary (DC)')
     # construct full signal from trainable parameters
     full_spectrum = np.concatenate([np.array([0]), imag]) *1j + real
-    signal = np.fft.irfft(full_spectrum, NUM_NYQUIST_SAMPLES)
+    signal = np.fft.irfft(full_spectrum, num_nyquist_samples)
 
     # get energy normalized positive signal
-    signal = bandlimited_nonnegative_signal(signal)
+    signal = bandlimited_nonnegative_signal(signal, num_nyquist_samples=num_nyquist_samples)
     return signal
 
-@jit
-def real_imag_params_from_signal(signal):
+@partial(jit, static_argnums=(1,))
+def real_imag_params_from_signal(signal, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     """
     Get nonzero real and imaginary parts of the spectrum from a signal
     """
     ft = np.fft.rfft(signal)
-    real = ft[:NUM_NYQUIST_SAMPLES // 2 + 1].real
-    imag = ft[1:NUM_NYQUIST_SAMPLES // 2 + 1].imag
+    real = ft[:num_nyquist_samples // 2 + 1].real
+    imag = ft[1:num_nyquist_samples // 2 + 1].imag
     return real, imag
 
-def random_unnormalized_signal(N=1):
+def random_unnormalized_signal(N=1, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     """
     Generate a random, bandlimited signal by
     Sampling random nyquist samples between 0 and 1
     """
-    return np.array(onp.random.rand(N, NUM_NYQUIST_SAMPLES))
+    return np.array(onp.random.rand(N, num_nyquist_samples))
 
 @jit
 def check_if_nonnegative(nyquist_samples):
@@ -231,14 +288,14 @@ def bandlimited_nonnegative_signal(nyquist_samples, normalize_energy=True,
  
     return np.squeeze(nyquist_samples)
 
-@partial(jit, static_argnums=(1, 2))
-def make_convolutional_encoder(kernel, object_length=OBJECT_LENGTH, sample=True):
+@partial(jit, static_argnums=(1, 2, 3))
+def make_convolutional_encoder(kernel, object_length=OBJECT_LENGTH, sample=True, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     # upsample because we wan the size to be based on the input signal (i.e. the object)
-    if object_length != NUM_NYQUIST_SAMPLES:
-        kernel = upsample_signal(kernel, object_length)
+    if object_length != num_nyquist_samples:
+        kernel = upsample_signal(kernel, object_length, num_nyquist_samples=num_nyquist_samples)
     conv_mat = make_circulant_matrix(kernel)
     if sample:
-        sampling_locations = np.linspace(0, 1, NUM_NYQUIST_SAMPLES, endpoint=False) + get_sampling_interval(NUM_NYQUIST_SAMPLES) / 2
+        sampling_locations = np.linspace(0, 1, num_nyquist_samples, endpoint=False) + get_sampling_interval(num_nyquist_samples) / 2
         indices = (sampling_locations * kernel.size).astype(int)
         conv_mat = conv_mat[indices, :]
     return conv_mat
@@ -259,11 +316,11 @@ def make_circulant_matrix(kernel):
   r  = np.roll(kernel, m, axis=-2)
   return make_circulant_matrix(np.concatenate([kernel, r], axis=-1)) 
 
-@jit
-def param_vector_to_real_imag(params):
-    return params[:NUM_NYQUIST_SAMPLES // 2 + 1], params[NUM_NYQUIST_SAMPLES // 2 + 1:]
+@partial(jit, static_argnums=(1,))
+def param_vector_to_real_imag(params, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+    return params[:num_nyquist_samples // 2 + 1], params[num_nyquist_samples // 2 + 1:]
 
-def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40):
+def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     """
     Make a grid of the potential intensity coordinates (sum to 1, non-negative)
     sampling_indices: where the target signal is nonzero and will instead have values from the grid
@@ -273,7 +330,7 @@ def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40):
         yx = np.stack([y_grid.ravel(), x_grid.ravel()], axis=1)
         # mask out the ones with sum > 1
         yx = yx[np.sum(yx, axis=-1) <= 1]
-        target_signal = onp.zeros((yx.shape[0], NUM_NYQUIST_SAMPLES))
+        target_signal = onp.zeros((yx.shape[0], num_nyquist_samples))
         target_signal[:, sampling_indices[0]] = yx[:, 0]
         target_signal[:, sampling_indices[1]] = yx[:, 1]
         # make sure the signal sums to 1
@@ -282,7 +339,7 @@ def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40):
         yxz = np.stack([y_grid.ravel(), x_grid.ravel(), z_grid.ravel()], axis=1)
         # mask out the ones with sum > 1
         yxz = yxz[np.sum(yxz, axis=-1) <= 1]
-        target_signal = onp.zeros((yxz.shape[0], NUM_NYQUIST_SAMPLES))
+        target_signal = onp.zeros((yxz.shape[0], num_nyquist_samples))
         target_signal[:, sampling_indices[0]] = yxz[:, 0]
         target_signal[:, sampling_indices[1]] = yxz[:, 1]
         target_signal[:, sampling_indices[2]] = yxz[:, 2]
@@ -295,15 +352,15 @@ def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40):
                     signal[index] = remainder / (signal.size - len(sampling_indices))
     return np.array(target_signal)
 
-def generate_random_bandlimited_signal():
-    return bandlimited_nonnegative_signal(random_unnormalized_signal())
+def generate_random_bandlimited_signal(num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+    return bandlimited_nonnegative_signal(random_unnormalized_signal(num_nyquist_samples=num_nyquist_samples), num_nyquist_samples=num_nyquist_samples)
 
-def generate_concentrated_signal(sampling_indices):
+def generate_concentrated_signal(sampling_indices, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     """
     Make a signal that tries to concentrate the energy at the given sampling indices,
     but is still non-negative, bandlimited, and has unit energy
     """
-    nyquist_samples = onp.zeros(NUM_NYQUIST_SAMPLES)
+    nyquist_samples = onp.zeros(num_nyquist_samples)
     for i in sampling_indices:
         nyquist_samples[i] = 1
     signal = bandlimited_nonnegative_signal(nyquist_samples=np.array(nyquist_samples))
@@ -401,142 +458,15 @@ def upsample_signal(nyquist_samples, upsampled_signal_length=UPSAMPLED_SIGNAL_LE
     else:
         return upsampled_signal
 
-
-def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, show_samples=False, 
-                                color_samples=False, vertical_line_indices=None, full_height_vertical_lines=False,
-                                sample_point_indices=None, horizontal_line_indices=None, 
-                                 num_nyquist_samples=NUM_NYQUIST_SAMPLES, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH,
-                                 markersize=8, marker='o', random_colors=False, center=False, plot_lim=1, color='k', 
-                                 colors=None, erasure_mask=None,
-                                 **kwargs):                                   
-
-    num_nyquist_samples = NUM_NYQUIST_SAMPLES
-
-    def plot_one_signal(signal, sample_point_indices=None, color=None, erasure_mask=erasure_mask):
-        if signal.size == num_nyquist_samples:
-            x, x_upsampled, upsampled_signal = upsample_signal(signal, num_nyquist_samples=num_nyquist_samples, 
-                                                            upsampled_signal_length=upsampled_signal_length, return_domain=True)
-        else:
-            upsampled_signal = signal
-            x_upsampled = np.linspace(0, 1, upsampled_signal_length, endpoint=False)
-            x = np.linspace(0, 1, num_nyquist_samples, endpoint=False)
-        if show_upsampled:
-            if center:
-                upsampled_signal = np.roll(upsampled_signal, upsampled_signal.size // 2 - np.argmax(upsampled_signal))
-
-            if erasure_mask is not None:
-                erasure_mask = np.repeat(erasure_mask, UPSAMPLED_SIGNAL_LENGTH // NUM_NYQUIST_SAMPLES)
-                upsampled_signal *= erasure_mask.astype(float)
-        
-
-            ax.plot(x_upsampled, upsampled_signal, label=label, linewidth=2.1, color=color, **kwargs)
-            # get the color used for the line
-            color = ax.get_lines()[-1].get_color()
-        if show_samples:
-            if sample_point_indices is None:
-                sample_point_indices = np.arange(num_nyquist_samples)
-            sample_point_indices = np.array(sample_point_indices)
-            ax.plot(x[sample_point_indices], signal[sample_point_indices], 
-                                       marker,
-                                        markersize=markersize, 
-                                        color='k' if not color_samples else color,
-                                        label=None if show_upsampled else label, 
-                                        **kwargs)
-            
-
-    if vertical_line_indices is not None:
-        x = upsample_signal(signal, return_domain=True)[0]
-        # find highest value over all signals at verical_line_indices
-        if full_height_vertical_lines:
-            max_values = np.ones(len(vertical_line_indices))
-        else:
-            max_values = np.max(signal.reshape(-1, num_nyquist_samples)[..., vertical_line_indices], axis=0)
-        for i, max_val in zip(vertical_line_indices, max_values):
-            # plot line going from 0 to max_val
-            ax.plot([x[i], x[i]], [0, max_val], 'k--')
-    if horizontal_line_indices is not None:
-        x = upsample_signal(signal, return_domain=True)[0]
-        # find highest value over all signals at verical_line_indices
-        y_values = np.max(signal.reshape(-1, num_nyquist_samples)[..., vertical_line_indices], axis=0)
-        for x_index, y in zip(horizontal_line_indices, y_values):
-            # plot line going from 0 to max_val
-            ax.plot([0, x[x_index]], [y, y], 'k--')
-            
-
-    if len(signal.shape) == 1:
-        plot_one_signal(signal, sample_point_indices=sample_point_indices, color=color)
-    else:
-        for i in range(signal.shape[0]):
-            color = colors[i] if colors is not None else None
-            plot_one_signal(signal[i], sample_point_indices=sample_point_indices, 
-                                color=color if not random_colors else onp.random.rand(3))
-                
-    clear_spines(ax)
-    ax.set(ylabel='Intensity', xlim=[0, 1], xlabel='Space', ylim=[0, plot_lim])
-
-
-
-
-def plot_object(ax, signal, colors=None, **kwargs):
-    for i, o in enumerate(signal.reshape(-1, signal.shape[-1])):
-        ax.plot(np.linspace(0,1, o.size), o, **kwargs, color=colors[i] if colors is not None else None)
-    ax.set(xlabel='Space', ylabel='Intensity', xlim=[0, 1], xticks=[0,1], ylim=[0, signal.max()], yticks=[0, signal.max()])
-    sparse_ticks(ax)
-
-    clear_spines(ax)
-    
-
-def plot_intensity_coord_histogram(ax, signals, sample_point_indices=(3, 4), **kwargs):
-    bins = np.linspace(0, 1, 50)  
-    h = ax.hist2d(signals[:, sample_point_indices[0]], signals[:, sample_point_indices[1]], 
-              bins=[bins, bins], cmap='inferno', density=True)
-    ax.set(xlabel='$I_1$', ylabel='$I_2$')
-    # dash white 45 degree line
-    ax.plot([0, 1], [1, 0], 'w--')
-    # show colorbar with not ticks
-    plt.colorbar(h[3], ax=ax, ticks=[])
-    # make an axis label for the colorbar
-    ax.text(1.2, 0.5, 'Probability', rotation=90, va='center', ha='left', transform=ax.transAxes)
-
-    
-
-def plot_in_intensity_coordinates(ax, signal, markersize=30, random_colors=False,
-                                color=None, differentiate_colors=False, sample_point_indices=(3,4), plot_lim=1,
-                                **kwargs):
-    # plot the line y = -x + 
-    # only plot this if there's nothing in the axes already
-    if len(ax.lines) == 0:
-        ax.plot([0, 1], [1, 0], 'k--', zorder=-1)
-        ax.set(xlim=[0, 1], ylim=[0, 1], xlabel='$I_1$', ylabel='$I_2$')
-    if differentiate_colors:
-        color = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        if len(signal.shape) == 1:
-            color = color[0]
-        else: 
-            color = [color[i % len(color)] for i in range(signal.shape[0])]
-    if random_colors:
-        # generate a list of random colors of length signal.shape[0]
-        color = onp.random.rand(signal.shape[0], 3)
-
-    ax.scatter(signal[..., sample_point_indices[0]], signal[..., sample_point_indices[1]], s=markersize, 
-               c=color, **kwargs)
-               
-            #    size=markersize, color=color)
-    ax.set_aspect('equal')
-    ax.set(xlim=[0, plot_lim], ylim=[0, plot_lim])
-
-    clear_spines(ax)
-    # plot again with x as marker
-
-def make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, sampling_indices=None):
+def make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, sampling_indices=None, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     if sampling_indices is None:
         sampling_indices = np.arange(target_signal.shape[-1])
     @jit
     def convolve_and_loss(parameters):
-        real = parameters[:NUM_NYQUIST_SAMPLES // 2 + 1]
-        imag = parameters[NUM_NYQUIST_SAMPLES // 2 + 1:]
-        kernel = signal_from_real_imag_params(real, imag)
-        conv_mat = make_convolutional_encoder(kernel)
+        real = parameters[:num_nyquist_samples // 2 + 1]
+        imag = parameters[num_nyquist_samples // 2 + 1:]
+        kernel = signal_from_real_imag_params(real, imag, num_nyquist_samples=num_nyquist_samples)
+        conv_mat = make_convolutional_encoder(kernel, num_nyquist_samples=num_nyquist_samples)
         output_signal = conv_mat @ input_signal
         return np.sum((output_signal[..., sampling_indices] - target_signal[..., sampling_indices])**2)
     return convolve_and_loss
@@ -554,19 +484,20 @@ def make_real_imag_loss_fn(target_signal, indices=None):
         return np.sum((signal[..., indices] - target_signal[..., indices])**2)
     return real_imag_loss_fn
 
-@jit
-def real_imag_bandlimit_energy_norm_prox_fn(parameters):
-    real, imag = param_vector_to_real_imag(parameters)
-    signal = signal_from_real_imag_params(real, imag)
-    signal = bandlimited_nonnegative_signal(signal)
-    real, imag = real_imag_params_from_signal(signal)
+@partial(jit, static_argnums=(1,))
+def real_imag_bandlimit_energy_norm_prox_fn(parameters, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+    real, imag = param_vector_to_real_imag(parameters, num_nyquist_samples=num_nyquist_samples)
+    signal = signal_from_real_imag_params(real, imag, num_nyquist_samples=num_nyquist_samples)
+    signal = bandlimited_nonnegative_signal(signal, num_nyquist_samples=num_nyquist_samples)
+    real, imag = real_imag_params_from_signal(signal, num_nyquist_samples=num_nyquist_samples)
     return np.concatenate([real, imag])
 
 
 
 def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=False,
-                     tolerance=1e-6, momentum=0.9, loss_improvement_patience=500, max_epochs=100000,
-                     learning_rate_decay=None, key=None):
+                     tolerance=1e-6, momentum=0.9, loss_improvement_patience=800, max_epochs=100000,
+                     learning_rate_decay=0.999, transition_begin=500,
+                       key=None):
     """
     Run optimization with optax, return optimized parameters
     """
@@ -578,7 +509,7 @@ def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=Fal
     
 
     learning_rate = learning_rate if learning_rate_decay is None else optax.exponential_decay(
-        learning_rate, transition_steps=1, decay_rate=learning_rate_decay, transition_begin=500)
+        learning_rate, transition_steps=1, decay_rate=learning_rate_decay, transition_begin=transition_begin)
     optimizer = optax.sgd(learning_rate=learning_rate, momentum=momentum, nesterov=False)
 
 
@@ -588,20 +519,31 @@ def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=Fal
     if verbose:
         print('initial loss', loss_fn(parameters) if key is None else loss_fn(parameters, key))
 
+    @jit
+    def tolerance_check(loss, loss_history):
+        return np.abs(loss - loss_history.max()) < tolerance
+
     last_best_loss_index = 0
     best_loss = 1e10
     best_params = np.copy(parameters)
+    loss_history = []
     for i in range(max_epochs):
         if key is not None:
             key, subkey = jax.random.split(key)
             loss, gradient = grad_fn(parameters, subkey)
         else:
             loss, gradient = grad_fn(parameters)
-        if loss < best_loss - tolerance:
+        loss_history.append(loss)
+        if loss < best_loss:
             best_loss = loss
             last_best_loss_index = i
             best_params = np.copy(parameters)
         if i - last_best_loss_index > loss_improvement_patience:
+            break
+        # if the loss is improving less than the tolerance, stop
+        if i % loss_improvement_patience == 0 and \
+                len(loss_history) > loss_improvement_patience and \
+                    tolerance_check(loss, np.array(loss_history[-loss_improvement_patience:])):
             break
 
         # Update parameters using optax's update rule.
