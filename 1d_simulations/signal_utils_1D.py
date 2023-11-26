@@ -51,7 +51,7 @@ def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, erasure_mask=None, ini
 
 
 @partial(jit, static_argnums=(1, 2))
-def compute_gaussian_differential_entropy_per_pixel(output_signals, ev_threshold=1e-10, average_values=True):
+def compute_gaussian_differential_entropy(output_signals, ev_threshold=1e-10, average_values=True):
     mean_subtracted = output_signals.T - np.mean(output_signals.T, axis=1, keepdims=True)
     cov_mat = np.cov(mean_subtracted)
     eig_vals = np.linalg.eigvalsh(cov_mat)
@@ -70,7 +70,7 @@ def compute_mutual_information_per_pixel(noisy_output_signals, noise_sigma):
     """
     compute mutual information per pixel in bits assuming noise was generated from an additive gaussian
     """
-    entropy = compute_gaussian_differential_entropy_per_pixel(noisy_output_signals, average_values=False)
+    entropy = compute_gaussian_differential_entropy(noisy_output_signals, average_values=False)
     entropy -= 0.5 * np.log(2 * np.pi * np.e * noise_sigma**2)
     # convert to bits
     entropy /= np.log(2)
@@ -138,7 +138,7 @@ def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_delt
 
 def optimize_towards_target_signals(target_signals, input_signal, sampling_indices=None,
                                      initial_kernel=None, learning_rate=3e-3,
-                                    learning_rate_decay=0.999, tolerance=1e-5,
+                                    learning_rate_decay=0.999, tolerance=1e-5, normalize_energy=True,
                                     transition_begin=800, verbose=False):                                    
     """
     Optimize a kernel to match a target signal
@@ -150,15 +150,17 @@ def optimize_towards_target_signals(target_signals, input_signal, sampling_indic
                                                         num_nyquist_samples=num_nyquist_samples)
 
     optimized_kernels = []
-    for target_signal in tqdm(target_signals):
-        loss_fn = make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, 
+    iter = tqdm(target_signals) if verbose else target_signals 
+    for target_signal in iter:
+        loss_fn = make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, normalize_energy=normalize_energy,
                                                                sampling_indices=sampling_indices, num_nyquist_samples=num_nyquist_samples)
-        optimized_params = run_optimzation(loss_fn, lambda x : real_imag_bandlimit_energy_norm_prox_fn(x, num_nyquist_samples=num_nyquist_samples),
+        optimized_params = run_optimzation(loss_fn, lambda x : real_imag_bandlimit_energy_norm_prox_fn(x, num_nyquist_samples=num_nyquist_samples, 
+                                                                                                       normalize_energy=normalize_energy),
                                 np.concatenate(real_imag_params_from_signal(initial_kernel, num_nyquist_samples=num_nyquist_samples)),
                                 transition_begin=transition_begin, learning_rate_decay=learning_rate_decay, tolerance=tolerance,
                                 loss_improvement_patience=1000, max_epochs=10000,
                                   learning_rate=learning_rate, verbose=verbose)
-        optimized_kernel = conv_kernel_from_params(optimized_params, num_nyquist_samples=num_nyquist_samples)
+        optimized_kernel = conv_kernel_from_params(optimized_params, num_nyquist_samples=num_nyquist_samples, normalize_energy=normalize_energy)
         optimized_kernels.append(optimized_kernel)
     optimized_kernels = np.array(optimized_kernels)
 
@@ -167,10 +169,10 @@ def optimize_towards_target_signals(target_signals, input_signal, sampling_indic
     output_signals = np.stack([conv_mat @ input_signal for conv_mat in conv_mats], axis=0)
     return optimized_kernels, output_signals
 
-@partial(jit, static_argnums=(1,))
-def conv_kernel_from_params(params, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+@partial(jit, static_argnums=(1, 2))
+def conv_kernel_from_params(params, num_nyquist_samples=NUM_NYQUIST_SAMPLES, normalize_energy=True):
     real_imag = param_vector_to_real_imag(params, num_nyquist_samples=num_nyquist_samples)
-    return signal_from_real_imag_params(*real_imag, num_nyquist_samples=num_nyquist_samples)
+    return signal_from_real_imag_params(*real_imag, num_nyquist_samples=num_nyquist_samples, normalize_energy=normalize_energy)
 
 @partial(jit, static_argnums=(1,))
 def signal_from_real_imag_param_vec(parameters, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
@@ -226,8 +228,8 @@ def make_convolutional_forward_model_with_mi_loss_and_erasure(objects, erasure_m
     
     return convolve_and_loss
 
-@partial(jit, static_argnums=(2,))
-def signal_from_real_imag_params(real, imag, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+@partial(jit, static_argnums=(2, 3))
+def signal_from_real_imag_params(real, imag, num_nyquist_samples=NUM_NYQUIST_SAMPLES, normalize_energy=True):
     """
     Generate signal with unit energy from real and imaginary parts of the spectrum
     """
@@ -238,7 +240,7 @@ def signal_from_real_imag_params(real, imag, num_nyquist_samples=NUM_NYQUIST_SAM
     signal = np.fft.irfft(full_spectrum, num_nyquist_samples)
 
     # get energy normalized positive signal
-    signal = bandlimited_nonnegative_signal(signal, num_nyquist_samples=num_nyquist_samples)
+    signal = bandlimited_nonnegative_signal(signal, num_nyquist_samples=num_nyquist_samples, normalize_energy=normalize_energy)
     return signal
 
 @partial(jit, static_argnums=(1,))
@@ -269,7 +271,14 @@ def bandlimited_nonnegative_signal(nyquist_samples, normalize_energy=True,
     """
     Make sure that the signal is non-negative, has unit energy
     """
-    nyquist_samples /= np.sum(nyquist_samples, axis=-1, keepdims=True)
+    if normalize_energy:
+        nyquist_samples /= np.sum(nyquist_samples, axis=-1, keepdims=True)
+    else:
+        # only normalize ones that are greater than 1
+        nyquist_samples = np.where(np.sum(nyquist_samples, axis=-1) > 1, 
+            nyquist_samples / np.sum(nyquist_samples, axis=-1, keepdims=True), 
+            nyquist_samples)
+    
     upsampled = upsample_signal(nyquist_samples, upsampled_signal_length=upsampled_signal_length,
                                 num_nyquist_samples=num_nyquist_samples)
 
@@ -458,14 +467,15 @@ def upsample_signal(nyquist_samples, upsampled_signal_length=UPSAMPLED_SIGNAL_LE
     else:
         return upsampled_signal
 
-def make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, sampling_indices=None, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+def make_convolutional_forward_model_and_loss_fn(input_signal, target_signal, sampling_indices=None, 
+                                                 num_nyquist_samples=NUM_NYQUIST_SAMPLES, normalize_energy=True):
     if sampling_indices is None:
         sampling_indices = np.arange(target_signal.shape[-1])
     @jit
     def convolve_and_loss(parameters):
         real = parameters[:num_nyquist_samples // 2 + 1]
         imag = parameters[num_nyquist_samples // 2 + 1:]
-        kernel = signal_from_real_imag_params(real, imag, num_nyquist_samples=num_nyquist_samples)
+        kernel = signal_from_real_imag_params(real, imag, num_nyquist_samples=num_nyquist_samples, normalize_energy=normalize_energy)
         conv_mat = make_convolutional_encoder(kernel, num_nyquist_samples=num_nyquist_samples)
         output_signal = conv_mat @ input_signal
         return np.sum((output_signal[..., sampling_indices] - target_signal[..., sampling_indices])**2)
@@ -484,11 +494,11 @@ def make_real_imag_loss_fn(target_signal, indices=None):
         return np.sum((signal[..., indices] - target_signal[..., indices])**2)
     return real_imag_loss_fn
 
-@partial(jit, static_argnums=(1,))
-def real_imag_bandlimit_energy_norm_prox_fn(parameters, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+@partial(jit, static_argnums=(1, 2))
+def real_imag_bandlimit_energy_norm_prox_fn(parameters, num_nyquist_samples=NUM_NYQUIST_SAMPLES, normalize_energy=True):
     real, imag = param_vector_to_real_imag(parameters, num_nyquist_samples=num_nyquist_samples)
-    signal = signal_from_real_imag_params(real, imag, num_nyquist_samples=num_nyquist_samples)
-    signal = bandlimited_nonnegative_signal(signal, num_nyquist_samples=num_nyquist_samples)
+    signal = signal_from_real_imag_params(real, imag, num_nyquist_samples=num_nyquist_samples, normalize_energy=normalize_energy)
+    signal = bandlimited_nonnegative_signal(signal, num_nyquist_samples=num_nyquist_samples, normalize_energy=normalize_energy)
     real, imag = real_imag_params_from_signal(signal, num_nyquist_samples=num_nyquist_samples)
     return np.concatenate([real, imag])
 

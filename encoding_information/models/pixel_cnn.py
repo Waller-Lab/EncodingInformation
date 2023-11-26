@@ -25,7 +25,7 @@ from flax import linen as nn
 from flax.training.train_state import TrainState
 import optax
 
-from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, evaluate_nll
+from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, evaluate_nll, make_dataset_generators
 
 
 
@@ -107,9 +107,11 @@ class HorizontalStackConvolution(nn.Module):
 
 class GatedMaskedConv(nn.Module):
     dilation : int = 1
+    id: int = None
+    condition_vector_size : int = None
 
     @nn.compact
-    def __call__(self, v_stack, h_stack):
+    def __call__(self, v_stack, h_stack, condition_vector=None):
         c_in = v_stack.shape[-1]
 
         # Layers (depend on input shape)
@@ -126,16 +128,33 @@ class GatedMaskedConv(nn.Module):
         conv_horiz_1x1 = nn.Conv(c_in,
                                  kernel_size=(1, 1))
 
+
+
         # Vertical stack (left)
         v_stack_feat = conv_vert(v_stack)
         v_val, v_gate = np.split(v_stack_feat, 2, axis=-1)
-        v_stack_out = nn.tanh(v_val) * nn.sigmoid(v_gate)
+      
+        if condition_vector is not None:
+            weights = self.param(f'conditioning_weights_vert_{self.id}', jax.nn.initializers.lecun_normal(), (1, self.condition_vector_size,))
+            y = np.dot(weights, condition_vector.T).reshape(-1,1,1,1)
+            weights_gate = self.param(f'conditioning_weights_vert_gate{self.id}', jax.nn.initializers.lecun_normal(), (1, self.condition_vector_size,))
+            y_gate = np.dot(weights_gate, condition_vector.T).reshape(-1,1,1,1)
+            v_stack_out = nn.tanh(v_val + y) * nn.sigmoid(v_gate + y_gate)
+        else:
+            v_stack_out = nn.tanh(v_val) * nn.sigmoid(v_gate)
 
         # Horizontal stack (right)
         h_stack_feat = conv_horiz(h_stack)
         h_stack_feat = h_stack_feat + conv_vert_to_horiz(v_stack_feat)
         h_val, h_gate = np.split(h_stack_feat, 2, axis=-1)
-        h_stack_feat = nn.tanh(h_val) * nn.sigmoid(h_gate)
+        if condition_vector is not None:
+            weights = self.param(f'conditioning_weights_horz{self.id}', jax.nn.initializers.lecun_normal(), (1, self.condition_vector_size,))
+            y = np.dot(weights, condition_vector.T).reshape(-1,1,1,1)
+            weights_gate = self.param(f'conditioning_weights_horz_gate{self.id}', jax.nn.initializers.lecun_normal(), (1, self.condition_vector_size,))
+            y_gate = np.dot(weights_gate, condition_vector.T).reshape(-1,1,1,1)
+            h_stack_feat = nn.tanh(h_val + y) * nn.sigmoid(h_gate + y_gate)
+        else:
+            h_stack_feat = nn.tanh(h_val) * nn.sigmoid(h_gate)
         h_stack_out = conv_horiz_1x1(h_stack_feat)
         h_stack_out = h_stack_out + h_stack
 
@@ -150,6 +169,7 @@ class _PixelCNNFlaxImpl(nn.Module):
     train_data_min : float = None
     train_data_max : float = None
     sigma_min : float = 1
+    condition_vector_size : int = None
 
     def setup(self):
         if None in [self.train_data_mean, self.train_data_std, self.train_data_min, self.train_data_max]:
@@ -168,13 +188,13 @@ class _PixelCNNFlaxImpl(nn.Module):
         self.conv_hstack = HorizontalStackConvolution(self.num_hidden_channels, kernel_size=3, mask_center=True)
         # Convolution block of PixelCNN. We use dilation instead of downscaling
         self.conv_layers = [
-            GatedMaskedConv(),
-            GatedMaskedConv(dilation=2),
-            GatedMaskedConv(),
-            GatedMaskedConv(dilation=4),
-            GatedMaskedConv(),
-            GatedMaskedConv(dilation=2),
-            GatedMaskedConv(),
+            GatedMaskedConv(dilation=1, id=0, condition_vector_size=self.condition_vector_size),
+            GatedMaskedConv(dilation=2, id=1, condition_vector_size=self.condition_vector_size),
+            GatedMaskedConv(dilation=1, id=2, condition_vector_size=self.condition_vector_size),
+            GatedMaskedConv(dilation=4, id=3, condition_vector_size=self.condition_vector_size),
+            GatedMaskedConv(dilation=1, id=4, condition_vector_size=self.condition_vector_size),
+            GatedMaskedConv(dilation=2, id=5, condition_vector_size=self.condition_vector_size),
+            GatedMaskedConv(dilation=1, id=6, condition_vector_size=self.condition_vector_size),
         ]
         # Output classification convolution (1x1)
         self.conv_out = nn.Conv(self.num_hidden_channels, kernel_size=(1, 1))
@@ -189,7 +209,7 @@ class _PixelCNNFlaxImpl(nn.Module):
         self.sigma_dense = nn.Dense(self.num_mixture_components)
         self.mix_logit_dense = nn.Dense(self.num_mixture_components)
 
-    def __call__(self, x):
+    def __call__(self, x, condition_vectors=None):
         """
         Do forward pass output the parameters of the gaussian mixture output
         """
@@ -197,7 +217,7 @@ class _PixelCNNFlaxImpl(nn.Module):
         if x.ndim == 3:
             x = x[..., np.newaxis]
 
-        return self.forward_pass(x)
+        return self.forward_pass(x, condition_vectors=condition_vectors)
     
     def compute_nll(self, mu, sigma, mix_logit, x):
         # numerically efficient implementation of mixture density, slightly modified
@@ -217,11 +237,12 @@ class _PixelCNNFlaxImpl(nn.Module):
         return -0.5 * ((y - mean) / sigma) ** 2 - np.log(sigma) - logSqrtTwoPI
 
 
-    def forward_pass(self, x):
+    def forward_pass(self, x, condition_vectors=None):
         """
         Forward image through model and return parameters of mixture density 
         Inputs:
             x - Image BxHxWx1 (multiple channels not supported yet)
+            condition_vector - vector of size condition_vector_size to condition on
         """
         # check shape
         if x.ndim != 4:
@@ -234,7 +255,7 @@ class _PixelCNNFlaxImpl(nn.Module):
         h_stack = self.conv_hstack(x)
         # Gated Convolutions
         for layer in self.conv_layers:
-            v_stack, h_stack = layer(v_stack, h_stack)
+            v_stack, h_stack = layer(v_stack, h_stack, condition_vector=condition_vectors)
         # 1x1 classification convolution
         # Apply ELU before 1x1 convolution for non-linearity on residual connection
         out = self.conv_out(nn.elu(h_stack))
@@ -266,7 +287,7 @@ class PixelCNN(ProbabilisticImageModel):
         self.num_mixture_components = num_mixture_components
         self._flax_model = None
 
-    def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
+    def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
             sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, verbose=True):
         train_images = train_images.astype(np.float32)
 
@@ -279,24 +300,51 @@ class PixelCNN(ProbabilisticImageModel):
         if self._flax_model is None:
             self._flax_model = _PixelCNNFlaxImpl(num_hidden_channels=self.num_hidden_channels, num_mixture_components=self.num_mixture_components,
                                     train_data_mean=np.mean(train_images), train_data_std=np.std(train_images),
-                                    train_data_min=np.min(train_images), train_data_max=np.max(train_images), sigma_min=sigma_min)
-            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3]) # pass in an intial batch
+                                    train_data_min=np.min(train_images), train_data_max=np.max(train_images), sigma_min=sigma_min,
+                                    condition_vector_size=None if condition_vectors is None else condition_vectors.shape[-1]
+                                    )
+            # pass in an intial batch
+            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3], 
+                                condition_vectors[:3] if condition_vectors is not None else None)
             
             self._optimizer = optax.adam(learning_rate)
 
-            def apply_fn(params, x):
-                output = self._flax_model.apply(params, x)
+            def apply_fn(params, x, condition_vector=None):
+                output = self._flax_model.apply(params, x, condition_vector)
                 return self._flax_model.compute_loss(*output, x)
 
             self._state = TrainState.create(apply_fn=apply_fn, params=initial_params, tx=self._optimizer)        
         
-        best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
+        if condition_vectors is None:
+            @jax.jit
+            def train_step(state, imgs):
+                """
+                A standard gradient descent training step
+                """
+                loss_fn = lambda params: state.apply_fn(params, imgs)
+                loss, grads = jax.value_and_grad(loss_fn)(state.params)
+                state = state.apply_gradients(grads=grads)
+                return state, loss
+        else:
+            @jax.jit
+            def train_step(state, imgs, condition_vecs):
+                """
+                A standard gradient descent training step
+                """
+                loss_fn = lambda params: state.apply_fn(params, imgs, condition_vecs)
+                loss, grads = jax.value_and_grad(loss_fn)(state.params)
+                state = state.apply_gradients(grads=grads)
+                return state, loss 
+
+
+        best_params, val_loss_history = train_model(train_images=train_images, condition_vectors=condition_vectors, train_step=train_step,
+                                                    state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
                                                     steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, verbose=verbose)
         self._state = self._state.replace(params=best_params)
         return val_loss_history
 
 
-    def compute_negative_log_likelihood(self, data, verbose=True):
+    def compute_negative_log_likelihood(self, data, conditioning_vecs=None, verbose=True):
         if data.ndim == 3:
             # add a trailing channel dimension if necessary
             data = data[..., np.newaxis]
@@ -310,9 +358,11 @@ class PixelCNN(ProbabilisticImageModel):
             raise ValueError("Data shape is different than image shape of trained model. This is not yet supported"
                              "Expected {}, got {}".format(self.image_shape, data.shape[1:3]))
 
-        return evaluate_nll(data, self._state, verbose=verbose)
+        dataset, _ = make_dataset_generators(data, batch_size=32, num_val_samples=0, condition_vectors=conditioning_vecs)
 
-    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
+        return evaluate_nll(dataset, self._state, verbose=verbose)
+
+    def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         if seed is None:
             seed = 123
         key = jax.random.PRNGKey(seed)
@@ -320,6 +370,10 @@ class PixelCNN(ProbabilisticImageModel):
             sample_shape = self.image_shape
         if type(sample_shape) == int:
             sample_shape = (sample_shape, sample_shape)
+
+        if conditioning_vecs is not None:
+            assert conditioning_vecs.shape[0] == num_samples
+            assert conditioning_vecs.shape[1] == self._flax_model.condition_vector_size
 
         sampled_images = onp.zeros((num_samples, *sample_shape))
         for i in tqdm(onp.arange(sample_shape[0]), desc='Generating PixelCNN samples') if verbose else np.arange(sample_shape[0]):
@@ -334,7 +388,10 @@ class PixelCNN(ProbabilisticImageModel):
                 assert conditioning_images.shape[1:] == self.image_shape
 
                 key, key2 = jax.random.split(key)
-                mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images)
+                if conditioning_vecs is None:
+                    mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images)
+                else:
+                    mu, sigma, mix_logit = self._flax_model.apply(self._state.params, conditioning_images, conditioning_vecs)
                 # only sampling one pixel at a time
                 # make onp arrays for range checking
                 mu = onp.array(mu)[:, i_in_cropped_image, j_in_cropped_image, :]
