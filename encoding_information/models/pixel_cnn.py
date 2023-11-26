@@ -288,7 +288,7 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, verbose=True):
+            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, do_lr_decay=False, verbose=True):
         train_images = train_images.astype(np.float32)
 
         # add trailing channel dimension if necessary
@@ -306,8 +306,16 @@ class PixelCNN(ProbabilisticImageModel):
             # pass in an intial batch
             initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3], 
                                 condition_vectors[:3] if condition_vectors is not None else None)
+
             
-            self._optimizer = optax.adam(learning_rate)
+            if do_lr_decay:
+                lr_schedule = optax.exponential_decay(init_value=learning_rate,
+                                                    transition_steps=steps_per_epoch,
+                                                    decay_rate=0.99)
+
+                self._optimizer = optax.adam(lr_schedule)
+            else:
+                self._optimizer = optax.adam(learning_rate)
 
             def apply_fn(params, x, condition_vector=None):
                 output = self._flax_model.apply(params, x, condition_vector)

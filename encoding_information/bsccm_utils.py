@@ -120,6 +120,7 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         # Note: edge crop is only used for computing the normalization, for consitency with the mutual informaiton analysis to follow in a later experiment
         edge_crop = synthetic_noise['edge_crop']
         median_filter = synthetic_noise['median_filter']
+        noise_seed = synthetic_noise['seed']
         # print('Synthetic noise: ', synthetic_noise)
 
         # read 1000 images to estimate photon count
@@ -137,9 +138,9 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         if synthetic_noise is not None:
             if median_filter:
                 # this is assumed to be noiseless, so add full noise here
-                return add_noise(image * rescale_fraction, seed=index)
+                return add_noise(image * rescale_fraction, seed=index + noise_seed)
             else:
-                return add_shot_noise_to_experimenal_data(image, rescale_fraction, seed=index)
+                return add_shot_noise_to_experimenal_data(image, rescale_fraction, seed=index + noise_seed)
         else:
             return image
 
@@ -149,23 +150,30 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         """
         image_shape = get_bsccm_image(bsccm, channels, indices[0]).shape
         blank_image = np.zeros(image_shape)
-        
+
+        def load_single_image(index):
+            image = get_bsccm_image(bsccm, channels, index)
+            image = _convert_to_photons(image, **bsccm.global_metadata['led_array']['camera'])
+            if median_filter:
+                if image.shape[2] != 1:
+                    raise Exception('Only single channel images supported for now')
+                image = ndimage.median_filter(image, size=3)
+            image = add_noise_to_image(image, index)
+            return image
+
         for index, target in zip(indices, targets):
             if single_marker is None:
-                multi_channel_img = get_bsccm_image(bsccm, channels, index)
-                add_noise_to_image(multi_channel_img, index)
-                yield multi_channel_img, target.astype(np.float32)
+                image = load_single_image(index)
+                yield image, target.astype(np.float32)
             else:
                 # for speed saving ignore non requested markers, but return None to keep
                 # everything in same order for reproducible train/val/test split
                 if markers[np.argmax(np.logical_not(np.isnan(target.ravel())).astype(int))] == single_marker:
-                    multi_channel_img = get_bsccm_image(bsccm, channels, index)
-                    add_noise_to_image(multi_channel_img, index)
-                    yield multi_channel_img, target.astype(np.float32)
+                    image = load_single_image(index)
+                    yield image, target.astype(np.float32)
                 else:
                     yield blank_image, target.astype(np.float32)
                 
-            
             
     return markers, image_target_generator, dataset_size, display_range, indices
 
@@ -203,7 +211,7 @@ def generate_synthetic_multi_led_images(bsccm_coherent, led_indices, edge_crop=0
 
 
 def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slides=False, indices=None,
-                      convert_units_to_photons=True, median_filter=False, seed=None, verbose=False):
+                      convert_units_to_photons=True, median_filter=False, seed=None, verbose=False, batch=1):
     """
     Load a stack of images from a BSCCM dataset
 
@@ -218,7 +226,7 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
     """
     if indices is None:
         # default to batch 1 because the LED119 data is brighter for some reason
-        indices = dataset.get_indices(batch=1)[:num_images]
+        indices = dataset.get_indices(batch=batch)[:num_images]
     if seed is not None:
         if indices is not None:
             raise Exception('Cannot set seed if indices is not None')
@@ -317,7 +325,7 @@ def add_shot_noise_to_experimenal_data(image_stack, photon_fraction, seed=None):
     if photon_fraction > 1 or photon_fraction <= 0:
         raise Exception('photon_fraction must be less than 1 and greater than 0')
     photon_fraction = float(photon_fraction) # just in case
-    additional_sd = np.sqrt(photon_fraction * image_stack - photon_fraction ** 2 * np.sqrt(image_stack))
+    additional_sd = np.sqrt(photon_fraction * image_stack * (1 - photon_fraction)) 
     simulated_images = image_stack * photon_fraction + additional_sd * jax.random.normal(key, image_stack.shape)
     positive = np.where(simulated_images > 0, simulated_images, 0)
     return positive
