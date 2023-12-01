@@ -351,6 +351,9 @@ class PixelCNN(ProbabilisticImageModel):
         self._state = self._state.replace(params=best_params)
         return val_loss_history
 
+    @jax.jit
+    def conditional_eval_step(self, state, imgs, condition_vecs):
+        return state.apply_fn(state.params, imgs, condition_vecs)
 
     def compute_negative_log_likelihood(self, data, conditioning_vecs=None, verbose=True):
         if data.ndim == 3:
@@ -366,9 +369,10 @@ class PixelCNN(ProbabilisticImageModel):
             raise ValueError("Data shape is different than image shape of trained model. This is not yet supported"
                              "Expected {}, got {}".format(self.image_shape, data.shape[1:3]))
 
-        dataset, _ = make_dataset_generators(data, batch_size=32, num_val_samples=0, condition_vectors=conditioning_vecs)
+        _, dataset_fn = make_dataset_generators(data, batch_size=32, num_val_samples=data.shape[0], condition_vectors=conditioning_vecs)
 
-        return evaluate_nll(dataset, self._state, verbose=verbose)
+        return evaluate_nll(dataset_fn(), self._state, verbose=verbose, 
+                            eval_step=self.conditional_eval_step if conditioning_vecs is not None else None)
 
     def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         if seed is None:
