@@ -12,8 +12,8 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
                                 sample_point_indices=None, horizontal_line_indices=None, 
                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH,
                                  markersize=8, marker='o', random_colors=False, center=False, plot_lim=1, color=None, 
-                                 colors=None, erasure_mask=None,
-                                 **kwargs):      
+                                 colors=None, erasure_mask=None, xlabel='Space', ylabel='Intensity', **kwargs):
+
 
     if signal.shape[-1] == UPSAMPLED_SIGNAL_LENGTH:
         num_nyquist_samples = NUM_NYQUIST_SAMPLES
@@ -37,7 +37,9 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
                 upsampled_signal *= erasure_mask.astype(float)
         
 
-            ax.plot(x_upsampled, upsampled_signal, label=label, linewidth=2.1, color=color, **kwargs)
+            ax.plot(x_upsampled, upsampled_signal, label=label, linewidth=2.1, color=color, 
+                    # zorder=3, 
+                    **kwargs)
             # get the color used for the line
             color = ax.get_lines()[-1].get_color()
         if show_samples:
@@ -47,6 +49,7 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
             ax.plot(x[sample_point_indices], signal[sample_point_indices], 
                                        marker,
                                         markersize=markersize, 
+                                        # zorder=3,
                                         color='k' if not color_samples else color,
                                         label=None if show_upsampled else label, 
                                         **kwargs)
@@ -80,7 +83,7 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
                                 color=color if not random_colors else onp.random.rand(3))
                 
     clear_spines(ax)
-    ax.set(ylabel='Intensity', xlim=[0, 1], xlabel='Space', ylim=[0, plot_lim])
+    ax.set(ylabel=ylabel, xlim=[0, 1], xlabel=xlabel, ylim=[0, plot_lim], xticks=[0, 1], yticks=[0, plot_lim])
 
 
 
@@ -127,11 +130,12 @@ def plot_in_intensity_coordinates(ax, signal, markersize=30, random_colors=False
         color = onp.random.rand(signal.shape[0], 3)
 
     ax.scatter(signal[..., sample_point_indices[0]], signal[..., sample_point_indices[1]], s=markersize, 
-               c=color, **kwargs)
+               c=color, zorder=3,
+               **kwargs)
                
             #    size=markersize, color=color)
     ax.set_aspect('equal')
-    ax.set(xlim=[0, plot_lim], ylim=[0, plot_lim])
+    ax.set(xlim=[0, plot_lim], ylim=[0, plot_lim], xticks=[0, plot_lim], yticks=[0, plot_lim])
 
     clear_spines(ax)
     # plot again with x as marker
@@ -141,7 +145,7 @@ def make_PSF_output_signal_plot(ax, params, objects, erasure_mask, noise_sigma,
   
   # plot the initial and optimized convolutional encoders
 
-  plot_in_spatial_coordinates(ax[0], signal_from_real_imag_param_vec(params), show_samples=False, center=True)
+  plot_in_spatial_coordinates(ax[0], param_vec_to_signal(params), show_samples=False, center=True)
   ax[0].set_title('PSF')
 
 
