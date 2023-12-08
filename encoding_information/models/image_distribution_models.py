@@ -14,7 +14,8 @@ class ProbabilisticImageModel(ABC):
 
     @abstractmethod
     def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            batch_size=64, num_val_samples=1000, seed=0, verbose=True):
+            batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,
+            seed=0, verbose=True):
         """
         Fit the model to the images
 
@@ -33,7 +34,9 @@ class ProbabilisticImageModel(ABC):
         batch_size : int, optional
             Batch size
         num_val_samples : int, optional
-            Number of validation samples to use
+            Number of validation samples to use. If None, use percent_samples_for_validation
+        percent_samples_for_validation : float, optional
+            Percentage of samples to use for validation
         seed : int, optional
             Random seed to initialize the model
         verbose : bool, optional

@@ -492,8 +492,12 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 
 
     def fit(self, train_images, learning_rate=1e2, max_epochs=60, steps_per_epoch=1,  patience=15, 
-            batch_size=12, num_val_samples=100, eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
+            batch_size=12, num_val_samples=None, percent_samples_for_validation=0.1,
+            eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
             precondition_gradient=False, verbose=True):
+        
+        num_val_samples = int(train_images.shape[0] * percent_samples_for_validation) if num_val_samples is None else num_val_samples
+
         
         
         self._optimizer = optax.chain(

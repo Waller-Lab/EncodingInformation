@@ -219,7 +219,7 @@ class _PixelCNNFlaxImpl(nn.Module):
 
         return self.forward_pass(x, condition_vectors=condition_vectors)
     
-    def compute_nll(self, mu, sigma, mix_logit, x):
+    def compute_gaussian_nll(self, mu, sigma, mix_logit, x):
         # numerically efficient implementation of mixture density, slightly modified
         # see https://github.com/hardmaru/mdn_jax_tutorial/blob/master/mixture_density_networks_jax.ipynb
         # compute per-pixel negative log-likelihood
@@ -230,12 +230,12 @@ class _PixelCNNFlaxImpl(nn.Module):
         """ 
         Compute average negative log likelihood per pixel averaged over batch and pixels
         """
-        return self.compute_nll(mu, sigma, mix_logit, x).mean()
+        return self.compute_gaussian_nll(mu, sigma, mix_logit, x).mean()
+
 
     def lognormal(self, y, mean, sigma):
         logSqrtTwoPI = np.log(np.sqrt(2.0 * np.pi))
         return -0.5 * ((y - mean) / sigma) ** 2 - np.log(sigma) - logSqrtTwoPI
-
 
     def forward_pass(self, x, condition_vectors=None):
         """
@@ -265,14 +265,12 @@ class _PixelCNNFlaxImpl(nn.Module):
         mu = np.clip(self.mu_dense(out), 0, self.train_data_max + 1) 
 
         sigma = nn.activation.softplus( self.sigma_dense(out) )  # must be positive
-         # avoid having tiny components that overly concentrate mass, and don't need components larger than data standard deviation
+        # avoid having tiny components that overly concentrate mass, and don't need components larger than data standard deviation
         sigma = np.clip(sigma, self.sigma_min, self.train_data_std )
 
         mix_logit = self.mix_logit_dense(out)
 
         return mu, sigma, mix_logit
-
-
 
 
 
@@ -288,8 +286,10 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, do_lr_decay=False, verbose=True):
+            sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  seed=0, do_lr_decay=False, verbose=True):
         train_images = train_images.astype(np.float32)
+
+        num_val_samples = int(train_images.shape[0] * percent_samples_for_validation) if num_val_samples is None else num_val_samples
 
         # add trailing channel dimension if necessary
         if train_images.ndim == 3:
