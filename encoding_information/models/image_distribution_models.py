@@ -84,7 +84,15 @@ class ProbabilisticImageModel(ABC):
         """
         pass
 
-
+def add_gaussian_noise_fn(images, condition_vectors=None):
+    """
+    Add gaussian noise to images
+    """
+    noisy_images = images + tf.random.normal(shape=tf.shape(images), mean=0, stddev=1)
+    if condition_vectors is not None:
+        return noisy_images, condition_vectors
+    else:
+        return noisy_images
 
 def add_uniform_noise_fn(images, condition_vectors=None):
     """
@@ -96,7 +104,7 @@ def add_uniform_noise_fn(images, condition_vectors=None):
     else:
         return noisy_images
 
-def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noise=True, condition_vectors=None):
+def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noise=True, add_gaussian_noise=False, condition_vectors=None):
     """
     Use tensorflow datasets to make fast data pipelines
     """
@@ -138,6 +146,13 @@ def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noi
         train_ds = tf.data.Dataset.from_tensor_slices(train_images)
         val_ds = tf.data.Dataset.from_tensor_slices(val_images)
 
+    if add_gaussian_noise and add_uniform_noise:
+        raise ValueError("Cannot add both gaussian and uniform noise")
+    
+    if add_gaussian_noise:
+        train_ds = train_ds.map(add_gaussian_noise_fn)
+        val_ds = val_ds.map(add_gaussian_noise_fn)
+
     if add_uniform_noise:
         train_ds = train_ds.map(add_uniform_noise_fn)
         val_ds = val_ds.map(add_uniform_noise_fn)
@@ -148,12 +163,13 @@ def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noi
     return train_ds.as_numpy_iterator(), lambda : val_ds.as_numpy_iterator()
 
 
-def evaluate_nll(data_iterator, state, eval_step=None, add_uniform_noise=True, seed=0, batch_size=16, verbose=True):
+def _evaluate_nll(data_iterator, state, eval_step=None, seed=0, batch_size=16, verbose=True):
     """
     Compute negative log likelihood over many batches
 
     batch_size only comes into play if data_iterator is a numpy array
     """
+
     if eval_step is None: # default eval step
         eval_step = jax.jit(lambda state, imgs: state.apply_fn(state.params, imgs))
 
@@ -168,9 +184,6 @@ def evaluate_nll(data_iterator, state, eval_step=None, add_uniform_noise=True, s
         else:
             images = batch
             condition_vector = None
-        if add_uniform_noise:
-            images = images + jax.random.uniform(key=key, minval=0, maxval=1, shape=images.shape)
-            key = jax.random.split(key)[0]
         batch_nll_per_pixel = eval_step(state, images) if condition_vector is None else eval_step(state, images, condition_vector)
         total_nll += images.shape[0] * batch_nll_per_pixel
         count += images.shape[0]
@@ -181,6 +194,7 @@ def evaluate_nll(data_iterator, state, eval_step=None, add_uniform_noise=True, s
 
 def train_model(train_images, state, batch_size, num_val_samples,
                  steps_per_epoch, num_epochs, patience, train_step, condition_vectors=None,
+                 add_gaussian_noise=False, add_uniform_noise=True,
                   verbose=True):
     """
     Training loop with early stopping. Returns a callable with 
@@ -189,7 +203,9 @@ def train_model(train_images, state, batch_size, num_val_samples,
         num_val_samples = int(train_images.shape[0] * 0.1)
         warnings.warn(f'Number of validation samples must be less than the number of training samples. Using {num_val_samples} validation samples instead.')
     train_ds_iterator, val_loader_maker_fn = make_dataset_generators(train_images,
-                     batch_size=batch_size, num_val_samples=num_val_samples, condition_vectors=condition_vectors)
+                     batch_size=batch_size, num_val_samples=num_val_samples, condition_vectors=condition_vectors,
+                     add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise
+                     )
 
     if condition_vectors is not None:
         eval_step = jax.jit(lambda state, imgs, conditioning_vecs: state.apply_fn(state.params, imgs, conditioning_vecs))
@@ -197,8 +213,7 @@ def train_model(train_images, state, batch_size, num_val_samples,
         eval_step = jax.jit(lambda state, imgs: state.apply_fn(state.params, imgs))
 
     best_params = state.params
-    # uniform noise already added in the dataset generators
-    eval_nll = evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step, add_uniform_noise=False, verbose=verbose)
+    eval_nll = _evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step, verbose=verbose)
     if verbose:
         print(f'Initial validation NLL: {eval_nll:.2f}')
     
@@ -217,8 +232,7 @@ def train_model(train_images, state, batch_size, num_val_samples,
 
             avg_loss += loss / steps_per_epoch
         
-        # uniform noise already added in the dataset generators
-        eval_nll = evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step, add_uniform_noise=False, verbose=verbose) 
+        eval_nll = _evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step, verbose=verbose) 
         if np.isnan(eval_nll):
             warnings.warn('NaN encountered in validation loss. Stopping early.')
             break

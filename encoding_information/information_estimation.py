@@ -165,7 +165,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                                   gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
                                  patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params
                                  use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, analytic_marginal_entropy=False,# gaussian params
-                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, # pixelcnn params
+                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, add_gaussian_training_noise=False, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
@@ -201,6 +201,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
     num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
     do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
+    add_gaussian_training_noise : bool, (if entropy_model='pixelcnn') whether to add gaussian noise to the training data instead of uniform noise
 
     return_entropy_model : bool, whether to return the noisy image entropy model
     verbose : bool, whether to print out the estimated values
@@ -250,7 +251,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                              learning_rate=learning_rate, max_epochs=max_epochs, do_lr_decay=do_lr_decay).items():
                 if v is not None:
                  hyperparams[k] = v
-        noisy_image_model.fit(training_set, verbose=verbose, **hyperparams)
+        noisy_image_model.fit(training_set, verbose=verbose, **hyperparams, add_gaussian_noise=add_gaussian_training_noise)
     else:
         raise ValueError(f"Unrecognized entropy model {entropy_model}")
   

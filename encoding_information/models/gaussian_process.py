@@ -13,7 +13,7 @@ import optax
 import warnings
 import flax.linen as nn
 from flax.training.train_state import TrainState
-from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, evaluate_nll
+from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, make_dataset_generators
 
 def estimate_full_cov_mat(patches):
     """
@@ -586,6 +586,14 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
             eig_vals = np.where(eig_vals < floor, floor, eig_vals)
             cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
             
+        # Important: during the training process, noise is added to the pixel values to account for the 
+        # fact that discrete pixel values are used with a continuous density in the model. This is handled by the 
+        # make_dataset_generator function in the image_distribution_models module. So we call this here on a the images
+        # to ensure that the same noise is added to the images here as was added during training, and then convert back
+        # to a jax array
+        _, dataset_fn = make_dataset_generators(images, batch_size=images.shape[0], num_val_samples=images.shape[0])
+        images = next(dataset_fn())
+
         lls = _compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
         return -lls.mean()
     
