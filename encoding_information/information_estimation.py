@@ -334,7 +334,8 @@ def  estimate_task_specific_mutual_information(noisy_images, labels, test_set_fr
     pixelcnn.fit(training_set, training_set_labels, verbose=verbose, **hyperparams)
 
 
-    h_y_t = pixelcnn.compute_negative_log_likelihood(test_set, test_set_labels)
+    has_real_label_mask = np.sum(test_set_labels, axis=-1) > 0
+    h_y_t = pixelcnn.compute_negative_log_likelihood(test_set[has_real_label_mask], test_set_labels[has_real_label_mask])
     h_y = pixelcnn.compute_negative_log_likelihood(test_set, np.zeros_like(test_set_labels))
 
 
