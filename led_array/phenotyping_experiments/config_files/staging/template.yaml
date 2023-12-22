@@ -15,7 +15,7 @@ data:
 hyperparameters:
   all_marker_training: true
   arch: DN121
-  batch_size: 24
+  batch_size: 16
   change_input_channels: true
   density_output: true
   learning_rate: 5.0e-05
@@ -32,13 +32,13 @@ hyperparameters:
   test_fraction: 0.05
   validation_fraction: 0.05
 metadata:
-  experiment_name: Synthetic_Noise_v5
+  experiment_name: Synthetic_Noise_v6
   replicate: 0
 options:
   hog_memory: false
   immortal: false
   resume_training: false
-saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v5/
+saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v6/
 train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
 training:
   attempt_number: 1
