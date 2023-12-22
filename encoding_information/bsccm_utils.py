@@ -122,6 +122,10 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         median_filter = synthetic_noise['median_filter']
         noise_seed = synthetic_noise['seed']
         # print('Synthetic noise: ', synthetic_noise)
+        if 'use_correction_factor' in synthetic_noise:
+            use_correction_factor = synthetic_noise['use_correction_factor']
+        else:
+            use_correction_factor = False
 
         # read 1000 images to estimate photon count
         indices_subset = onp.random.choice(indices, size=1000, replace=False)
@@ -153,7 +157,7 @@ def get_bsccm_image_marker_generator(bsccm, channels,
 
         def load_single_image(index):
             image = get_bsccm_image(bsccm, channels, index)
-            image = _convert_to_photons(image, **bsccm.global_metadata['led_array']['camera'])
+            image = _convert_to_photons(image, **bsccm.global_metadata['led_array']['camera'], use_correction_factor=use_correction_factor)
             if median_filter:
                 if image.shape[2] != 1:
                     raise Exception('Only single channel images supported for now')
@@ -211,7 +215,8 @@ def generate_synthetic_multi_led_images(bsccm_coherent, led_indices, edge_crop=0
 
 
 def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slides=False, indices=None,
-                      convert_units_to_photons=True, median_filter=False, seed=None, verbose=False, batch=1):
+                      convert_units_to_photons=True, median_filter=False, seed=None, verbose=False, batch=1,
+                      use_correction_factor=False):
     """
     Load a stack of images from a BSCCM dataset
 
@@ -223,6 +228,8 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
     indices: if not None, then load images with these indices. Ignore num_images
     convert_units_to_photons: if True, convert raw intensity counts to photons
     median_filter: if True, apply a median filter to the image to simulate noiseless data
+    use_correction_factor: if True, divide the photon count by a correction factor to account for the fact that the
+        photon count is lower than expected due to the presence of shot noise
     """
     if indices is None:
         # default to batch 1 because the LED119 data is brighter for some reason
@@ -244,7 +251,7 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
     if edge_crop > 0:
         images = images[:, edge_crop:-edge_crop, edge_crop:-edge_crop]
     if convert_units_to_photons:
-        images = _convert_to_photons(images, **dataset.global_metadata['led_array']['camera'])
+        images = _convert_to_photons(images, **dataset.global_metadata['led_array']['camera'], use_correction_factor=use_correction_factor )
     if median_filter:
         images = np.array([ndimage.median_filter(img, size=3) for img in images])
     return images
@@ -278,15 +285,24 @@ def compute_photon_rescale_fraction(bsccm, channels, images=None, verbose=True, 
     return photon_fractions
 
 
-def _convert_to_photons(image, gain_db, offset, quantum_efficiency):
+def _convert_to_photons(image, gain_db, offset, quantum_efficiency, use_correction_factor=False):
     """
     Take an image with raw intensity values, and convert it to photons
     based on the parameters of the camera
+
+    gain_db: gain in dB
+    offset: offset in counts
+    quantum_efficiency: quantum efficiency of the camera
+    correction_factor: correction factor to divide the photon count by.
+         This was empirically determined based on the variance of the photon count vs its supposed mean
+         The variance was too low for the photon count given the presence of shot noise
     """
     electrons = (image.astype(float) - offset) / (10 ** (gain_db / 10))
     electrons = np.array(electrons)
     electrons = np.where(electrons > 0, electrons, 0)
     photons = np.array(electrons) / quantum_efficiency
+    if use_correction_factor:
+        photons /= 2.45
     return photons
 
 
@@ -318,6 +334,10 @@ def add_shot_noise_to_experimenal_data(image_stack, photon_fraction, seed=None):
     Add synthetic shot noise to an image stack by adding the additional noise 
     that would be expected for the desired photon count
     This also reduces the total number of (average) photons in the image by the photon_fraction
+
+    image_stack: stack of images to add noise to
+    photon_fraction: fraction of photons to keep
+    
     """
     if seed is None:
         seed = onp.random.randint(0, 100000)

@@ -25,7 +25,7 @@ from flax import linen as nn
 from flax.training.train_state import TrainState
 import optax
 
-from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, evaluate_nll, make_dataset_generators
+from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, _evaluate_nll, make_dataset_generators
 
 
 
@@ -203,7 +203,7 @@ class _PixelCNNFlaxImpl(nn.Module):
         # parameters for mixture density 
         def my_bias_init(rng, shape, dtype):
             return random.uniform(rng, shape, dtype=dtype,
-                                  minval=self.train_data_min, maxval=self.train_data_max + 1)
+                                  minval=self.train_data_min, maxval=self.train_data_max)
         
         self.mu_dense = nn.Dense(self.num_mixture_components, bias_init=my_bias_init)
         self.sigma_dense = nn.Dense(self.num_mixture_components)
@@ -219,7 +219,7 @@ class _PixelCNNFlaxImpl(nn.Module):
 
         return self.forward_pass(x, condition_vectors=condition_vectors)
     
-    def compute_nll(self, mu, sigma, mix_logit, x):
+    def compute_gaussian_nll(self, mu, sigma, mix_logit, x):
         # numerically efficient implementation of mixture density, slightly modified
         # see https://github.com/hardmaru/mdn_jax_tutorial/blob/master/mixture_density_networks_jax.ipynb
         # compute per-pixel negative log-likelihood
@@ -230,12 +230,12 @@ class _PixelCNNFlaxImpl(nn.Module):
         """ 
         Compute average negative log likelihood per pixel averaged over batch and pixels
         """
-        return self.compute_nll(mu, sigma, mix_logit, x).mean()
+        return self.compute_gaussian_nll(mu, sigma, mix_logit, x).mean()
+
 
     def lognormal(self, y, mean, sigma):
         logSqrtTwoPI = np.log(np.sqrt(2.0 * np.pi))
         return -0.5 * ((y - mean) / sigma) ** 2 - np.log(sigma) - logSqrtTwoPI
-
 
     def forward_pass(self, x, condition_vectors=None):
         """
@@ -261,18 +261,15 @@ class _PixelCNNFlaxImpl(nn.Module):
         out = self.conv_out(nn.elu(h_stack))
 
         # must be positive and within data range
-        # make +1 because uniform noise is added to data
-        mu = np.clip(self.mu_dense(out), 0, self.train_data_max + 1) 
+        mu = np.clip(self.mu_dense(out), self.train_data_min, self.train_data_max) 
 
         sigma = nn.activation.softplus( self.sigma_dense(out) )  # must be positive
-         # avoid having tiny components that overly concentrate mass, and don't need components larger than data standard deviation
+        # avoid having tiny components that overly concentrate mass, and don't need components larger than data standard deviation
         sigma = np.clip(sigma, self.sigma_min, self.train_data_std )
 
         mix_logit = self.mix_logit_dense(out)
 
         return mu, sigma, mix_logit
-
-
 
 
 
@@ -288,8 +285,15 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
-            sigma_min=1, batch_size=64, num_val_samples=1000,  seed=0, do_lr_decay=False, verbose=True):
+            sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  seed=0, do_lr_decay=False, verbose=True,
+            add_gaussian_noise=False, add_uniform_noise=True):
         train_images = train_images.astype(np.float32)
+
+        # check that only one type of noise is added
+        if add_gaussian_noise and add_uniform_noise:
+            raise ValueError("Only one type of noise can be added to the training data")
+
+        num_val_samples = int(train_images.shape[0] * percent_samples_for_validation) if num_val_samples is None else num_val_samples
 
         # add trailing channel dimension if necessary
         if train_images.ndim == 3:
@@ -297,10 +301,18 @@ class PixelCNN(ProbabilisticImageModel):
 
         self.image_shape = train_images.shape[1:3]
 
+        # Use the make dataset generators function because training data may be modified here during training
+        # (i.e. adding small amounts of noise to account for discrete data and continuous model)
+        _, dataset_fn = make_dataset_generators(train_images, batch_size=400, num_val_samples=train_images.shape[0],
+                                                add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise)
+        example_images = dataset_fn().next()
+
         if self._flax_model is None:
+            self.add_gaussian_noise = add_gaussian_noise
+            self.add_uniform_noise = add_uniform_noise
             self._flax_model = _PixelCNNFlaxImpl(num_hidden_channels=self.num_hidden_channels, num_mixture_components=self.num_mixture_components,
-                                    train_data_mean=np.mean(train_images), train_data_std=np.std(train_images),
-                                    train_data_min=np.min(train_images), train_data_max=np.max(train_images), sigma_min=sigma_min,
+                                    train_data_mean=np.mean(example_images), train_data_std=np.std(example_images),
+                                    train_data_min=np.min(example_images), train_data_max=np.max(example_images), sigma_min=sigma_min,
                                     condition_vector_size=None if condition_vectors is None else condition_vectors.shape[-1]
                                     )
             # pass in an intial batch
@@ -347,13 +359,13 @@ class PixelCNN(ProbabilisticImageModel):
 
         best_params, val_loss_history = train_model(train_images=train_images, condition_vectors=condition_vectors, train_step=train_step,
                                                     state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
+                                                    add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise,
                                                     steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, verbose=verbose)
         self._state = self._state.replace(params=best_params)
+        self.val_loss_history = val_loss_history
         return val_loss_history
 
-    @jax.jit
-    def conditional_eval_step(self, state, imgs, condition_vecs):
-        return state.apply_fn(state.params, imgs, condition_vecs)
+
 
     def compute_negative_log_likelihood(self, data, conditioning_vecs=None, verbose=True):
         if data.ndim == 3:
@@ -369,10 +381,15 @@ class PixelCNN(ProbabilisticImageModel):
             raise ValueError("Data shape is different than image shape of trained model. This is not yet supported"
                              "Expected {}, got {}".format(self.image_shape, data.shape[1:3]))
 
-        _, dataset_fn = make_dataset_generators(data, batch_size=32, num_val_samples=data.shape[0], condition_vectors=conditioning_vecs)
+        _, dataset_fn = make_dataset_generators(data, batch_size=32, num_val_samples=data.shape[0], 
+                                                add_gaussian_noise=self.add_gaussian_noise, add_uniform_noise=self.add_uniform_noise,
+                                                condition_vectors=conditioning_vecs)
+        @jax.jit
+        def conditional_eval_step(state, imgs, condition_vecs):
+            return state.apply_fn(state.params, imgs, condition_vecs)
 
-        return evaluate_nll(dataset_fn(), self._state, verbose=verbose, 
-                            eval_step=self.conditional_eval_step if conditioning_vecs is not None else None)
+        return _evaluate_nll(dataset_fn(), self._state, verbose=verbose, 
+                            eval_step=conditional_eval_step if conditioning_vecs is not None else None)
 
     def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         if seed is None:
