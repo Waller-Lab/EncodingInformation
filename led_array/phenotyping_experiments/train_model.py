@@ -32,8 +32,7 @@ home = str(Path.home())
 ######## Load BSCCM ######
 print('preparing datasets')
 bsccm = BSCCM(config['data']['data_dir'] + '/{}/'.format(config['data']['dataset_name']), cache_index=True)
-# TODO could be better to read this form global metadata
-image_dim = bsccm.read_image(0, 'dpc').shape[0]
+image_dim = bsccm.global_metadata['led_array']['image_shape'][0]
 markers, image_target_generator, dataset_size, display_range, _ = get_bsccm_image_marker_generator(bsccm, image_dim=image_dim, **config["data"] )
 ##########################
 

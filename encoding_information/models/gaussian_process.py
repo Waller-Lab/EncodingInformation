@@ -13,7 +13,7 @@ import optax
 import warnings
 import flax.linen as nn
 from flax.training.train_state import TrainState
-from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, evaluate_nll
+from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, make_dataset_generators
 
 def estimate_full_cov_mat(patches):
     """
@@ -33,6 +33,8 @@ def plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False,
 
     # try to make both stationary and positive definite
     if eigenvalue_floor is not None:
+        if verbose:
+            print('trying to make doubly toeplitz and positive definite')
         # make positive definite
         eigvals, eig_vecs = np.linalg.eigh(stationary_cov_mat)
         eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
@@ -44,7 +46,9 @@ def plugin_estimate_stationary_cov_mat(patches, eigenvalue_floor, verbose=False,
             print('trying eigenvalue floor of {}'.format(eigenvalue_floor))
             eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
             stationary_cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
-
+        if verbose:
+            print('made positive definite, smallest ev: ' + str(np.linalg.eigvalsh(stationary_cov_mat).min()))
+    
         doubly_toeplitz = average_diagonals_to_make_doubly_toeplitz(stationary_cov_mat, block_size, verbose=verbose)
         dt_eigs = np.linalg.eigvalsh(doubly_toeplitz)
         if np.any(dt_eigs < 0) and not suppress_warning:
@@ -404,7 +408,7 @@ def gaussian_likelihood(cov_mat, mean_vec, batch):
         log_likelihoods.append(ll)
     return np.array(log_likelihoods)
 
-def _nll_per_pixel_from_cov_mat(cov_mat, mean_vec, data, num_pixels):
+def nll_per_pixel_from_cov_mat(cov_mat, mean_vec, data, num_pixels):
     """
     Negative log likelihood of a multivariate gaussian per pixel
     """
@@ -457,7 +461,7 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
         """ 
         Compute average negative log likelihood per pixel averaged over batch
         """
-        return _nll_per_pixel_from_cov_mat(cov_mat, mean_vec, images, np.prod(np.array(images.shape[1:])))
+        return nll_per_pixel_from_cov_mat(cov_mat, mean_vec, images, np.prod(np.array(images.shape[1:])))
 
 
 ##################################################################################################
@@ -483,12 +487,17 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         self.initial_params['params']['eig_vecs'] = eig_vecs
         self.initial_params['params']['mean_vec'] = mean_vec
         self._state = None
+        self._eigenvalue_floor = eigenvalue_floor
 
 
 
-    def fit(self, train_images, learning_rate=1e2, max_epochs=40, steps_per_epoch=1,  patience=5, 
-            batch_size=12, num_val_samples=100, eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
-            verbose=True):
+    def fit(self, train_images, learning_rate=1e2, max_epochs=60, steps_per_epoch=1,  patience=15, 
+            batch_size=12, num_val_samples=None, percent_samples_for_validation=0.1,
+            eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
+            precondition_gradient=False, verbose=True):
+        
+        num_val_samples = int(train_images.shape[0] * percent_samples_for_validation) if num_val_samples is None else num_val_samples
+
         
         
         self._optimizer = optax.chain(
@@ -502,11 +511,27 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         def _train_step(state, imgs):
             loss_fn = lambda params, imgs: state.apply_fn(params, imgs)
             loss, grads = jax.value_and_grad(loss_fn, 0)(state.params, imgs)
-            jax.grad(loss_fn, 0)(state.params, imgs)
+            # jax.grad(loss_fn, 0)(state.params, imgs)
+
+            if precondition_gradient:
+                # Define a function that computes the log-likelihood from eigenvalues
+                def nll_from_eigenvalues(eigenvalues, imgs):
+                    params = {'params': {'eig_vecs': state.params['params']['eig_vecs'], 'mean_vec': state.params['params']['mean_vec'],
+                                'eig_vals': eigenvalues}}
+                    return state.apply_fn(params, imgs)
+
+                fi_fn = jax.jit(jax.hessian(nll_from_eigenvalues, 0))
+                # Now compute the Hessian for the initial eigenvalues to get the Fisher Information Matrix
+                fisher_information_matrix = fi_fn(state.params['params']['eig_vals'], imgs)
+
+                # precondition the eig_vals gradient
+                grads['params']['eig_vals'] = np.linalg.solve(fisher_information_matrix, grads['params']['eig_vals'])
+
 
             # mean vec and eig vecs are not updated via gradient descent, but instead by proximal step
             grads['params']['eig_vecs'] = np.zeros_like(grads['params']['eig_vecs'])  
             grads['params']['mean_vec'] = np.zeros_like(grads['params']['mean_vec'])  
+
             state = state.apply_gradients(grads=grads)
 
             # proximal step
@@ -529,13 +554,46 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
                                                     steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, train_step=_train_step, 
                                                     verbose=verbose)
+        # ensure that eigenvalues are positive definite
+        if best_params['params']['eig_vals'].min() < 0:
+            warnings.warn('Covariance matrix is not positive definite after running optimization')
+            best_params['params']['eig_vals'] = np.where(best_params['params']['eig_vals'] < eigenvalue_floor, eigenvalue_floor, best_params['params']['eig_vals'])
         self._state = self._state.replace(params=best_params)
+        # ensure that evs remain positive when converting to cov_mat and back
+        while True:
+            cov_mat = self.get_cov_mat()
+            eig_vals, eig_vecs = np.linalg.eigh(cov_mat)
+            if eig_vals.min() > 0:
+                break
+            warnings.warn('Covariance matrix is not positive definite after running optimization. Increasing eigenvalue floor')
+            best_params['params']['eig_vals'] = np.where(best_params['params']['eig_vals'] < eigenvalue_floor, eigenvalue_floor, best_params['params']['eig_vals'])
+            self._state = self._state.replace(params=best_params)
+            eigenvalue_floor *= 2
+
         return val_loss_history
 
 
     def compute_negative_log_likelihood(self, images, verbose=True):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
+        
+        while np.linalg.eigvalsh(cov_mat).min() < 0:
+            if eig_vals.min() <= 0:
+                raise ValueError('Covariance matrix is not positive definite. This should not have happened')
+            warnings.warn('Covariance matrix does not retain positive definiteness after after eigenvalue decomposition and recomposition. '
+                    'This likely indicates numerical error. Trying to boost the smallest EVs to fix this.')
+            floor = eig_vals.min() * 2
+            eig_vals = np.where(eig_vals < floor, floor, eig_vals)
+            cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
+            
+        # Important: during the training process, noise is added to the pixel values to account for the 
+        # fact that discrete pixel values are used with a continuous density in the model. This is handled by the 
+        # make_dataset_generator function in the image_distribution_models module. So we call this here on a the images
+        # to ensure that the same noise is added to the images here as was added during training, and then convert back
+        # to a jax array
+        _, dataset_fn = make_dataset_generators(images, batch_size=images.shape[0], num_val_samples=images.shape[0])
+        images = next(dataset_fn())
+
         lls = _compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
         return -lls.mean()
     
@@ -555,6 +613,17 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
     def get_mean_vec(self):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         return mean_vec
+
+    def compute_analytic_entropy(self):
+        """
+        Compute the differential entropy per pixel of the Gaussian process
+        """
+        eig_vals, eig_vecs, mean_vec = self._get_current_params()
+        D = eig_vals.size
+        sum_log_evs = np.sum(np.log(eig_vals))
+        gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
+        return gaussian_entropy
+
 
     def _get_current_params(self):
         """

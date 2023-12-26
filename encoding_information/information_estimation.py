@@ -62,53 +62,6 @@ def nearest_neighbors_distance(X, k):
     return kth_nn_dist
 
 
-# TODO: figure out how this compares to the test set NLL bound method
-# def gaussian_entropy_estimate(X, stationary=True, optimize=False, eigenvalue_floor=1e-4,  return_cov_mat_and_mean=False,
-#                                patience=250, num_validation=100, batch_size=12,
-#                            gradient_clip=1, learning_rate=1e2, momentum=0.9, max_iters=1500,
-#                               verbose=False):
-#     """
-#     Estimate the entropy in "nats" (differential entropy doesn't really have units) per pixel
-#       of samples from a distribution of images by approximating 
-#     the distribution as a Gaussian.  i.e. Taking its covariance matrix and 
-#     computing the entropy of the Gaussian distribution with that same covariance matrix.
-
-#     X : ndarray, shape (n_samples, W, H) or (n_samples, num_features)
-#     stationary : bool, whether to assume the distribution is stationary
-#     iterative_estimator : bool, whether to optimize the estimate with iterative optimization
-#     eigenvalue_floor : float, make the eigenvalues of the covariance matrix at least this large
-#     return_cov_mat_and_mean : bool, whether to return the estimated covariance matrix and mean
-#     """
-#     X = X.reshape(X.shape[0], -1)
-#     D = X.shape[1]
-#     # np.cov takes D x N shaped data but compute stationary cov mat takes N x D
-#     if not stationary:
-#         try:
-#             cov_mat = estimate_cov_mat(X)
-#             if eigenvalue_floor is not None:
-#                 eigvals, eigvecs = np.linalg.eigh(cov_mat)
-#                 eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
-#                 cov_mat = eigvecs @ np.diag(eigvals) @ eigvecs.T
-#         except:
-#             raise Exception("Couldn't compute covariance matrix")
-            
-#         evs = np.linalg.eigvalsh(cov_mat)
-#         if np.any(evs < 0):
-#             warnings.warn("Covariance matrix is not positive definite. This indicates numerical error.")
-#         sum_log_evs = np.sum(np.log(np.where(evs < 0, 1e-15, evs)))         
-#         mean_vec = np.mean(X, axis=0)               
-#     else:
-#         mean_vec, cov_mat = estimate_stationary_cov_mat(X, eigenvalue_floor=eigenvalue_floor, verbose=verbose, optimize=optimize, 
-#                                                patience=patience, num_validation=num_validation, batch_size=batch_size, return_mean=True,
-#                                                gradient_clip=gradient_clip, learning_rate=learning_rate, momentum=momentum, max_iters=max_iters)       
-#         sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(cov_mat)))
-#     gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
-#     if return_cov_mat_and_mean:
-#         return gaussian_entropy, cov_mat, mean_vec
-#     else:
-#         return gaussian_entropy
-
-
 @partial(jit, static_argnums=(1,))
 def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
     """
@@ -145,7 +98,7 @@ def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
         return  0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2)
     
 
-def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, verbose=False):
+def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, return_median=True, verbose=False):
     """
     Runs a bootstrap estimation procedure on the given data using the provided estimation function.
 
@@ -163,13 +116,15 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
         The confidence interval to use for the estimation, expressed as a percentage.
     seed : int, optional (default=1234)
         The random seed to use for generating the bootstrap samples.
+    return_median : bool, optional (default=True)
+        Whether to return the median or mean estimate of the desired quantity across all bootstrap samples.
     verbose : bool, optional (default=False)
         Print progress bar
 
     Returns:
     --------
-    mean : float
-        The mean estimate of the desired quantity across all bootstrap samples.
+    mean/median : float
+        The median/mean estimate of the desired quantity across all bootstrap samples.
     conf_int : list of floats
         The lower and upper bounds of the confidence interval for the estimate, expressed as percentiles of the
         bootstrap sample distribution.
@@ -184,27 +139,33 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
     for i in iterator:
         key, subkey = jax.random.split(key)
         if not isinstance(data, dict):
-            data_sample = jax.random.choice(subkey, data, shape=(N,), replace=True)
+            if verbose: 
+                print('key', subkey, '\n')
+            random_indices = jax.random.choice(subkey, np.arange(data.shape[0]), shape=(N,), replace=True)
+            data_sample = data[random_indices, ...]
             results.append(estimation_fn(data_sample))
         else:
             data_samples = {}
             for k, v in data.items():
                 key, subkey = jax.random.split(key)
-                data_samples[k] = jax.random.choice(subkey, v, shape=(N,), replace=True)
+                if verbose: 
+                    print('key', subkey, '\n')
+                random_indices = jax.random.choice(subkey, np.arange(v.shape[0]), shape=(N,), replace=True)
+                data_samples[k] = v[random_indices, ...]
             results.append(estimation_fn(**data_samples))
         
     results = np.array(results)
-    mean = np.mean(results)
+    m = np.mean(results) if not return_median else np.median(results)
     conf_int = [np.percentile(results, 50 - confidence_interval/2),
                 np.percentile(results, 50 + confidence_interval/2)]
-    return mean, conf_int
+    return m, conf_int
         
     
 def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model='gaussian', test_set_fraction=0.1,
                                   gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
                                  patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params
-                                 use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, # gaussian params
-                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, # pixelcnn params
+                                 use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, analytic_marginal_entropy=False,# gaussian params
+                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, add_gaussian_training_noise=False, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
@@ -233,11 +194,14 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     eigenvalue_floor : float, (if entropy_model='gaussian') make the eigenvalues of the covariance matrix at least this large
     gradient_clip : float, (if model='gaussian' and use_iterative_optimization=True) clip gradients to this value
     momentum : float, (if model='gaussian' and use_iterative_optimization=True) momentum for gradient descent
+    analytic_marginal_entropy : bool, (if model='gaussian') use the analytic entropy of the Gaussian fit for H(Y) instead
+                            of upper bounding it with the negative log likelihood of the Gaussian fit
 
     steps_per_epoch : int, (if entropy_model='pixelcnn') number of steps per epoch
     num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
     num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
     do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
+    add_gaussian_training_noise : bool, (if entropy_model='pixelcnn') whether to add gaussian noise to the training data instead of uniform noise
 
     return_entropy_model : bool, whether to return the noisy image entropy model
     verbose : bool, whether to print out the estimated values
@@ -287,18 +251,99 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                              learning_rate=learning_rate, max_epochs=max_epochs, do_lr_decay=do_lr_decay).items():
                 if v is not None:
                  hyperparams[k] = v
-        noisy_image_model.fit(training_set, verbose=verbose, **hyperparams)
+        noisy_image_model.fit(training_set, verbose=verbose, **hyperparams, add_gaussian_noise=add_gaussian_training_noise)
     else:
         raise ValueError(f"Unrecognized entropy model {entropy_model}")
   
-    ### Estimate the entropy of the noisy images using the upper bound provided by the entropy model negative log likelihood
-    h_y_upper_bound = noisy_image_model.compute_negative_log_likelihood(test_set, verbose=verbose)
+    if analytic_marginal_entropy:
+        h_y = noisy_image_model.compute_analytic_entropy()
+    else:
+        ### Estimate the entropy of the noisy images using the upper bound provided by the entropy model negative log likelihood
+        h_y = noisy_image_model.compute_negative_log_likelihood(test_set, verbose=verbose)
 
-    mutual_info = (h_y_upper_bound - h_y_given_x) / np.log(2)
+    mutual_info = (h_y - h_y_given_x) / np.log(2)
     if verbose:
         print(f"Estimated H(Y|X) = {h_y_given_x:.3f} differential entropy/pixel")
-        print(f"Estimated H(Y) (upper bound) = {h_y_upper_bound:.3f} differential entropy/pixel")
+        if analytic_marginal_entropy:
+            print(f"Estimated H(Y) = {h_y:.3f} differential entropy/pixel")
+        else:
+            print(f"Estimated H(Y) (Upper bound) = {h_y:.3f} differential entropy/pixel")
         print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
     if return_entropy_model:
         return mutual_info, noisy_image_model
     return mutual_info 
+
+
+def  estimate_task_specific_mutual_information(noisy_images, labels, test_set_fraction=0.2,
+                                 patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params                                
+                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, # pixelcnn params
+                                 return_entropy_model=False,
+                                 verbose=False,):
+    """
+    Estimate the mutual information (in bits per pixel) between the noisy images and the labels using a PixelCNN entropy model.
+
+    noisy_images : ndarray NxHxW array of images or image patches
+    labels : ndarray NxK array of one-hot vectors of class labels
+    test_set_fraction : float, fraction of the noisy data to use a test set for computing the entropy upper bound
+
+    patience : int, How many iterations to wait for validation loss to improve. If None, use the default for the chosen model
+    num_val_samples : int, How many samples to use for validation. If None, use the default for the chosen model
+    batch_size : int, The batch size to use for training. If None, use the default for the chosen model
+    max_epochs : int, The maximum number of epochs to train for. If None, use the default for the chosen model
+    learning_rate : float, If None, use the default for the chosen model
+
+    steps_per_epoch : int, (if entropy_model='pixelcnn') number of steps per epoch
+    num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
+    num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
+    do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
+
+    return_entropy_model : bool, whether to return the noisy image entropy model
+    verbose : bool, whether to print out the estimated values
+    """
+    if np.any(noisy_images < 0):   
+        warnings.warn(f"{np.sum(noisy_images < 0) / noisy_images.size:.2%} of pixels are negative.")
+    if np.mean(noisy_images) < 20:
+        warnings.warn(f"Mean pixel value is {np.mean(noisy_images):.2f}. More accurate results can probably be obtained"
+                        "by setting estimate_conditional_from_model_samples=True")
+
+    # duplicate training set and add labels of all 0s to the copy
+    noisy_images = np.concatenate([noisy_images, noisy_images], axis=0)
+    labels = np.concatenate([labels, np.zeros_like(labels)], axis=0)
+    # shuffle the data
+    shuffled_indices = onp.random.permutation(noisy_images.shape[0])
+    noisy_images = noisy_images[shuffled_indices]
+    labels = labels[shuffled_indices]
+
+    training_set = noisy_images[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
+    test_set = noisy_images[-int(noisy_images.shape[0] * test_set_fraction):]
+    training_set_labels = labels[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
+    test_set_labels = labels[-int(noisy_images.shape[0] * test_set_fraction):]
+
+
+    arch_args = dict(num_hidden_channels=num_hidden_channels, num_mixture_components=num_mixture_components)
+    arch_args = {k: v for k, v in arch_args.items() if v is not None}
+    # collect all hyperparams that are not None
+    hyperparams = {}
+    for k, v in dict(patience=patience, num_val_samples=num_val_samples, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
+                            learning_rate=learning_rate, max_epochs=max_epochs, do_lr_decay=do_lr_decay).items():
+            if v is not None:
+                hyperparams[k] = v
+
+    ### Estimate the entropy given the labels
+    pixelcnn = PixelCNN(**arch_args)
+    pixelcnn.fit(training_set, training_set_labels, verbose=verbose, **hyperparams)
+
+
+    has_real_label_mask = np.sum(test_set_labels, axis=-1) > 0
+    h_y_t = pixelcnn.compute_negative_log_likelihood(test_set[has_real_label_mask], test_set_labels[has_real_label_mask])
+    h_y = pixelcnn.compute_negative_log_likelihood(test_set, np.zeros_like(test_set_labels))
+
+
+    mutual_info = (h_y - h_y_t) / np.log(2)
+    if verbose:
+        print(f"Estimated H(Y|T) (Upper bound) = {h_y_t:.3f} differential entropy/pixel")
+        print(f"Estimated H(Y) (Upper bound) = {h_y:.3f} differential entropy/pixel")
+        print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
+    if return_entropy_model:
+        return mutual_info, pixelcnn
+    return mutual_info

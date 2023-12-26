@@ -27,6 +27,15 @@ analysis/autofocus/exported_model/*
 experiments/config_files/training
 experiments/config_files/pending
 
+<<<<<<< HEAD
 imager_experiments/archive_code/*
 
 *.npy
+=======
+
+*.cache
+*.cached
+*.cached_old
+
+*.npy
+>>>>>>> 428ba76e23b46b5b3f3afdf30eb66ce2546fff27
