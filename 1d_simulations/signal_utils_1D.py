@@ -6,7 +6,6 @@ import numpy as onp
 from tqdm import tqdm
 from jax import value_and_grad, jit, vmap
 import jax
-# from scipy.signal import resample as scipy_resample
 from jax.scipy.special import digamma
 import optax
 
@@ -15,8 +14,6 @@ from mpl_toolkits.mplot3d import Axes3D
 
 NUM_NYQUIST_SAMPLES = 32
 UPSAMPLED_SIGNAL_LENGTH = 8 * NUM_NYQUIST_SAMPLES
-OBJECT_LENGTH = 8 * NUM_NYQUIST_SAMPLES
-
 
 def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, erasure_mask=None, initial_kernel=None,
                                  learning_rate=1e-2, learning_rate_decay=0.999, verbose=True,
@@ -27,7 +24,7 @@ def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, erasure_mask=None, ini
   if initial_kernel is None:
     initial_kernel = bandlimited_nonnegative_signal(nyquist_samples=generate_random_bandlimited_signal(num_nyquist_samples=num_nyquist_samples),
                                                         num_nyquist_samples=num_nyquist_samples)
-  initial_params = np.concatenate(params_from_signal(initial_kernel, num_nyquist_samples=num_nyquist_samples))
+  initial_params = params_from_signal(initial_kernel, num_nyquist_samples=num_nyquist_samples)
 
   if erasure_mask is None:
     # no erasure mask, so we just use all the pixels
@@ -98,7 +95,7 @@ def filter_l1_ball_samples_to_positive(l1_ball_samples, return_everything=False)
 def get_sampling_interval(num_samples):
     return 1 / num_samples
 
-def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_deltas=1, sin_freq_range=[0, 1],
+def sample_amplitude_object(type, seed=None, object_size=UPSAMPLED_SIGNAL_LENGTH, num_deltas=1, sin_freq_range=[0, 1],
                             gaussian_mixture_position=False, num_mixture_components=3, gaussian_mixture_seed=12345):
     """
     Generate a random object of a given type. Objects sum to one 
@@ -134,7 +131,7 @@ def sample_amplitude_object(type, seed=None, object_size=OBJECT_LENGTH, num_delt
             delta_function[get_random_position()] += onp.random.rand() / num_deltas
         return delta_function
     elif type == 'pink_noise':
-        magnitude = onp.concatenate([onp.array([1]), 1 / np.sqrt(onp.fft.rfftfreq(OBJECT_LENGTH, 1/OBJECT_LENGTH)[1:])])
+        magnitude = onp.concatenate([onp.array([1]), 1 / np.sqrt(onp.fft.rfftfreq(UPSAMPLED_SIGNAL_LENGTH, 1/UPSAMPLED_SIGNAL_LENGTH)[1:])])
         random_phase = onp.concatenate([onp.array([1]), np.exp(1j * 2*np.pi*onp.random.rand(magnitude.shape[0] - 1))])
         object = onp.fft.irfft(magnitude * random_phase) 
         if np.min(object) < 0:
@@ -197,8 +194,10 @@ def conv_forward_model_with_erasure(parameters, objects, erasure_mask, align_cen
   kernel = signal_from_params(parameters, num_nyquist_samples=num_nyquist_samples)
   if align_center:
     kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
-  conv_mat = make_convolutional_encoder(kernel, sample=nyquist_sample_output, num_nyquist_samples=num_nyquist_samples)
+  conv_mat = make_convolutional_encoder(kernel, num_nyquist_samples=num_nyquist_samples)
   output_signals = (objects @ conv_mat.T)
+  if nyquist_sample_output:
+    output_signals = downsample(output_signals, num_nyquist_samples=num_nyquist_samples)
   return output_signals * erasure_mask.reshape(1, -1)
 
 @partial(jit, static_argnums=(2, 3, 4))
@@ -206,9 +205,10 @@ def conv_forward_model(parameters, objects, align_center=False, nyquist_sample_o
   kernel = signal_from_params(parameters, num_nyquist_samples=num_nyquist_samples)
   if align_center:
     kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
-  conv_mat = make_convolutional_encoder(kernel, num_nyquist_samples=num_nyquist_samples, sample=nyquist_sample_output)
+  conv_mat = make_convolutional_encoder(kernel, num_nyquist_samples=num_nyquist_samples)
   output_signals = (objects @ conv_mat.T)
-
+  if nyquist_sample_output:
+    output_signals = downsample(output_signals, num_nyquist_samples=num_nyquist_samples)
   return output_signals
 
 
@@ -315,7 +315,7 @@ def random_unnormalized_signal(N=1, num_nyquist_samples=NUM_NYQUIST_SAMPLES, see
 
 @jit
 def check_if_nonnegative(nyquist_samples):
-    upsampled = upsample_signal(nyquist_samples)
+    upsampled = upsample(nyquist_samples)
     return np.all(upsampled >= 0, axis=-1)
 
 @partial(jit, static_argnums=(1, 2, ))
@@ -327,7 +327,7 @@ def bandlimited_nonnegative_signal(nyquist_samples,
     assert num_nyquist_samples == nyquist_samples.shape[-1]
     nyquist_samples /= np.sum(nyquist_samples, axis=-1, keepdims=True)
     
-    upsampled = upsample_signal(nyquist_samples, upsampled_signal_length=upsampled_signal_length,
+    upsampled = upsample(nyquist_samples, upsampled_signal_length=upsampled_signal_length,
                                 num_nyquist_samples=num_nyquist_samples)
 
     # Make positive
@@ -342,16 +342,12 @@ def bandlimited_nonnegative_signal(nyquist_samples,
 
     return np.squeeze(nyquist_samples)
 
-@partial(jit, static_argnums=(1, 2, 3))
-def make_convolutional_encoder(kernel, object_length=OBJECT_LENGTH, sample=True, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+@partial(jit, static_argnums=(1,))
+def make_convolutional_encoder(kernel, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     # upsample because we wan the size to be based on the input signal (i.e. the object)
-    if object_length != num_nyquist_samples:
-        kernel = upsample_signal(kernel, object_length, num_nyquist_samples=num_nyquist_samples)
+    if UPSAMPLED_SIGNAL_LENGTH != num_nyquist_samples:
+        kernel = upsample(kernel, num_nyquist_samples=num_nyquist_samples)
     conv_mat = make_circulant_matrix(kernel)
-    if sample:
-        sampling_locations = np.linspace(0, 1, num_nyquist_samples, endpoint=False) + get_sampling_interval(num_nyquist_samples) / 2
-        indices = (sampling_locations * kernel.size).astype(int)
-        conv_mat = conv_mat[indices, :]
     return conv_mat
 
 @jit
@@ -408,9 +404,8 @@ def make_intensity_coordinate_sampling_grid(sampling_indices, sample_n=40, num_n
     else:
         remainder = 1 - target_signal[:, np.array(sampling_indices)].sum(axis=-1, keepdims=True)
         non_sampling_indices = [i for i in range(target_signal.shape[1]) if i not in sampling_indices]
-        l1_ball_samples = np.load(".cache/{}_dimensional_random_L1_ball_samples.npy".format(target_signal.shape[-1]), allow_pickle=True)
-        l1_ball_samples = np.array(l1_ball_samples)
-
+        # generate 1000 random samples within the positive orthant of the L1 ball using jax
+        l1_ball_samples = jax.random.ball(key=jax.random.PRNGKey(onp.random.randint(10000)), d=target_signal.shape[-1], p=1, shape=(1000, ))
         for i, signal in tqdm(enumerate(target_signal)):
             mask = l1_ball_samples[:, non_sampling_indices].sum(axis=-1) < remainder[i]
             # pick one from the mask
@@ -439,97 +434,56 @@ def generate_concentrated_signal(sampling_indices, num_nyquist_samples=NUM_NYQUI
     signal = bandlimited_nonnegative_signal(nyquist_samples=np.array(nyquist_samples), num_nyquist_samples=num_nyquist_samples)
     return signal
 
-def _resample_real_signal(x, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+def upsample(x, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     if len(x.shape) == 1:
-        return _resample_real_signal_1d(x, upsampled_signal_length=upsampled_signal_length, num_nyquist_samples=num_nyquist_samples)
+        return _upsample_one_signal(x, upsampled_signal_length=upsampled_signal_length, num_nyquist_samples=num_nyquist_samples)
     else:
-        return vmap(lambda s: _resample_real_signal_1d(s, upsampled_signal_length=upsampled_signal_length, 
+        return vmap(lambda s: _upsample_one_signal(s, upsampled_signal_length=upsampled_signal_length, 
                                                       num_nyquist_samples=num_nyquist_samples))(x)
-
+    
+def downsample(y, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+    if len(y.shape) == 1:
+        return _downsample_one_signal(y, num_nyquist_samples=num_nyquist_samples)
+    else:
+        return vmap(lambda s: _downsample_one_signal(s, upsampled_signal_length=upsampled_signal_length,
+                                          num_nyquist_samples=num_nyquist_samples))(y)
 
 @partial(jit, static_argnums=(1, 2))
-def _resample_real_signal_1d(x, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+def _upsample_one_signal(x, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     """
-    Copied from scipy.signal.resample because it doesnt have a jax implementation
-    Modified to work with fixed sampling numbers in this file
-    always for a 1D signal
+    Take Nyquist samples of a signal and upsample it to the full interpolated signal
     """
-
-    # Forward transform
-    # if real_input:
     X = np.fft.rfft(x)
-    # else:  # Full complex FFT
-    #     X = np.fft.fft(x, axis=axis)
 
-
-    # Placeholder array for output spectrum
-    # if real_input:
     newshape = upsampled_signal_length // 2 + 1
-    # else:
-    #     newshape = UPSAMPLED_SIGNAL_LENGTH
-
     # Copy positive frequency components (and Nyquist, if present)
     nyq = num_nyquist_samples // 2 + 1  # Slice index that includes Nyquist if present
     additional_zero_columns = newshape - nyq
-    if num_nyquist_samples % 2 == 0:
-         Y = np.concatenate([X[:num_nyquist_samples // 2],
-                             0.5 * np.array([X[num_nyquist_samples // 2]]),
-                             np.zeros(additional_zero_columns, X.dtype)])
+    Y = np.concatenate([X[:num_nyquist_samples // 2],
+                        0.5 * np.array([X[num_nyquist_samples // 2]]),
+                        np.zeros(additional_zero_columns, X.dtype)])
          
-    else:
-        Y = np.concatenate([X[:additional_zero_columns], np.zeros(additional_zero_columns, X.dtype)])
-
-    # if not real_input:
-    #     # Copy negative frequency components
-    #     if NUM_NYQUIST_SAMPLES > 2:  # (slice expression doesn't collapse to empty array)
-    #         sl[axis] = slice(nyq - NUM_NYQUIST_SAMPLES, None)
-    #         Y[tuple(sl)] = X[tuple(sl)]
-
-    # Split/join Nyquist component(s) if present
-    # So far we have set Y[+N/2]=X[+N/2]
-    # if NUM_NYQUIST_SAMPLES % 2 == 0:
-        # if not real_input:
-        #     temp = Y[tuple(sl)]
-        #     # set the component at -N/2 equal to the component at +N/2
-        #     sl[axis] = slice(UPSAMPLED_SIGNAL_LENGTH-NUM_NYQUIST_SAMPLES//2, UPSAMPLED_SIGNAL_LENGTH-NUM_NYQUIST_SAMPLES//2 + 1)
-        #     Y[tuple(sl)] = temp
-
-    # Inverse transform
-    # if real_input:
     y = np.fft.irfft(Y, upsampled_signal_length)
-    # else:
-    #     y = np.fft.ifft(Y)
-
     y *= (float(upsampled_signal_length) / float(num_nyquist_samples))
 
-    # if t is None:
     return y
-    # else:
-    #     new_t = np.arange(0, UPSAMPLED_SIGNAL_LENGTH) * (t[1] - t[0]) * NUM_NYQUIST_SAMPLES / float(UPSAMPLED_SIGNAL_LENGTH) + t[0]
-    #     return y, new_t
 
-
-@partial(jit, static_argnums=(1, 2, 3))
-def upsample_signal(nyquist_samples, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, 
-                    num_nyquist_samples=NUM_NYQUIST_SAMPLES, return_domain=False):
+@partial(jit, static_argnums=(1, 2))
+def _downsample_one_signal(y, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     """
-    Upsample to restore a nyquist sampled signal, 
-    with the sampled points lying at the center of the upsampled points.
+    Take a fully interpolated signal and downsample it at the Nyquist rate
     """
-
-    x = np.linspace(0, 1, num_nyquist_samples, endpoint=False)
-    x += get_sampling_interval(num_nyquist_samples) / 2
-    upsampled_signal = _resample_real_signal(nyquist_samples, upsampled_signal_length=upsampled_signal_length, num_nyquist_samples=num_nyquist_samples)
-        # upsampled_signal = scipy_resample(nyquist_samples, upsampled_signal_length, axis=-1)
+    Y = np.fft.rfft(y)
+    # Retain only the frequency components up to the Nyquist rate
+    nyq = num_nyquist_samples // 2 + 1
+    Z = Y[:nyq]
+    if num_nyquist_samples % 2 == 0:
+        Z = np.concatenate([Z[:-1], np.array([Z[-1] * 2]) ]) # Correcting the Nyquist frequency component if even number of samples
     
-    x_upsampled = np.linspace(0, 1, upsampled_signal_length, endpoint=False) 
-    integer_shift = int((get_sampling_interval(num_nyquist_samples) / 2) / (1 / upsampled_signal_length) )
-    upsampled_signal = np.roll(upsampled_signal, integer_shift, axis=-1)
+    z = np.fft.irfft(Z, num_nyquist_samples)
+    z *= (float(num_nyquist_samples) / float(upsampled_signal_length))
 
-    if return_domain:
-        return x, x_upsampled, upsampled_signal
-    else:
-        return upsampled_signal
+    return z
 
 def make_convolutional_forward_model_and_target_signal_MSE_loss_fn(object, target_signal, sampling_indices=None):
     

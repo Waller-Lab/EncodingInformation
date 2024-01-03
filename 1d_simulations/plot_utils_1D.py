@@ -11,14 +11,10 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
                                 color_samples=False, vertical_line_indices=None, full_height_vertical_lines=False,
                                 sample_point_indices=None, horizontal_line_indices=None, 
                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH,
-                                 markersize=8, marker='o', random_colors=False, center=False, plot_lim=1, color=None, 
+                                 markersize=8, marker='o', random_colors=False, center=False, origin_at_center=False,
+                                   plot_lim=1, color=None, num_nyquist_samples=NUM_NYQUIST_SAMPLES,
                                  colors=None, erasure_mask=None, xlabel='Space', ylabel='Intensity', **kwargs):
 
-
-    if signal.shape[-1] == UPSAMPLED_SIGNAL_LENGTH:
-        num_nyquist_samples = NUM_NYQUIST_SAMPLES
-    else:
-        num_nyquist_samples = signal.shape[-1]                             
 
     def plot_one_signal(signal, sample_point_indices=None, color=None, erasure_mask=erasure_mask):
         if signal.size != UPSAMPLED_SIGNAL_LENGTH:
@@ -37,7 +33,12 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
                 upsampled_signal *= erasure_mask.astype(float)
         
 
-            ax.plot(x_upsampled, upsampled_signal, label=label, linewidth=2.1, color=color, 
+            if not origin_at_center:
+                ax.plot(x_upsampled, upsampled_signal, label=label, linewidth=2.1, color=color, 
+                    # zorder=3, 
+                    **kwargs)
+            else:
+                ax.plot(x_upsampled - 0.5, upsampled_signal, label=label, linewidth=2.1, color=color,
                     # zorder=3, 
                     **kwargs)
             # get the color used for the line
@@ -46,9 +47,16 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
             if sample_point_indices is None:
                 sample_point_indices = np.arange(num_nyquist_samples)
             sample_point_indices = np.array(sample_point_indices)
-            ax.plot(x[sample_point_indices], signal[sample_point_indices], 
-                                       marker,
-                                        markersize=markersize, 
+            if not origin_at_center:
+                ax.plot(x[sample_point_indices], signal[sample_point_indices], 
+                                       marker, markersize=markersize, 
+                                        # zorder=3,
+                                        color='k' if not color_samples else color,
+                                        label=None if show_upsampled else label, 
+                                        **kwargs)
+            else:
+                ax.plot(x[sample_point_indices] - 0.5, signal[sample_point_indices], 
+                                       marker, markersize=markersize, 
                                         # zorder=3,
                                         color='k' if not color_samples else color,
                                         label=None if show_upsampled else label, 
@@ -83,7 +91,15 @@ def plot_in_spatial_coordinates(ax, signal, label=None, show_upsampled=True, sho
                                 color=color if not random_colors else onp.random.rand(3))
                 
     clear_spines(ax)
-    ax.set(ylabel=ylabel, xlim=[0, 1], xlabel=xlabel, ylim=[0, plot_lim], xticks=[0, 1], yticks=[0, plot_lim])
+    ax.set(ylabel=ylabel, xlim=[0, 1] if not origin_at_center else [-0.5, 0.5],
+            xticks=[0, 1] if not origin_at_center else [-0.5, 0, 0.5], 
+            xlabel=xlabel, ylim=[0, plot_lim], yticks=[0, plot_lim],
+            yticklabels=[0, plot_lim] if not origin_at_center else [None, plot_lim],
+            )
+    if origin_at_center:
+        ax.spines['left'].set_position('zero')
+
+
 
 
 
@@ -118,7 +134,7 @@ def plot_in_intensity_coordinates(ax, signal, markersize=30, random_colors=False
     # only plot this if there's nothing in the axes already
     if len(ax.lines) == 0:
         ax.plot([0, 1], [1, 0], 'k--', zorder=-1)
-        ax.set(xlim=[0, 1], ylim=[0, 1], xlabel='$I_1$', ylabel='$I_2$')
+        ax.set(xlim=[0, 1], ylim=[0, 1], xlabel='Intensity at x1', ylabel='Intensity at x2')
     if differentiate_colors:
         color = plt.rcParams['axes.prop_cycle'].by_key()['color']
         if len(signal.shape) == 1:
