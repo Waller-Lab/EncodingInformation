@@ -32,7 +32,7 @@ def _gather_dataset(image_target_generator):
                 tf.TensorSpec(a_target.shape, dtype=tf.float32))
     all_dataset = tf.data.Dataset.from_generator(image_target_generator, 
                                              output_signature=output_signature)
-    all_dataset = all_dataset.prefetch(tf.data.AUTOTUNE)
+    all_dataset = all_dataset.prefetch(8)
 
     return all_dataset
     # if size is None:
@@ -90,13 +90,13 @@ def prepare_datasets(validation_fraction=None, image_target_generator=None, size
         #training on TPU requires defined shape
         val_steps = validation_size // batch_size
         
-        train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-        validation_dataset = validation_dataset.prefetch(tf.data.AUTOTUNE)
+        train_dataset = train_dataset.prefetch(8)
+        validation_dataset = validation_dataset.prefetch(8)
         
         return train_dataset, validation_dataset, val_steps
     else:
-        train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-        validation_dataset = validation_dataset.prefetch(tf.data.AUTOTUNE)
+        train_dataset = train_dataset.prefetch(8)
+        validation_dataset = validation_dataset.prefetch(8)
         
         return train_dataset, validation_dataset
 

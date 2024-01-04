@@ -103,8 +103,10 @@ def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=
         
     N_samples = samples.shape[0]
     # check for expected shape
+    if samples.ndim == 4 and samples.shape[3] == 1:
+        samples = samples[..., 0] # remove trailing channel dimension
     if samples.ndim != 3 or samples.shape[1] != samples.shape[2]:
-        raise ValueError('Samples must be N x H x W')
+        raise ValueError('Samples must be N x H x W, but got {}'.format(samples.shape))
     sample_size = samples.shape[1]
 
     if np.linalg.eigvalsh(cov_mat).min() < 0:
