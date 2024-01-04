@@ -1,0 +1,49 @@
+config_file_version: '2.4'
+data:
+  batch: 1
+  channels:
+  - LED119
+  data_dir: /home/hpinkard_waller/data/
+  dataset_name: BSCCM
+  shuffle_seed: 8
+  synthetic_noise:
+    edge_crop: 24
+    median_filter: false
+    photons_per_pixel: 50
+    seed: 8
+    use_correction_factor: true
+  use_two_spectrum_unmixing: true
+hyperparameters:
+  all_marker_training: true
+  arch: DN121
+  batch_size: 16
+  change_input_channels: true
+  density_output: true
+  learning_rate: 5.0e-05
+  max_epochs: 50000
+  mixture_type: gaussian
+  num_examples_for_normalization: 500
+  num_mixture_components: 19
+  optimizer: ADAM
+  overshoot_epochs: 20
+  seed: 8
+  single_marker_early_stopping: false
+  single_marker_training: false
+  steps_per_epoch: 4000
+  test_fraction: 0.05
+  validation_fraction: 0.05
+metadata:
+  experiment_name: Synthetic_Noise_v8_
+  replicate: 8
+options:
+  hog_memory: false
+  immortal: false
+  resume_training: false
+patch_size: 30
+saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v8/
+train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/compute_mi_and_phenotyping_performance.py
+training:
+  attempt_number: 1
+  elapsed: 0
+  start_date: '2023-12-13'
+  tensorboard_dir: /home/hpinkard_waller/models/template/tensorboard/

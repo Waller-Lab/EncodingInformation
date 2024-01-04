@@ -106,7 +106,7 @@ if hyperparameters['all_marker_training']:
     history = model.fit(train_dataset, validation_data=val_dataset, validation_steps=val_steps,
                    callbacks=callbacks, 
               epochs=hyperparameters['max_epochs'], steps_per_epoch=hyperparameters['steps_per_epoch'])
-
+print('all marker training complete')
 
 if hyperparameters['single_marker_training']:
     marker = hyperparameters['single_marker_training']
@@ -137,3 +137,5 @@ print('Training complete')
 ##### Training complete file flag for scheduler #######
 #######################################################
 train_script_complete(saving_dir)
+
+print('~~~~~~~~~~~~~train script complete~~~~~~~~~~~~~~')
