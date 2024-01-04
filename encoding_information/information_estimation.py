@@ -272,3 +272,78 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     if return_entropy_model:
         return mutual_info, noisy_image_model
     return mutual_info 
+
+
+def  estimate_task_specific_mutual_information(noisy_images, labels, test_set_fraction=0.2,
+                                 patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params                                
+                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, # pixelcnn params
+                                 return_entropy_model=False,
+                                 verbose=False,):
+    """
+    Estimate the mutual information (in bits per pixel) between the noisy images and the labels using a PixelCNN entropy model.
+
+    noisy_images : ndarray NxHxW array of images or image patches
+    labels : ndarray NxK array of one-hot vectors of class labels
+    test_set_fraction : float, fraction of the noisy data to use a test set for computing the entropy upper bound
+
+    patience : int, How many iterations to wait for validation loss to improve. If None, use the default for the chosen model
+    num_val_samples : int, How many samples to use for validation. If None, use the default for the chosen model
+    batch_size : int, The batch size to use for training. If None, use the default for the chosen model
+    max_epochs : int, The maximum number of epochs to train for. If None, use the default for the chosen model
+    learning_rate : float, If None, use the default for the chosen model
+
+    steps_per_epoch : int, (if entropy_model='pixelcnn') number of steps per epoch
+    num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
+    num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
+    do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
+
+    return_entropy_model : bool, whether to return the noisy image entropy model
+    verbose : bool, whether to print out the estimated values
+    """
+    if np.any(noisy_images < 0):   
+        warnings.warn(f"{np.sum(noisy_images < 0) / noisy_images.size:.2%} of pixels are negative.")
+    if np.mean(noisy_images) < 20:
+        warnings.warn(f"Mean pixel value is {np.mean(noisy_images):.2f}. More accurate results can probably be obtained"
+                        "by setting estimate_conditional_from_model_samples=True")
+
+    # duplicate training set and add labels of all 0s to the copy
+    noisy_images = np.concatenate([noisy_images, noisy_images], axis=0)
+    labels = np.concatenate([labels, np.zeros_like(labels)], axis=0)
+    # shuffle the data
+    shuffled_indices = onp.random.permutation(noisy_images.shape[0])
+    noisy_images = noisy_images[shuffled_indices]
+    labels = labels[shuffled_indices]
+
+    training_set = noisy_images[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
+    test_set = noisy_images[-int(noisy_images.shape[0] * test_set_fraction):]
+    training_set_labels = labels[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
+    test_set_labels = labels[-int(noisy_images.shape[0] * test_set_fraction):]
+
+
+    arch_args = dict(num_hidden_channels=num_hidden_channels, num_mixture_components=num_mixture_components)
+    arch_args = {k: v for k, v in arch_args.items() if v is not None}
+    # collect all hyperparams that are not None
+    hyperparams = {}
+    for k, v in dict(patience=patience, num_val_samples=num_val_samples, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
+                            learning_rate=learning_rate, max_epochs=max_epochs, do_lr_decay=do_lr_decay).items():
+            if v is not None:
+                hyperparams[k] = v
+
+    ### Estimate the entropy given the labels
+    pixelcnn = PixelCNN(**arch_args)
+    pixelcnn.fit(training_set, training_set_labels, verbose=verbose, **hyperparams)
+
+
+    has_real_label_mask = np.sum(test_set_labels, axis=-1) > 0
+    h_y_t = pixelcnn.compute_negative_log_likelihood(test_set[has_real_label_mask], test_set_labels[has_real_label_mask])
+    h_y = pixelcnn.compute_negative_log_likelihood(test_set, np.zeros_like(test_set_labels))
+
+
+    mutual_info = (h_y - h_y_t) / np.log(2)
+    if verbose:
+        print(f"Estimated H(Y|T) (Upper bound) = {h_y_t:.3f} differential entropy/pixel")
+        print(f"Estimated H(Y) (Upper bound) = {h_y:.3f} differential entropy/pixel")
+        print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
+    if return_entropy_model:
+        return mutual_info, pixelcnn
+    return mutual_info

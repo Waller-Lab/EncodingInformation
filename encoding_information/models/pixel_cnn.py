@@ -365,9 +365,7 @@ class PixelCNN(ProbabilisticImageModel):
         self.val_loss_history = val_loss_history
         return val_loss_history
 
-    @jax.jit
-    def conditional_eval_step(self, state, imgs, condition_vecs):
-        return state.apply_fn(state.params, imgs, condition_vecs)
+
 
     def compute_negative_log_likelihood(self, data, conditioning_vecs=None, verbose=True):
         if data.ndim == 3:
@@ -386,9 +384,12 @@ class PixelCNN(ProbabilisticImageModel):
         _, dataset_fn = make_dataset_generators(data, batch_size=32, num_val_samples=data.shape[0], 
                                                 add_gaussian_noise=self.add_gaussian_noise, add_uniform_noise=self.add_uniform_noise,
                                                 condition_vectors=conditioning_vecs)
+        @jax.jit
+        def conditional_eval_step(state, imgs, condition_vecs):
+            return state.apply_fn(state.params, imgs, condition_vecs)
 
         return _evaluate_nll(dataset_fn(), self._state, verbose=verbose, 
-                            eval_step=self.conditional_eval_step if conditioning_vecs is not None else None)
+                            eval_step=conditional_eval_step if conditioning_vecs is not None else None)
 
     def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         if seed is None:
