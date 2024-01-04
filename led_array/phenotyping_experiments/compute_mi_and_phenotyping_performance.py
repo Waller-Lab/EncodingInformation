@@ -69,6 +69,7 @@ def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=100
     markers, image_target_generator, dataset_size, display_range, indices = get_bsccm_image_marker_generator(bsccm, **config['data'])
     images = load_bsccm_images(bsccm, indices=indices[:num_images], channel=config['data']['channels'][0], 
                 convert_units_to_photons=True, edge_crop=config['data']['synthetic_noise']['edge_crop'],
+                use_correction_factor=config['data']['synthetic_noise']['use_correction_factor'],
                 median_filter=median_filter)
 
     mean_photons_per_pixel = np.mean(images)
@@ -81,9 +82,9 @@ def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=100
     if median_filter:
         # assume noiseless
         noisy_patches = add_noise(patches * rescale_fraction)
+        clean_patches = patches * rescale_fraction
     else:
         noisy_patches = add_shot_noise_to_experimenal_data(patches, rescale_fraction)
-    clean_patches = patches * rescale_fraction
     
     mi_pixel_cnn = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None, 
                     entropy_model='pixel_cnn', verbose=True)

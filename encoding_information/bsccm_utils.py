@@ -114,7 +114,7 @@ def get_bsccm_image_marker_generator(bsccm, channels,
     """
     markers, targets, indices, display_range, dataset_size = get_targets_and_display_range(bsccm, 
                             use_two_spectrum_unmixing, batch, shuffle=shuffle, shuffle_seed=shuffle_seed)
-        
+    use_correction_factor = True
     if synthetic_noise is not None:
         photons_per_pixel = synthetic_noise['photons_per_pixel']
         # Note: edge crop is only used for computing the normalization, for consitency with the mutual informaiton analysis to follow in a later experiment
@@ -129,11 +129,13 @@ def get_bsccm_image_marker_generator(bsccm, channels,
 
         # read 1000 images to estimate photon count
         indices_subset = onp.random.choice(indices, size=1000, replace=False)
-        images = load_bsccm_images(bsccm, channels[0], indices=indices_subset, edge_crop=edge_crop, convert_units_to_photons=True, median_filter=median_filter)
+        images = load_bsccm_images(bsccm, channels[0], indices=indices_subset, use_correction_factor=use_correction_factor,
+                                   edge_crop=edge_crop, convert_units_to_photons=True, median_filter=median_filter)
         mean_photons_per_pixel = np.mean(images)
         rescale_fraction = photons_per_pixel / mean_photons_per_pixel
         if rescale_fraction > 1:
             raise Exception('Rescale fraction must be less than 1')
+        print('Rescale fraction: ', rescale_fraction)
 
     def add_noise_to_image(image, index):
         if len(channels) != 1:
@@ -216,7 +218,7 @@ def generate_synthetic_multi_led_images(bsccm_coherent, led_indices, edge_crop=0
 
 def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slides=False, indices=None,
                       convert_units_to_photons=True, median_filter=False, seed=None, verbose=False, batch=1,
-                      use_correction_factor=False):
+                      use_correction_factor=True):
     """
     Load a stack of images from a BSCCM dataset
 
@@ -302,7 +304,7 @@ def _convert_to_photons(image, gain_db, offset, quantum_efficiency, use_correcti
     electrons = np.where(electrons > 0, electrons, 0)
     photons = np.array(electrons) / quantum_efficiency
     if use_correction_factor:
-        photons /= 2.45
+        photons *= 2.5
     return photons
 
 
