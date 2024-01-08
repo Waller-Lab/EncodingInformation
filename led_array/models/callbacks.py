@@ -93,6 +93,8 @@ class DensityNetworkVisualizeCallback(tfk.callbacks.Callback):
         if hasattr(self, 'logging_dir'):
             self.image_fig.savefig(self.logging_dir + 'images/png/denisty_0.png')
             self.image_fig.savefig(self.logging_dir + 'images/pdf/denisty_0.pdf', transparent=True)
+        # clear figure
+        self.image_fig.clear()
         
     def on_epoch_end(self, epoch, logs=None):        
     
@@ -104,6 +106,9 @@ class DensityNetworkVisualizeCallback(tfk.callbacks.Callback):
         # Save stuff to logging dir
         self.image_fig.savefig(self.logging_dir + 'images/png/denisty_{}.png'.format(epoch+1))
         self.image_fig.savefig(self.logging_dir + 'images/pdf/denisty_{}.pdf'.format(epoch+1), transparent=True)
+
+        # clear figure
+        self.image_fig.clear()
             
             
 class VAEVisualizeCallback(tfk.callbacks.Callback):
