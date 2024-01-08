@@ -102,6 +102,9 @@ def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=
         mean = mean[0]
         
     N_samples = samples.shape[0]
+    # drop trailing channel dim
+    if samples.ndim == 4 and samples.shape[3] == 1:
+        samples = samples.reshape(samples.shape[0], samples.shape[1], samples.shape[2])
     # check for expected shape
     if samples.ndim != 3 or samples.shape[1] != samples.shape[2]:
         raise ValueError('Samples must be N x H x W')

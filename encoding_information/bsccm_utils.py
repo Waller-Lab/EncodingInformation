@@ -216,7 +216,7 @@ def generate_synthetic_multi_led_images(bsccm_coherent, led_indices, edge_crop=0
 
 def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slides=False, indices=None,
                       convert_units_to_photons=True, median_filter=False, seed=None, verbose=False, batch=1,
-                      use_correction_factor=False):
+                      use_correction_factor=True):
     """
     Load a stack of images from a BSCCM dataset
 
