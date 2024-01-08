@@ -87,7 +87,7 @@ def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=100
         noisy_patches = add_shot_noise_to_experimenal_data(patches, rescale_fraction)
     
     mi_pixel_cnn = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None, 
-                    entropy_model='pixel_cnn', verbose=True)
+                    entropy_model='pixel_cnn', verbose=True, max_epochs=500, patience=100)
     mi_gp = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None,
                      entropy_model='gaussian', verbose=True)
 
