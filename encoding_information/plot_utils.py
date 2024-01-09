@@ -7,25 +7,36 @@ import numpy as np
 from tqdm import tqdm
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib
-
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 def plot_optimization_loss_history(val_loss_history):
 
-    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
+    fig, axs = plt.subplots(1, 1, figsize=(4, 4))
     
-    axs[0].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
+    axs.semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
 
     # ylim are 2x the range of the middle 80% of the data
     ylim = np.percentile(val_loss_history, [15, 85])
     diff = ylim[1] - ylim[0]
     ylim = [ylim[0] - diff, ylim[1] + diff]
-    axs[1].semilogy(val_loss_history, '-o', label='validation', color=get_color_cycle()[1])
-    axs[1].set_ylim(ylim)
-    axs[1].legend()
 
-    for a in axs:
-        clear_spines(a)
+    xlim = [0, len(val_loss_history)]
 
+    ax_inset = inset_axes(axs, width='75%', height='75%', loc='upper right')
+    ax_inset.semilogy(val_loss_history, '-o', label='Zoomed Inset', color=get_color_cycle()[1])
+    ax_inset.set(xlim=xlim, ylim=ylim)
+    # dont use scientific notation (use scalar formatter)
+
+    # ax_inset.set_xticks([x1, x2])
+    # ax_inset.set_yticks([y1, y2])
+
+    axs.set(ylabel='Validation set negative log likelihood', xlabel='Iteration')
+    clear_spines(axs)
+
+    x1, x2 = xlim
+    y1, y2 = ylim
+    axs.plot([x1, x2, x2, x1, x1], [y1, y1, y2, y2, y1], linestyle="dotted", color="grey")
+    
 def plot_eigenvalues(*args, **kwargs):
     """
     Plot the eigenvalues of a set of covariance matrices
