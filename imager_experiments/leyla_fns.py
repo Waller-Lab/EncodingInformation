@@ -32,6 +32,13 @@ def generate_random_tiled_data(x_set, y_set, seed_value=-1):
         random_data[i] = tile_9_images(data_set)
     return random_data, random_labels
 
+def generate_repeated_tiled_data(x_set, y_set):
+    # takes set of images and labels and returns a set of repeated tiled images and corresponding labels, no randomness
+    # the size of the output is 3x the size of the input, this essentially is a wrapper for np.tile
+    repeated_data = np.tile(x_set, (1, 3, 3))
+    repeated_labels = y_set # the labels are just what they were
+    return repeated_data, repeated_labels
+
 def convolved_dataset(psf, random_tiled_data):
     # takes a psf and a set of tiled images and returns a set of convolved images, convolved image size is 2n + 1? same size as the random data when it's cropped
     # tile size is two images worth plus one extra index value

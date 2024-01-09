@@ -323,7 +323,7 @@ class PixelCNN(ProbabilisticImageModel):
             if do_lr_decay:
                 lr_schedule = optax.exponential_decay(init_value=learning_rate,
                                                     transition_steps=steps_per_epoch,
-                                                    decay_rate=lr_decay_value)
+                                                    decay_rate=0.99,)
 
                 self._optimizer = optax.adam(lr_schedule)
             else:
