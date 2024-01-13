@@ -14,7 +14,7 @@ import warnings
 
 def analytic_multivariate_gaussian_entropy(cov_matrix):
     """
-    Numerically stable computation of the analytics entropy of a multivariate gaussian
+    Numerically stable computation of the analytic entropy of a multivariate gaussian
     """
     d = cov_matrix.shape[0]
     entropy = 0.5 * d * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(np.linalg.eigvalsh(cov_matrix)))
@@ -98,7 +98,9 @@ def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
         return  0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2)
     
 
-def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, return_median=True, verbose=False):
+def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, return_median=True, 
+                  upper_bound_confidence_interval=False,
+                  verbose=False):
     """
     Runs a bootstrap estimation procedure on the given data using the provided estimation function.
 
@@ -118,6 +120,8 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
         The random seed to use for generating the bootstrap samples.
     return_median : bool, optional (default=True)
         Whether to return the median or mean estimate of the desired quantity across all bootstrap samples.
+    upper_bound_confidence_interval : bool, optional (default=False)
+        Whether to return a confidence interval on 0-(confidence_interval) or the regulare centered one 
     verbose : bool, optional (default=False)
         Print progress bar
 
@@ -155,8 +159,16 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
             results.append(estimation_fn(**data_samples))
         
     results = np.array(results)
-    m = np.mean(results) if not return_median else np.median(results)
-    conf_int = [np.percentile(results, 50 - confidence_interval/2),
+    if not return_median:
+        m = np.mean(results)
+    elif upper_bound_confidence_interval:
+        m = np.percentile(results, confidence_interval // 2)
+    else:
+        m = np.median(results)
+    if upper_bound_confidence_interval:
+        conf_int = [np.min(results), np.percentile(results, confidence_interval)]
+    else:
+        conf_int = [np.percentile(results, 50 - confidence_interval/2),
                 np.percentile(results, 50 + confidence_interval/2)]
     return m, conf_int
         
