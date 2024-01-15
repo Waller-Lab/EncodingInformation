@@ -195,8 +195,9 @@ def confidence_bars(data_array, noise_length, confidence_interval=0.95):
     return error_lo, error_hi, mean
 
 
-
-def test_system(noise_level, psf_name, model_name, seed_values, data, labels, training_fraction, testing_fraction,  diffuser_region, phlat_region, psf, noise_type, rml_region):
+######### This function is very outdated, don't use it!! used to be called test_system use the ones below instead
+#########
+def test_system_old(noise_level, psf_name, model_name, seed_values, data, labels, training_fraction, testing_fraction,  diffuser_region, phlat_region, psf, noise_type, rml_region):
     # runs the model for the number of seeds given, returns the test accuracy for each seed
     test_accuracy_list = []
     for seed_value in seed_values:
@@ -267,7 +268,60 @@ def test_system(noise_level, psf_name, model_name, seed_values, data, labels, tr
         test_accuracy_list.append(test_acc)
     np.save('classification_results_rml_psf_619/test_accuracy_{}_noise_{}_{}_psf_{}_model.npy'.format(noise_level, noise_type, psf_name, model_name), test_accuracy_list)
 
-                    
+ ###### CNN for 32x32 CIFAR10 images 
+    # Originally written 11/14/2023, but then lost in a merge, recopied 1/14/2024
+def run_model_cnn_cifar(train_data, train_labels, test_data, test_labels, val_data, val_labels, seed_value=-1):
+    # structure from https://www.kaggle.com/code/cdeotte/how-to-choose-cnn-architecture-mnist
+    if seed_value == -1:
+        seed_val = np.random.randint(10, 1000)
+        tfk.utils.set_random_seed(seed_val)
+    else:
+        tfk.utils.set_random_seed(seed_value)
+
+    model = tfk.models.Sequential()
+    model.add(tfk.layers.Conv2D(64, kernel_size=5, padding='same', activation='relu', input_shape=(65, 65, 1)))
+    model.add(tfk.layers.MaxPool2D())
+    model.add(tfk.layers.Conv2D(128, kernel_size=5, padding='same', activation='relu'))
+    model.add(tfk.layers.MaxPool2D())
+    #model.add(tfk.layers.Conv2D(64, kernel_size=5, padding='same', activation='relu'))
+    #model.add(tfk.layers.MaxPool2D(padding='same'))
+    model.add(tfk.layers.Flatten())
+
+    #model.add(tfk.layers.Dense(256, activation='relu'))
+    model.add(tfk.layers.Dense(128, activation='relu'))
+    model.add(tfk.layers.Dense(10, activation='softmax'))
+
+    model.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    early_stop = tfk.callbacks.EarlyStopping(monitor="val_loss", # add in an early stopping option 
+                                        mode="min", patience=5,
+                                        restore_best_weights=True, verbose=1)
+    history = model.fit(train_data, train_labels, validation_data=(val_data, val_labels), epochs=50, batch_size=32, callbacks=[early_stop]) #validation data is not test data
+    test_loss, test_acc = model.evaluate(test_data, test_labels)
+    return history, model, test_loss, test_acc
+
+def make_ttv_sets(data, labels, seed_value, training_fraction, testing_fraction):
+    training, testing, validation = permute_data(data, labels, seed_value, training_fraction, testing_fraction)
+    training_data, training_labels = training
+    testing_data, testing_labels = testing
+    validation_data, validation_labels = validation
+    training_data, testing_data, validation_data = tf_cast(training_data), tf_cast(testing_data), tf_cast(validation_data)
+    training_labels, testing_labels, validation_labels = tf_labels(training_labels), tf_labels(testing_labels), tf_labels(validation_labels)
+    return (training_data, training_labels), (testing_data, testing_labels), (validation_data, validation_labels)
+
+def run_network_cifar(data, labels, seed_value, training_fraction, testing_fraction, mode='cnn'):
+    # small modification to be able to run 32x32 image data 
+    training, testing, validation = make_ttv_sets(data, labels, seed_value, training_fraction, testing_fraction)
+    if mode == 'cnn':
+        history, model, test_loss, test_acc = run_model_cnn_cifar(training[0], training[1],
+                                                            testing[0], testing[1],
+                                                            validation[0], validation[1], seed_value)
+    elif mode == 'simple':
+        history, model, test_loss, test_acc = run_model_simple(training[0], training[1], 
+                                                                     testing[0], testing[1],
+                                                                     validation[0], validation[1], seed_value)
+    return history, model, test_loss, test_acc
+
 
 def load_diffuser_psf():
     diffuser_psf = skimage.io.imread('/home/lkabuli_waller/workspace/EncodingInformation/imager_experiments/psfs/diffuser_psf.png')
@@ -317,7 +371,7 @@ def load_rml_new_psf():
 def load_single_lens():
     one_lens = np.zeros((28, 28))
     one_lens[14, 14] = 1
-    one_lens = scipy.ndimage.gaussian_filter(one_lens, sigma=0.8) # TODO return back to smaller
+    one_lens = scipy.ndimage.gaussian_filter(one_lens, sigma=0.8)
     one_lens /= np.sum(one_lens)
     return one_lens
 
@@ -337,13 +391,21 @@ def load_single_lens_32():
     one_lens /= np.sum(one_lens)
     return one_lens
 
+def load_two_lens_32():
+    two_lens = np.zeros((32, 32))
+    two_lens[10, 10] = 1
+    two_lens[21, 21] = 1
+    two_lens = scipy.ndimage.gaussian_filter(two_lens, sigma=0.8)
+    two_lens /= np.sum(two_lens)
+    return two_lens
+
 def load_four_lens_32():
     psf = np.zeros((32, 32))
     psf[22, 22] = 1
     psf[15, 10] = 1
     psf[5, 12] = 1
     psf[28, 8] = 1
-    psf = scipy.ndimage.gaussian_filter(psf, sigma=1)
+    psf = scipy.ndimage.gaussian_filter(psf, sigma=1) # note that this one is sigma 1, for mnist it's sigma 0.8
     psf /= np.sum(psf)
     return psf
 
