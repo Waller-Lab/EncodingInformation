@@ -383,6 +383,15 @@ def load_two_lens():
     two_lens /= np.sum(two_lens)
     return two_lens
 
+def load_three_lens():
+    three_lens = np.zeros((28, 28))
+    three_lens[8, 12] = 1 
+    three_lens[16, 20] = 1
+    three_lens[20, 7] = 1
+    three_lens = scipy.ndimage.gaussian_filter(three_lens, sigma=0.8)
+    three_lens /= np.sum(three_lens)
+    return three_lens
+
 
 def load_single_lens_32():
     one_lens = np.zeros((32, 32))
@@ -398,6 +407,15 @@ def load_two_lens_32():
     two_lens = scipy.ndimage.gaussian_filter(two_lens, sigma=0.8)
     two_lens /= np.sum(two_lens)
     return two_lens
+
+def load_three_lens_32():
+    three_lens = np.zeros((32, 32))
+    three_lens[9, 12] = 1
+    three_lens[17, 22] = 1
+    three_lens[24, 8] = 1
+    three_lens = scipy.ndimage.gaussian_filter(three_lens, sigma=0.8)
+    three_lens /= np.sum(three_lens)
+    return three_lens
 
 def load_four_lens_32():
     psf = np.zeros((32, 32))
