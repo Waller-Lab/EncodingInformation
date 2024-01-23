@@ -14,7 +14,7 @@ import warnings
 
 def analytic_multivariate_gaussian_entropy(cov_matrix):
     """
-    Numerically stable computation of the analytics entropy of a multivariate gaussian
+    Numerically stable computation of the analytic entropy of a multivariate gaussian
     """
     d = cov_matrix.shape[0]
     entropy = 0.5 * d * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(np.linalg.eigvalsh(cov_matrix)))
@@ -98,7 +98,9 @@ def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
         return  0.5 * np.log(2 * np.pi * np.e * gaussian_noise_sigma**2)
     
 
-def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, return_median=True, verbose=False):
+def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90, seed=1234, return_median=True, 
+                  upper_bound_confidence_interval=False,
+                  verbose=False):
     """
     Runs a bootstrap estimation procedure on the given data using the provided estimation function.
 
@@ -118,6 +120,8 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
         The random seed to use for generating the bootstrap samples.
     return_median : bool, optional (default=True)
         Whether to return the median or mean estimate of the desired quantity across all bootstrap samples.
+    upper_bound_confidence_interval : bool, optional (default=False)
+        Whether to return a confidence interval on 0-(confidence_interval) or the regulare centered one 
     verbose : bool, optional (default=False)
         Print progress bar
 
@@ -155,8 +159,16 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
             results.append(estimation_fn(**data_samples))
         
     results = np.array(results)
-    m = np.mean(results) if not return_median else np.median(results)
-    conf_int = [np.percentile(results, 50 - confidence_interval/2),
+    if not return_median:
+        m = np.mean(results)
+    elif upper_bound_confidence_interval:
+        m = np.percentile(results, confidence_interval // 2)
+    else:
+        m = np.median(results)
+    if upper_bound_confidence_interval:
+        conf_int = [np.min(results), np.percentile(results, confidence_interval)]
+    else:
+        conf_int = [np.percentile(results, 50 - confidence_interval/2),
                 np.percentile(results, 50 + confidence_interval/2)]
     return m, conf_int
         
@@ -165,7 +177,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                                   gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
                                  patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params
                                  use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, analytic_marginal_entropy=False,# gaussian params
-                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, add_gaussian_training_noise=False, # pixelcnn params
+                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, # pixelcnn params
+                                 do_lr_decay=False, add_gaussian_training_noise=False, conditioning_vectors=None, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
@@ -202,6 +215,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
     do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
     add_gaussian_training_noise : bool, (if entropy_model='pixelcnn') whether to add gaussian noise to the training data instead of uniform noise
+    conditioning_vectors : ndarray, (if entropy_model='pixelcnn') array of conditioning vectors to use for the PixelCNN. should be of shape (n_samples, d),
+      where d is the dimensionality of the conditioning vector
 
     return_entropy_model : bool, whether to return the noisy image entropy model
     verbose : bool, whether to print out the estimated values
