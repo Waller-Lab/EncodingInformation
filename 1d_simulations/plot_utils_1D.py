@@ -8,7 +8,8 @@ from matplotlib.colors import Normalize
 
 
 def plot_in_spatial_coordinates(ax, signal, show_samples=False, sampling_indices=None, 
-                                num_nyquist_samples=NUM_NYQUIST_SAMPLES, show_integration=False,                                
+                                num_nyquist_samples=NUM_NYQUIST_SAMPLES, show_integration=False,  
+                                ymax=None,                              
                                   **kwargs):
     """
     Plots a signal in spatial coordinates (i.e. x vs. intensity)
@@ -36,10 +37,10 @@ def plot_in_spatial_coordinates(ax, signal, show_samples=False, sampling_indices
         # get color of line
         color = ax.get_lines()[-1].get_color()
         clear_spines(ax)
-        sparse_ticks(ax)
-        ax.set(xlim=[0, signal.size], xticks=[0, signal.size], xticklabels=[0, f'N={signal.size}'],
+        # sparse_ticks(ax)
+        ax.set(xlim=[0, signal.size], xticks=[], yticks=[],
             xlabel='Space', ylabel='Energy density',
-            ylim=[0, None])
+            ylim=[0, ymax])
 
         if show_samples:
             samples = signal[signal.size // num_nyquist_samples // 2:: signal.size // num_nyquist_samples]
@@ -72,7 +73,7 @@ def plot_in_spatial_coordinates(ax, signal, show_samples=False, sampling_indices
 
             
 
-def plot_in_intensity_coordinates(ax, signal, sampling_indices=(0, 1), num_nyquist_samples=NUM_NYQUIST_SAMPLES, integrate=True, 
+def plot_in_intensity_coordinates(ax, signal, sampling_indices=(0, 1), num_nyquist_samples=None, integrate=True, 
                                   plot_signals_in_different_colors=False,
                                   **kwargs):
     """
@@ -97,6 +98,8 @@ def plot_in_intensity_coordinates(ax, signal, sampling_indices=(0, 1), num_nyqui
     """
 
     if integrate:
+        if num_nyquist_samples is None:
+            raise ValueError('Must specify num_nyquist_samples if integrating')
         samples = integrate_pixels(signal, num_nyquist_samples=num_nyquist_samples)
     else: 
         samples = signal
@@ -110,7 +113,7 @@ def plot_in_intensity_coordinates(ax, signal, sampling_indices=(0, 1), num_nyqui
         ax.scatter(intensity_at_x1, intensity_at_x2, zorder=3, **kwargs)
     else:
         for i in range(signal.shape[0]):
-            ax.scatter(intensity_at_x1[i], intensity_at_x2[i], s=80, zorder=3, **kwargs)
+            ax.scatter(intensity_at_x1[i], intensity_at_x2[i], zorder=3, **kwargs)
     ax.set(xlim=[0, 1], ylim=[0, 1], xlabel='Energy at x1', ylabel='Energy at x2', xticks=[0, 1], yticks=[0, 1])
     ax.set_aspect('equal')
     clear_spines(ax)
@@ -265,67 +268,6 @@ def make_PSF_output_signal_plot(ax, params, objects, erasure_mask, noise_sigma,
   # plot the output signals in intensity coordinates
   plot_in_intensity_coordinates(ax[2], conv_forward_model_with_erasure(params, objects, erasure_mask),
                                 markersize=5, differentiate_colors=True, sample_point_indices=sampling_indices)
-
-
-def make_delta_fn_object_PSF_plot(ax, params, objects, erasure_mask, noise_sigma, intensity_lim_max=1, psf_y_max=1,
-                                  N_signals_to_plot=5, N_objects_to_plot=100,
-                                sampling_indices=(3, 4), titles=False):
-    
-
-
-    ### plot delta function objects, colored by position
-    colormap = plt.get_cmap('cmc.romaO')
-    object_colors = [colormap((np.argmax(o) + 0.5) / o.size) for o in objects]
-    example_object_colors = [colormap((np.argmax(o) + 0.5) / o.size) for o in objects]
-    
-    plot_object(ax[0], objects[:N_objects_to_plot], colors=example_object_colors[:N_objects_to_plot])
-    if titles:
-        ax[0].set_title('Object')
-    
-
-    # show a color bar on the x axis
-    x_positions = np.linspace(0, 1, 100)
-    colors = colormap(x_positions) 
-    norm = Normalize(vmin=min(x_positions), vmax=max(x_positions))
-    scalar_mappable = ScalarMappable(norm=norm, cmap=colormap)
-    fig = ax[0].get_figure()
-    cbar = fig.colorbar(scalar_mappable, ax=ax[0], orientation='horizontal', pad=0.02)
-    # set the tick labels of the colorbar
-    cbar.set_ticks([0, 1])
-
-    # center the kernel
-    kernel = conv_kernel_from_params(params)
-    kernel_display = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
-    kernel_for_conv = np.fft.fftshift(kernel_display)
-    params_for_conv =  np.concatenate(real_imag_params_from_signal(kernel_for_conv))
-  
-    # compute signals with optimized kernels
-    signals = conv_forward_model_with_erasure(params_for_conv, objects, erasure_mask, align_center=False)
-
-    plot_in_spatial_coordinates(ax[1], kernel_display, show_samples=False, color='k')
-    if titles:
-        ax[1].set_title('PSF')
-    ax[1].set(yticks=[0, intensity_lim_max], ylim=[0, psf_y_max], xticks=[0,1], xticklabels=[-0.5, 0.5])
-
-
-    plot_in_spatial_coordinates(ax[2], signals[:N_signals_to_plot], show_samples=False, 
-                                vertical_line_indices=sampling_indices, full_height_vertical_lines=True,
-                                colors=example_object_colors, erasure_mask=erasure_mask)
-    
-    ax[2].set(ylabel=None, yticks=[0, intensity_lim_max], yticklabels=[], ylim=[0, intensity_lim_max], xticks=[0, 1])
-
-
-    def make_noisy_output_signals(params, objects, erasure_mask, noise_sigma):
-        return add_gaussian_noise_numpy(upsample_signal(conv_forward_model_with_erasure(params, objects, erasure_mask)), noise_sigma)
-
-    # plot all output signals in intensity coordinates
-    # signals = conv_forward_model_with_erasure(params, objects, erasure_mask, align_center=False)
-
-    plot_in_intensity_coordinates(ax[3], make_noisy_output_signals(params_for_conv, objects, erasure_mask, noise_sigma),
-                                   markersize=5, color=object_colors,
-                                sample_point_indices=sampling_indices, plot_lim=intensity_lim_max)
-
-
 
 
 

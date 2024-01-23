@@ -92,7 +92,6 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
             hists.append(hist)
             if color is None or i == 0:
         
-
                 if colors is not None:
                     cmaps.append(LinearSegmentedColormap.from_list(f'cmap{i}', [(1,1,1), colors[i]]))
                 else:

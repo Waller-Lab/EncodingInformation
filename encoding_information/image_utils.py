@@ -50,7 +50,7 @@ def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None, seed=
     noisy_images = np.concatenate(noisy_batches, axis=0)
     return noisy_images
 
-def extract_patches(stack, patch_size, num_patches=1000, seed=None, verbose=False):
+def extract_patches(stack, patch_size, num_patches=1000, seed=None, verbose=False, return_locations=False):
     patches = []
     if seed is not None:
         onp.random.seed(seed)
@@ -61,12 +61,15 @@ def extract_patches(stack, patch_size, num_patches=1000, seed=None, verbose=Fals
     image_indices = jax.random.randint(key=jax.random.PRNGKey(onp.random.randint(100000)), minval=0, maxval=stack.shape[0], shape=(num_patches,))
     x_indices = jax.random.randint(key=jax.random.PRNGKey( onp.random.randint(100000)), minval=0, maxval=stack.shape[1] - patch_size + 1, shape=(num_patches,))
     y_indices = jax.random.randint(key=jax.random.PRNGKey( onp.random.randint(100000)), minval=0, maxval=stack.shape[2] - patch_size + 1, shape=(num_patches,))
+    center_locations = np.stack([image_indices, x_indices + patch_size // 2, y_indices + patch_size // 2], axis=1)
     if verbose:
         iterator = tqdm(range(num_patches))
     else:
         iterator = range(num_patches)
     for i in iterator:
         patches.append(stack[image_indices[i], x_indices[i]:x_indices[i]+patch_size, y_indices[i]:y_indices[i]+patch_size])
+    if return_locations:
+        return jax.numpy.array(patches), center_locations.astype(np.float32)
     return jax.numpy.array(patches)
 
 def normalize_image_stack(stack):
