@@ -61,7 +61,7 @@ def extract_patches(stack, patch_size, num_patches=1000, seed=None, verbose=Fals
     image_indices = jax.random.randint(key=jax.random.PRNGKey(onp.random.randint(100000)), minval=0, maxval=stack.shape[0], shape=(num_patches,))
     x_indices = jax.random.randint(key=jax.random.PRNGKey( onp.random.randint(100000)), minval=0, maxval=stack.shape[1] - patch_size + 1, shape=(num_patches,))
     y_indices = jax.random.randint(key=jax.random.PRNGKey( onp.random.randint(100000)), minval=0, maxval=stack.shape[2] - patch_size + 1, shape=(num_patches,))
-    center_locations = np.stack([image_indices, x_indices + patch_size // 2, y_indices + patch_size // 2], axis=1)
+    center_locations = np.stack([x_indices + patch_size // 2, y_indices + patch_size // 2], axis=1)
     if verbose:
         iterator = tqdm(range(num_patches))
     else:

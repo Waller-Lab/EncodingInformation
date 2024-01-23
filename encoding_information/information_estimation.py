@@ -178,7 +178,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                                  patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params
                                  use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, analytic_marginal_entropy=False,# gaussian params
                                  steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, # pixelcnn params
-                                 do_lr_decay=False, add_gaussian_training_noise=False, conditioning_vectors=None, # pixelcnn params
+                                 do_lr_decay=False, add_gaussian_training_noise=False, condition_vectors=None, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
@@ -215,7 +215,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
     do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
     add_gaussian_training_noise : bool, (if entropy_model='pixelcnn') whether to add gaussian noise to the training data instead of uniform noise
-    conditioning_vectors : ndarray, (if entropy_model='pixelcnn') array of conditioning vectors to use for the PixelCNN. should be of shape (n_samples, d),
+    condition_vectors : ndarray, (if entropy_model='pixelcnn') array of conditioning vectors to use for the PixelCNN. should be of shape (n_samples, d),
       where d is the dimensionality of the conditioning vector
 
     return_entropy_model : bool, whether to return the noisy image entropy model
@@ -246,6 +246,12 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     ### Fit an entropy model to the noisy images
     training_set = noisy_images[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
     test_set = noisy_images[-int(noisy_images.shape[0] * test_set_fraction):]
+    if condition_vectors is not None:
+        training_condition_vectors = condition_vectors[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
+        test_condition_vectors = condition_vectors[-int(noisy_images.shape[0] * test_set_fraction):]
+    else:
+        training_condition_vectors = None
+        test_condition_vectors = None
     if entropy_model == 'gaussian':
         noisy_image_model = StationaryGaussianProcess(training_set, eigenvalue_floor=eigenvalue_floor)
         if use_iterative_optimization:
@@ -263,7 +269,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
         # collect all hyperparams that are not None
         hyperparams = {}
         for k, v in dict(patience=patience, num_val_samples=num_val_samples, batch_size=batch_size, steps_per_epoch=steps_per_epoch,
-                             learning_rate=learning_rate, max_epochs=max_epochs, do_lr_decay=do_lr_decay).items():
+                             learning_rate=learning_rate, max_epochs=max_epochs, do_lr_decay=do_lr_decay, condition_vectors=training_condition_vectors).items():
                 if v is not None:
                  hyperparams[k] = v
         noisy_image_model.fit(training_set, verbose=verbose, **hyperparams, add_gaussian_noise=add_gaussian_training_noise)
@@ -274,7 +280,10 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
         h_y = noisy_image_model.compute_analytic_entropy()
     else:
         ### Estimate the entropy of the noisy images using the upper bound provided by the entropy model negative log likelihood
-        h_y = noisy_image_model.compute_negative_log_likelihood(test_set, verbose=verbose)
+        if condition_vectors is not None:
+            h_y = noisy_image_model.compute_negative_log_likelihood(test_set, conditioning_vecs=test_condition_vectors, verbose=verbose)
+        else:
+            h_y = noisy_image_model.compute_negative_log_likelihood(test_set, verbose=verbose)
 
     mutual_info = (h_y - h_y_given_x) / np.log(2)
     if verbose:
