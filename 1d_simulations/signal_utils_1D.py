@@ -13,6 +13,8 @@ import imageio
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.signal import resample
 
+from encoding_information.information_estimation import estimate_mutual_information
+
 NUM_NYQUIST_SAMPLES = 8
 UPSAMPLED_SIGNAL_LENGTH = 512
 
@@ -186,19 +188,13 @@ def generate_random_object(type, seed=None, object_size=UPSAMPLED_SIGNAL_LENGTH,
             object -= np.min(object)
         return object / onp.sum(object)
     elif type == 'white_noise':
-        obj = onp.random.rand(object_size)
-        if np.min(obj) < 0:
-            obj -= np.min(obj)
-        return obj / onp.sum(obj)
-    elif type == 'masked_white_noise':
-        obj = onp.random.rand(object_size)
-        if onp.min(obj) < 0:
-            obj -= onp.min(obj)
-        obj = obj * (onp.random.rand(object_size) > 0.8)
-        return obj / onp.sum(obj)
-    elif type == 'sinusoid':
-        obj = onp.sin(np.linspace(0, 2*np.pi, object_size) * onp.random.uniform(*sin_freq_range) + onp.random.rand() * 100000) + 1
-        return obj / onp.sum(obj)
+        freqs = onp.fft.rfftfreq(object_size, 1/object_size)
+        random_phase = onp.concatenate([onp.array([1]), np.exp(1j * 2*np.pi*onp.random.rand(freqs.shape[0] - 1))])
+        object = onp.fft.irfft( random_phase) 
+        if np.min(object) < 0:
+            object -= np.min(object)
+        # return object 
+        return object / onp.sum(object)
 
 
 
@@ -509,25 +505,59 @@ def conv_forward_model(parameters, objects, align_center=False, integrate_output
 
 def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, initial_kernel=None,
                                  learning_rate=1e-2, learning_rate_decay=0.999, verbose=True,
+                                 estimate_with_pixel_cnn=True,
                                  loss_improvement_patience=2000, max_epochs=5000, num_nyquist_samples=NUM_NYQUIST_SAMPLES, 
-                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, nyquist_sample_output=True):
+                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):
+  if estimate_with_pixel_cnn:
+      # make sure num_nyquist_samples is a perfect square and upsampled_signal_length is a multiple of it
+        if not np.sqrt(num_nyquist_samples) % 1 == 0:
+            raise Exception('num_nyquist_samples must be a perfect square')
+        if upsampled_signal_length % num_nyquist_samples != 0:
+            raise Exception('upsampled_signal_length must be a multiple of num_nyquist_samples')
+
   objects = objects_fn()
   if initial_kernel is None:
     initial_kernel = generate_random_signal(num_nyquist_samples=num_nyquist_samples)
   initial_params = params_from_signal(initial_kernel, num_nyquist_samples=num_nyquist_samples)
 
   loss_fn = make_convolutional_forward_model_with_mi_loss(
-      objects, noise_sigma=noise_sigma, nyquist_sample_output=nyquist_sample_output, num_nyquist_samples=num_nyquist_samples,
+      objects, noise_sigma=noise_sigma,  num_nyquist_samples=num_nyquist_samples,
       upsampled_signal_length=upsampled_signal_length)
   optimized_params = run_optimzation(loss_fn, lambda x : signal_prox_fn(x, num_nyquist_samples=num_nyquist_samples),
                           initial_params, learning_rate=learning_rate, learning_rate_decay=learning_rate_decay, verbose=verbose,
                           loss_improvement_patience=loss_improvement_patience, max_epochs=max_epochs,
                           key=jax.random.PRNGKey(onp.random.randint(100000)))
-  test_objects = objects_fn()                        
-  optimized_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples,
-                                                                 nyquist_sample_output=nyquist_sample_output)(optimized_params, jax.random.PRNGKey(0))
-  initial_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples, 
-                                                              nyquist_sample_output=nyquist_sample_output)(initial_params, jax.random.PRNGKey(0))
+  test_objects = objects_fn()   
+
+  if not estimate_with_pixel_cnn:
+    optimized_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples,
+                                                                    )(optimized_params, jax.random.PRNGKey(0))
+    initial_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples, 
+                                                                )(initial_params, jax.random.PRNGKey(0))
+  else:   
+    scale_factor = 100000 # because these signals are 0-1 but pixel cnn is designed for photon counts
+    # output_signals = conv_forward_model(initial_params, test_objects,
+    #                                             integrate_output_signals=True, 
+    #                                             num_nyquist_samples=num_nyquist_samples,
+    #                                             upsampled_signal_length=upsampled_signal_length)
+    # noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
+    # fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
+    # if verbose:
+    #     print('computing initial mi')
+    # initial_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
+    initial_mi = None
+
+    output_signals = conv_forward_model(optimized_params, test_objects,
+                                                integrate_output_signals=True, 
+                                                num_nyquist_samples=num_nyquist_samples,
+                                                upsampled_signal_length=upsampled_signal_length)
+    noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
+    fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
+    if verbose:
+        print('computing optimized mi')
+    optimized_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
+                                                        
+
   return initial_kernel, initial_params, optimized_params, objects, initial_mi, optimized_mi
 
 

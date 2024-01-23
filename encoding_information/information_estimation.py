@@ -177,7 +177,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                                   gaussian_noise_sigma=None, estimate_conditional_from_model_samples=False,
                                  patience=None, num_val_samples=None, batch_size=None, max_epochs=None, learning_rate=None, # generic params
                                  use_iterative_optimization=True, eigenvalue_floor=1e-3, gradient_clip=None, momentum=None, analytic_marginal_entropy=False,# gaussian params
-                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, do_lr_decay=False, add_gaussian_training_noise=False, # pixelcnn params
+                                 steps_per_epoch=None, num_hidden_channels=None, num_mixture_components=None, # pixelcnn params
+                                 do_lr_decay=False, add_gaussian_training_noise=False, conditioning_vectors=None, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
@@ -214,6 +215,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
     do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
     add_gaussian_training_noise : bool, (if entropy_model='pixelcnn') whether to add gaussian noise to the training data instead of uniform noise
+    conditioning_vectors : ndarray, (if entropy_model='pixelcnn') array of conditioning vectors to use for the PixelCNN. should be of shape (n_samples, d),
+      where d is the dimensionality of the conditioning vector
 
     return_entropy_model : bool, whether to return the noisy image entropy model
     verbose : bool, whether to print out the estimated values
