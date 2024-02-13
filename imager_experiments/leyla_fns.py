@@ -7,7 +7,10 @@ import gc
 import warnings
 
 import skimage
+import skimage.io
 from skimage.transform import resize
+
+from tensorflow.keras.optimizers import SGD
 
 def tile_9_images(data_set):
     # takes 9 images and forms a tiled image
@@ -270,14 +273,14 @@ def test_system_old(noise_level, psf_name, model_name, seed_values, data, labels
 
  ###### CNN for 32x32 CIFAR10 images 
     # Originally written 11/14/2023, but then lost in a merge, recopied 1/14/2024
-def run_model_cnn_cifar(train_data, train_labels, test_data, test_labels, val_data, val_labels, seed_value=-1):
+def run_model_cnn_cifar(train_data, train_labels, test_data, test_labels, val_data, val_labels, seed_value=-1, max_epochs=50, patience=5):
     # structure from https://www.kaggle.com/code/cdeotte/how-to-choose-cnn-architecture-mnist
+    # default architecture is 50 epochs and patience 5, but recently some need longer patience
     if seed_value == -1:
         seed_val = np.random.randint(10, 1000)
         tfk.utils.set_random_seed(seed_val)
     else:
         tfk.utils.set_random_seed(seed_value)
-
     model = tfk.models.Sequential()
     model.add(tfk.layers.Conv2D(64, kernel_size=5, padding='same', activation='relu', input_shape=(65, 65, 1)))
     model.add(tfk.layers.MaxPool2D())
@@ -294,9 +297,9 @@ def run_model_cnn_cifar(train_data, train_labels, test_data, test_labels, val_da
     model.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     early_stop = tfk.callbacks.EarlyStopping(monitor="val_loss", # add in an early stopping option 
-                                        mode="min", patience=5,
+                                        mode="min", patience=patience,
                                         restore_best_weights=True, verbose=1)
-    history = model.fit(train_data, train_labels, validation_data=(val_data, val_labels), epochs=50, batch_size=32, callbacks=[early_stop]) #validation data is not test data
+    history = model.fit(train_data, train_labels, validation_data=(val_data, val_labels), epochs=max_epochs, batch_size=32, callbacks=[early_stop]) #validation data is not test data
     test_loss, test_acc = model.evaluate(test_data, test_labels)
     return history, model, test_loss, test_acc
 
@@ -309,18 +312,26 @@ def make_ttv_sets(data, labels, seed_value, training_fraction, testing_fraction)
     training_labels, testing_labels, validation_labels = tf_labels(training_labels), tf_labels(testing_labels), tf_labels(validation_labels)
     return (training_data, training_labels), (testing_data, testing_labels), (validation_data, validation_labels)
 
-def run_network_cifar(data, labels, seed_value, training_fraction, testing_fraction, mode='cnn'):
+def run_network_cifar(data, labels, seed_value, training_fraction, testing_fraction, mode='cnn', max_epochs=50, patience=5):
     # small modification to be able to run 32x32 image data 
     training, testing, validation = make_ttv_sets(data, labels, seed_value, training_fraction, testing_fraction)
     if mode == 'cnn':
         history, model, test_loss, test_acc = run_model_cnn_cifar(training[0], training[1],
                                                             testing[0], testing[1],
-                                                            validation[0], validation[1], seed_value)
+                                                            validation[0], validation[1], seed_value, max_epochs, patience)
     elif mode == 'simple':
         history, model, test_loss, test_acc = run_model_simple(training[0], training[1], 
                                                                      testing[0], testing[1],
                                                                      validation[0], validation[1], seed_value)
-    return history, model, test_loss, test_acc
+    elif mode == 'new_cnn':
+        history, model, test_loss, test_acc = current_testing_model(training[0], training[1],
+                                                                    testing[0], testing[1], 
+                                                                    validation[0], validation[1], seed_value, max_epochs, patience)
+    elif mode == 'mom_cnn':
+        history, model, test_loss, test_acc = momentum_testing_model(training[0], training[1],
+                                                                    testing[0], testing[1], 
+                                                                    validation[0], validation[1], seed_value, max_epochs, patience)
+    return history, model, test_loss, test_acc  
 
 
 def load_diffuser_psf():
@@ -439,3 +450,132 @@ def load_diffuser_32():
 
 
 ### 10/15/2023: Make new versions of the model functions that train with Datasets - first attempt failed
+
+# lenses with centralized positions for use in task-specific estimations
+def load_single_lens_uniform(size=32):
+    one_lens = np.zeros((size, size))
+    one_lens[16, 16] = 1
+    one_lens = scipy.ndimage.gaussian_filter(one_lens, sigma=0.8)
+    one_lens /= np.sum(one_lens)
+    return one_lens
+
+def load_two_lens_uniform(size=32):
+    two_lens = np.zeros((size, size))
+    two_lens[16, 16] = 1 
+    two_lens[7, 9] = 1
+    two_lens = scipy.ndimage.gaussian_filter(two_lens, sigma=0.8)
+    two_lens /= np.sum(two_lens)
+    return two_lens
+
+def load_three_lens_uniform(size=32):
+    three_lens = np.zeros((size, size))
+    three_lens[16, 16] = 1
+    three_lens[7, 9] = 1
+    three_lens[23, 21] = 1
+    three_lens = scipy.ndimage.gaussian_filter(three_lens, sigma=0.8)
+    three_lens /= np.sum(three_lens)
+    return three_lens
+
+def load_four_lens_uniform(size=32):
+    four_lens = np.zeros((size, size))
+    four_lens[16, 16] = 1
+    four_lens[7, 9] = 1
+    four_lens[23, 21] = 1
+    four_lens[8, 24] = 1
+    four_lens = scipy.ndimage.gaussian_filter(four_lens, sigma=0.8)
+    four_lens /= np.sum(four_lens)
+    return four_lens
+def load_five_lens_uniform(size=32):
+    five_lens = np.zeros((size, size))
+    five_lens[16, 16] = 1
+    five_lens[7, 9] = 1
+    five_lens[23, 21] = 1
+    five_lens[8, 24] = 1
+    five_lens[21, 5] = 1
+    five_lens = scipy.ndimage.gaussian_filter(five_lens, sigma=0.8)
+    five_lens /= np.sum(five_lens)
+    return five_lens
+
+
+
+## 01/24/2024 new CNN that's slightly deeper 
+def current_testing_model(train_data, train_labels, test_data, test_labels, val_data, val_labels, seed_value=-1, max_epochs=50, patience=20):
+    # structure from https://www.kaggle.com/code/amyjang/tensorflow-cifar10-cnn-tutorial 
+    
+    if seed_value == -1:
+        seed_val = np.random.randint(10, 1000)
+        tfk.utils.set_random_seed(seed_val)
+    else:
+        tfk.utils.set_random_seed(seed_value)
+
+    model = tf.keras.models.Sequential([
+    tf.keras.layers.Conv2D(32, kernel_size=5, padding='same', input_shape=(65, 65, 1), activation='relu'),
+    tf.keras.layers.Conv2D(32, kernel_size=5, activation='relu'),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Dropout(0.25),
+
+    tf.keras.layers.Conv2D(64, kernel_size=3, padding='same', activation='relu'),
+    tf.keras.layers.Conv2D(64, kernel_size=3, activation='relu'),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Dropout(0.25),
+
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(512, activation='relu'),
+    tf.keras.layers.Dropout(0.5),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(10, activation='softmax'),
+    ])
+
+    model.compile(optimizer='sgd', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    early_stop = tfk.callbacks.EarlyStopping(monitor="val_loss", # add in an early stopping option 
+                                            mode="min", patience=patience,
+                                            restore_best_weights=True, verbose=1)
+    print(model.optimizer.get_config())
+
+    history = model.fit(train_data, train_labels, validation_data=(val_data, val_labels), epochs=max_epochs, batch_size=32, callbacks=[early_stop]) #validation data is not test data
+    test_loss, test_acc = model.evaluate(test_data, test_labels)
+    return history, model, test_loss, test_acc
+
+
+
+
+## 01/24/2024 new CNN that's slightly deeper 
+def momentum_testing_model(train_data, train_labels, test_data, test_labels, val_data, val_labels, seed_value=-1, max_epochs=50, patience=20):
+    # structure from https://www.kaggle.com/code/amyjang/tensorflow-cifar10-cnn-tutorial 
+    # includes nesterov momentum feature, rather than regular momentum
+    if seed_value == -1:
+        seed_val = np.random.randint(10, 1000)
+        tfk.utils.set_random_seed(seed_val)
+    else:
+        tfk.utils.set_random_seed(seed_value)
+
+    model = tf.keras.models.Sequential([
+    tf.keras.layers.Conv2D(32, kernel_size=5, padding='same', input_shape=(65, 65, 1), activation='relu'),
+    tf.keras.layers.Conv2D(32, kernel_size=5, activation='relu'),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Dropout(0.25),
+
+    tf.keras.layers.Conv2D(64, kernel_size=3, padding='same', activation='relu'),
+    tf.keras.layers.Conv2D(64, kernel_size=3, activation='relu'),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Dropout(0.25),
+
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(512, activation='relu'),
+    tf.keras.layers.Dropout(0.5),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(10, activation='softmax'),
+    ])
+
+    model.compile(optimizer=SGD(momentum=0.9, nesterov=True), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    early_stop = tfk.callbacks.EarlyStopping(monitor="val_loss", # add in an early stopping option 
+                                            mode="min", patience=patience,
+                                            restore_best_weights=True, verbose=1)
+    
+    print(model.optimizer.get_config())
+
+    history = model.fit(train_data, train_labels, validation_data=(val_data, val_labels), epochs=max_epochs, batch_size=32, callbacks=[early_stop]) #validation data is not test data
+    test_loss, test_acc = model.evaluate(test_data, test_labels)
+    return history, model, test_loss, test_acc
