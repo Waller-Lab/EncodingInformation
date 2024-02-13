@@ -92,7 +92,6 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
             hists.append(hist)
             if color is None or i == 0:
         
-
                 if colors is not None:
                     cmaps.append(LinearSegmentedColormap.from_list(f'cmap{i}', [(1,1,1), colors[i]]))
                 else:
@@ -103,7 +102,9 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
         # loop over all histograms and colormaps
         hists = [hist / np.max(hist) for hist in hists]
         if len(cmaps) > 1:
-            blended_color = np.min(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
+            # blended_color = np.min(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
+            blended_color = np.prod(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
+
         else:
             blended_color = cmaps[0](np.max(hists, axis=0))
         # Plot the blended color image

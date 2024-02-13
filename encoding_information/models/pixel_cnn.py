@@ -284,7 +284,7 @@ class PixelCNN(ProbabilisticImageModel):
         self.num_mixture_components = num_mixture_components
         self._flax_model = None
 
-    def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
+    def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=40, 
             sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  seed=0, do_lr_decay=False, verbose=True,
             add_gaussian_noise=False, add_uniform_noise=True):
         train_images = train_images.astype(np.float32)

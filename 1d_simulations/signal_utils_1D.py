@@ -11,6 +11,9 @@ import optax
 
 import imageio
 from mpl_toolkits.mplot3d import Axes3D
+from scipy.signal import resample
+
+from encoding_information.information_estimation import estimate_mutual_information
 
 NUM_NYQUIST_SAMPLES = 8
 UPSAMPLED_SIGNAL_LENGTH = 512
@@ -37,8 +40,8 @@ def integrate_pixels(signal, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
     return signal.reshape(*new_shape).sum(axis=-1)
 
 
-# @partial(jit, static_argnums=(1, ))
-def signal_from_params(params, length=UPSAMPLED_SIGNAL_LENGTH):
+@partial(jit, static_argnums=(1, ))
+def signal_from_params(params, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):
     """
     Generate signal with unit energy from real and imaginary parts of the spectrum
 
@@ -47,15 +50,18 @@ def signal_from_params(params, length=UPSAMPLED_SIGNAL_LENGTH):
     params : tuple
         (real, imag, amplitude_logit) where real and imag are the real and imaginary parts of the spectrum given by the rfft
              and amplitude_logit is the logit of the amplitude of the DC component
-    length : int
+    upsampled_signal_length : int
         Length of the signal to generate
     """
     real, imag, amplitude_logit = params
     if real.shape[-1] != imag.shape[-1] + 1:
         raise Exception('Real must be one bigger than imaginary (DC)')
+    # params are stored in upsampled form to avoid weird fft behavior, so enforce this here
+    
+
     # construct full signal from trainable parameters
     full_spectrum = np.concatenate([np.array([0]), imag]) *1j + real
-    signal = np.fft.irfft(full_spectrum, length)
+    signal = np.fft.irfft(full_spectrum, upsampled_signal_length)
 
     # Make positive
     signal -= np.min(signal)
@@ -137,8 +143,7 @@ def generate_random_signal(unit_energy=True, seed=None, upsampled_signal_length=
     """
     Generate a random positive, bandlimited signal. This is is heuristic and doesn't guarentee a uniform distribution over all possible signals
     """
-    return signal_from_params(generate_params_of_random_signal(unit_energy=unit_energy, seed=seed, upsampled_signal_length=upsampled_signal_length,
-                                                                num_nyquist_samples=num_nyquist_samples), length=upsampled_signal_length)
+    return signal_from_params(generate_params_of_random_signal(unit_energy=unit_energy, seed=seed, upsampled_signal_length=upsampled_signal_length, num_nyquist_samples=num_nyquist_samples), upsampled_signal_length=upsampled_signal_length)
 
 def generate_random_object(type, seed=None, object_size=UPSAMPLED_SIGNAL_LENGTH, num_deltas=1, sin_freq_range=[0, 1],
                             gaussian_mixture_position=False, num_mixture_components=3, gaussian_mixture_seed=12345):
@@ -183,19 +188,13 @@ def generate_random_object(type, seed=None, object_size=UPSAMPLED_SIGNAL_LENGTH,
             object -= np.min(object)
         return object / onp.sum(object)
     elif type == 'white_noise':
-        obj = onp.random.rand(object_size)
-        if np.min(obj) < 0:
-            obj -= np.min(obj)
-        return obj / onp.sum(obj)
-    elif type == 'masked_white_noise':
-        obj = onp.random.rand(object_size)
-        if onp.min(obj) < 0:
-            obj -= onp.min(obj)
-        obj = obj * (onp.random.rand(object_size) > 0.8)
-        return obj / onp.sum(obj)
-    elif type == 'sinusoid':
-        obj = onp.sin(np.linspace(0, 2*np.pi, object_size) * onp.random.uniform(*sin_freq_range) + onp.random.rand() * 100000) + 1
-        return obj / onp.sum(obj)
+        freqs = onp.fft.rfftfreq(object_size, 1/object_size)
+        random_phase = onp.concatenate([onp.array([1]), np.exp(1j * 2*np.pi*onp.random.rand(freqs.shape[0] - 1))])
+        object = onp.fft.irfft( random_phase) 
+        if np.min(object) < 0:
+            object -= np.min(object)
+        # return object 
+        return object / onp.sum(object)
 
 
 
@@ -207,7 +206,7 @@ def generate_random_object(type, seed=None, object_size=UPSAMPLED_SIGNAL_LENGTH,
 ########## Functions for encoders and optimization ############
 ################################################################
 
-@partial(jit, static_argnums=(1,))
+@jit
 def make_convolutional_encoder(conv_kernel):
     """
     Make a convolutional encoder from a 1D signal kernel
@@ -326,15 +325,16 @@ def signal_prox_fn(parameters, num_nyquist_samples=NUM_NYQUIST_SAMPLES, unit_ene
 
 
 def optimize_towards_target_signals(target_integrated_signals, object, initial_kernel, sampling_indices=None,
-                                      learning_rate=3e-3, learning_rate_decay=0.999, tolerance=1e-5, transition_begin=800, verbose=False):                                    
+                                      learning_rate=3e-3, learning_rate_decay=0.999, tolerance=1e-5, transition_begin=800,
+                                      return_params=False,
+                                        verbose=False):                                    
     """
     Optimize a kernel to match a target integrated signal (i.e. it has been integrated over pixels and is length num_nyquist_samples)
     """
 
+    if target_integrated_signals[0].size == initial_kernel.size:
+        raise Exception('Target integrated signal is the same size as the kernel, so it is not integrated over pixels')
     num_nyquist_samples = target_integrated_signals[0].shape[-1]
-    # if initial_kernel is None:
-    #     initial_kernel = bandlimited_nonnegative_signal(nyquist_samples=generate_random_bandlimited_signal(num_nyquist_samples=num_nyquist_samples), 
-    #                                                     num_nyquist_samples=num_nyquist_samples)
 
     optimized_kernels = []
     iter = tqdm(target_integrated_signals) if verbose else target_integrated_signals 
@@ -355,10 +355,9 @@ def optimize_towards_target_signals(target_integrated_signals, object, initial_k
 
     conv_mats = [make_convolutional_encoder(kernel) for kernel in optimized_kernels]
     output_signals = np.stack([conv_mat @ object for conv_mat in conv_mats], axis=0)
+    if return_params:
+        return optimized_kernels, output_signals, optimized_params
     return optimized_kernels, output_signals
-
-
-
 
 @jit
 def make_circulant_matrix(kernel):
@@ -459,14 +458,15 @@ def compute_mutual_information_per_pixel(noisy_output_signals, noise_sigma):
     return np.mean(entropy)
 
 
-def make_convolutional_forward_model_with_mi_loss(objects, noise_sigma, nyquist_sample_output=True, 
-                                                  num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+def make_convolutional_forward_model_with_mi_loss(objects, noise_sigma, integrate_output_signals=True, 
+                                                  num_nyquist_samples=NUM_NYQUIST_SAMPLES, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):
     
     @jit
     def convolve_and_loss(parameters, key):
         output_signals = conv_forward_model(parameters, objects,
-                                                         nyquist_sample_output=nyquist_sample_output, 
-                                                         num_nyquist_samples=num_nyquist_samples)
+                                                         integrate_output_signals=integrate_output_signals, 
+                                                         num_nyquist_samples=num_nyquist_samples,
+                                                         upsampled_signal_length=upsampled_signal_length)
         if noise_sigma is None:
             raise Exception('Noise sigma must be specified')
         
@@ -475,32 +475,9 @@ def make_convolutional_forward_model_with_mi_loss(objects, noise_sigma, nyquist_
     
     return convolve_and_loss
 
-def make_convolutional_forward_model_with_mi_loss_and_erasure(objects, erasure_mask, noise_sigma, 
-                                                              nyquist_sample_output=True, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
-    
-    if np.sum(erasure_mask) == 0:
-        raise Exception('Erasure mask is empty')
-    @jit
-    def convolve_and_loss(parameters, key):
-        output_signals = conv_forward_model_with_erasure(parameters, objects, erasure_mask, 
-                                                         nyquist_sample_output=nyquist_sample_output, 
-                                                         num_nyquist_samples=num_nyquist_samples)
-
-        # don't include erased pixels in loss to avoid numerical errors
-        output_signals = output_signals[:, erasure_mask]
-
-        if noise_sigma is None:
-            raise Exception('Noise sigma must be specified')
-        
-        noisy_output_signals = output_signals + jax.random.normal(key, output_signals.shape) * noise_sigma
-    
-        return -compute_mutual_information_per_pixel(noisy_output_signals, noise_sigma=noise_sigma)
-    
-    return convolve_and_loss
-
-
-@partial(jit, static_argnums=(2, 3, 4))
-def conv_forward_model(parameters, objects, align_center=False, nyquist_sample_output=False, num_nyquist_samples=NUM_NYQUIST_SAMPLES):
+@partial(jit, static_argnums=(2, 3, 4, 5))
+def conv_forward_model(parameters, objects, align_center=False, integrate_output_signals=False, 
+                       num_nyquist_samples=NUM_NYQUIST_SAMPLES, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):
   """
     Convolve objects with a kernel 
 
@@ -516,75 +493,107 @@ def conv_forward_model(parameters, objects, align_center=False, nyquist_sample_o
     num_nyquist_samples : int
          
   """
-  kernel = signal_from_params(parameters)
+  kernel = signal_from_params(parameters, upsampled_signal_length=upsampled_signal_length)
   if align_center:
     kernel = np.roll(kernel, kernel.size // 2 - np.argmax(kernel))
   conv_mat = make_convolutional_encoder(kernel)
   output_signals = (objects @ conv_mat.T)
-  if nyquist_sample_output:
-    output_signals = downsample(output_signals, num_samples=num_nyquist_samples)
+  if integrate_output_signals:
+    output_signals = integrate_pixels(output_signals, num_nyquist_samples=num_nyquist_samples)
   return output_signals
 
 
 def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, initial_kernel=None,
                                  learning_rate=1e-2, learning_rate_decay=0.999, verbose=True,
-                                 loss_improvement_patience=2000, max_epochs=5000, num_nyquist_samples=NUM_NYQUIST_SAMPLES, nyquist_sample_output=True):
+                                 estimate_with_pixel_cnn=True,
+                                 loss_improvement_patience=2000, max_epochs=5000, num_nyquist_samples=NUM_NYQUIST_SAMPLES, 
+                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):
+  if estimate_with_pixel_cnn:
+      # make sure num_nyquist_samples is a perfect square and upsampled_signal_length is a multiple of it
+        if not np.sqrt(num_nyquist_samples) % 1 == 0:
+            raise Exception('num_nyquist_samples must be a perfect square')
+        if upsampled_signal_length % num_nyquist_samples != 0:
+            raise Exception('upsampled_signal_length must be a multiple of num_nyquist_samples')
+
   objects = objects_fn()
   if initial_kernel is None:
     initial_kernel = generate_random_signal(num_nyquist_samples=num_nyquist_samples)
   initial_params = params_from_signal(initial_kernel, num_nyquist_samples=num_nyquist_samples)
 
   loss_fn = make_convolutional_forward_model_with_mi_loss(
-      objects, noise_sigma=noise_sigma, nyquist_sample_output=nyquist_sample_output, num_nyquist_samples=num_nyquist_samples)
+      objects, noise_sigma=noise_sigma,  num_nyquist_samples=num_nyquist_samples,
+      upsampled_signal_length=upsampled_signal_length)
   optimized_params = run_optimzation(loss_fn, lambda x : signal_prox_fn(x, num_nyquist_samples=num_nyquist_samples),
                           initial_params, learning_rate=learning_rate, learning_rate_decay=learning_rate_decay, verbose=verbose,
                           loss_improvement_patience=loss_improvement_patience, max_epochs=max_epochs,
                           key=jax.random.PRNGKey(onp.random.randint(100000)))
-  test_objects = objects_fn()                        
-  optimized_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples,
-                                                                 nyquist_sample_output=nyquist_sample_output)(optimized_params, jax.random.PRNGKey(0))
-  initial_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples, 
-                                                              nyquist_sample_output=nyquist_sample_output)(initial_params, jax.random.PRNGKey(0))
+  test_objects = objects_fn()   
+
+  if not estimate_with_pixel_cnn:
+    optimized_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples,
+                                                                    )(optimized_params, jax.random.PRNGKey(0))
+    initial_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples, 
+                                                                )(initial_params, jax.random.PRNGKey(0))
+  else:   
+    scale_factor = 100000 # because these signals are 0-1 but pixel cnn is designed for photon counts
+    # output_signals = conv_forward_model(initial_params, test_objects,
+    #                                             integrate_output_signals=True, 
+    #                                             num_nyquist_samples=num_nyquist_samples,
+    #                                             upsampled_signal_length=upsampled_signal_length)
+    # noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
+    # fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
+    # if verbose:
+    #     print('computing initial mi')
+    # initial_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
+    initial_mi = None
+
+    output_signals = conv_forward_model(optimized_params, test_objects,
+                                                integrate_output_signals=True, 
+                                                num_nyquist_samples=num_nyquist_samples,
+                                                upsampled_signal_length=upsampled_signal_length)
+    noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
+    fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
+    if verbose:
+        print('computing optimized mi')
+    optimized_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
+                                                        
+
   return initial_kernel, initial_params, optimized_params, objects, initial_mi, optimized_mi
 
 
 
+def filter_l1_ball_samples_to_valid_signals(l1_ball_samples, upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):
+    signals = np.array([resample(s, upsampled_signal_length) for s in l1_ball_samples])
+    
+    min_val = signals.min(axis=-1)
+    total_energy = signals.sum(axis=-1)
 
+    nonnegative = min_val >= 0
+    valid_energy = total_energy <= 1
+    
+    # print(f"of {len(l1_ball_samples)} samples, {nonnegative.sum()} are nonnegative and {valid_energy.sum()} have valid energy")
 
+    return signals[nonnegative & valid_energy]
 
-################################################################
-    # Not yet updated
+@partial(jax.jit, static_argnums=(1, 2))
+def random_l1_vector(key, N, d):
+    # Generate a random radius and a random direction
+    vectors = np.abs(jax.random.ball(key, d, p=1, shape=(N,)))
+    return vectors, jax.random.split(key)[1]   
 
+def generate_uniform_random_bandlimited_signals(num_nyquist_samples, num_signals, batch_size=256,           
+                                                upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):    
+    signals = []
+    pbar = tqdm(total=num_signals, desc="Generating signals")
+    key = jax.random.PRNGKey(onp.random.randint(0, 1000000))
+    while len(signals) < num_signals:
+        l1_ball_samples, key = random_l1_vector(key, batch_size, num_nyquist_samples)
+        l1_ball_samples = l1_ball_samples / (upsampled_signal_length / num_nyquist_samples)
+        valid_signals = filter_l1_ball_samples_to_valid_signals(l1_ball_samples, upsampled_signal_length=upsampled_signal_length)
+        valid_signals = np.array(valid_signals)
+        valid_signals = np.roll(valid_signals, upsampled_signal_length // num_nyquist_samples // 2, axis=-1)
 
-
-
-
-
-
-def filter_l1_ball_samples_to_positive(l1_ball_samples, return_everything=False):
-    positive_targets = []
-    negative_targets = []
-    positive_indices = []
-    negative_indices = []
-    num_nyquist_samples = l1_ball_samples.shape[-1]
-    for i, t in tqdm(enumerate(l1_ball_samples), total=l1_ball_samples.shape[0]):
-        upsampled = upsample_signal(t, num_nyquist_samples=num_nyquist_samples)
-        if upsampled.min() < 0:
-            negative_targets.append(t)
-            negative_indices.append(i)
-        else:
-            positive_targets.append(t)
-            positive_indices.append(i)
-    if return_everything:
-        return np.array(positive_targets), np.array(negative_targets), np.array(positive_indices), np.array(negative_indices)
-    else:
-        return np.array(positive_targets)
-
-def get_sampling_interval(num_samples):
-    return 1 / num_samples
-
-
-
-
-def add_gaussian_noise_numpy(signal, noise_sigma):
-    return signal + onp.random.normal(0, noise_sigma, signal.shape)
+        signals.extend(valid_signals)
+        pbar.update(valid_signals.shape[0])
+    pbar.close()
+    return np.array(signals)
