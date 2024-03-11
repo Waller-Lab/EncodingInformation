@@ -1,8 +1,8 @@
 import numpy as np # use regular numpy for now, simpler
 import scipy
 from tqdm import tqdm
-import tensorflow as tf
-import tensorflow.keras as tfk
+# import tensorflow as tf
+# import tensorflow.keras as tfk
 import gc
 import warnings
 
@@ -10,7 +10,7 @@ import skimage
 import skimage.io
 from skimage.transform import resize
 
-from tensorflow.keras.optimizers import SGD
+# from tensorflow.keras.optimizers import SGD
 
 def tile_9_images(data_set):
     # takes 9 images and forms a tiled image
