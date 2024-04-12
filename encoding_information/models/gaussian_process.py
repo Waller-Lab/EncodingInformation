@@ -641,3 +641,56 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
             eig_vals, eig_vecs = self._state.params['params']['eig_vals'], self._state.params['params']['eig_vecs']
             mean_vec = self._state.params['params']['mean_vec']
         return eig_vals, eig_vecs, mean_vec
+    
+
+
+
+
+##################################################################################################
+#### Full (non-stationary Gaussian Process) ######
+
+class FullGaussianProcess(ProbabilisticImageModel):
+
+    def __init__(self, images, eigenvalue_floor=1e-3, verbose=False):
+        """
+        Estiamte mean and covariance matrix of a full Gaussian process from images
+        """
+        self.image_shape = images.shape[1:]
+
+        # initialize parameters
+        if verbose:
+            print('computing full covariance matrix')
+        self.cov_mat = estimate_full_cov_mat(images)
+        # ensure positive definiteness
+        eigvals, eig_vecs = np.linalg.eigh( self.cov_mat)
+        eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+        self.cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+        while np.linalg.eigvalsh( self.cov_mat).min() < 0:
+            warnings.warn('Covariance matrix is not positive definite even after applying eigenvalue floor. This indicates numerical error.' +
+                             'Try raising the eigenvalue floor than the current value of {}'.format(eigenvalue_floor))
+            eigenvalue_floor *= 10
+            print('trying eigenvalue floor of {}'.format(eigenvalue_floor))
+            eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
+            self.cov_mat = eig_vecs @ np.diag(eigvals) @ eig_vecs.T
+
+        if verbose:
+            print('computing mean vector')
+        self.mean_vec = np.mean(images, axis=0).flatten()     
+        
+
+    def fit(self, *args, **kwargs):
+        warnings.warn('Full Gaussian process does not require fitting. Skipping fit method.')
+
+
+    def compute_negative_log_likelihood(self, images, verbose=True):
+        # average nll per pixel
+        return -gaussian_likelihood(self.cov_mat, self.mean_vec, images).mean() / np.prod(np.array(images.shape[1:]))
+
+    
+        
+    def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
+        if sample_shape is not None and sample_shape != int(np.sqrt(self.cov_mat.shape[0])):
+            raise ValueError('Sample shape must match the shape of training images')
+        samples = generate_multivariate_gaussian_samples(self.mean_vec, self.cov_mat, num_samples, seed=seed)
+        return samples
+
