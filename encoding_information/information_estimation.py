@@ -321,6 +321,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     h_y_given_x = estimate_conditional_entropy(clean_images_if_available, gaussian_noise_sigma=gaussian_noise_sigma,)
 
     ### Fit an entropy model to the noisy images
+    # shuffle
+    noisy_images = noisy_images[jax.random.permutation(jax.random.PRNGKey(onp.random.randint(10000)), np.arange(noisy_images.shape[0]))]
     training_set = noisy_images[:int(noisy_images.shape[0] * (1 - test_set_fraction))]
     test_set = noisy_images[-int(noisy_images.shape[0] * test_set_fraction):]
     if condition_vectors is not None:

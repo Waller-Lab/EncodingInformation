@@ -128,7 +128,7 @@ def simulate_optics(wavelength, NA, size, seperation_distance, pixel_size=None):
     return one_point_object, two_point_object, one_point_convolved, two_point_convolved, one_point_noiseless_pixels, two_point_noiseless_pixels, x, cropped_PSF
 
 def make_signal_and_measurement_plot(one_point_convolved, two_point_convolved, one_point_noiseless_pixels, two_point_noiseless_pixels,
-                                      x, snr, show_pixelated=True, num_measurements=1, alpha=1, energy_coord_measurements=None, y_max=None,
+                                      x, snr, show_pixelated=True, num_measurements=1, alpha=1, energy_coord_measurements=False, y_max=None,
                                       projection_vector=False):
     colors = [get_color_cycle()[1], get_color_cycle()[3]]
     
@@ -143,8 +143,8 @@ def make_signal_and_measurement_plot(one_point_convolved, two_point_convolved, o
         one_point_noisy_measurement = one_point_noisy_measurement.flatten()
         two_point_noisy_measurement = two_point_noisy_measurement.flatten()
 
-    fig, ax = plt.subplots(1, 3 + 1 if energy_coord_measurements else 0,
-                            figsize=(12 + 4 if energy_coord_measurements else 0, 4))
+    fig, ax = plt.subplots(1, 3 + (1 if energy_coord_measurements else 0),
+                            figsize=(12 + (4 if energy_coord_measurements else 0), 4))
     # plot the convolved objects
     ax[0].plot(x, one_point_convolved, color=colors[0])
     ax[0].plot(x, two_point_convolved, color=colors[1])
