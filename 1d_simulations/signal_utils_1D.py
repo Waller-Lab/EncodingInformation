@@ -596,4 +596,5 @@ def generate_uniform_random_bandlimited_signals(num_nyquist_samples, num_signals
         signals.extend(valid_signals)
         pbar.update(valid_signals.shape[0])
     pbar.close()
-    return np.array(signals)
+    print('concatenating...')
+    return np.array(signals)[:num_signals]
