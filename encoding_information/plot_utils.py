@@ -59,7 +59,9 @@ def plot_eigenvalues(*args, **kwargs):
 
 def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=None, 
                                    bins=50, colors=None, color=None,
-                                   plot_center_coords=None, **kwargs):
+                                   plot_center_coords=None, black_background=False, **kwargs):
+    """
+    """
     # make sure they are N groups x num samples
     intensities_1 = np.array(intensities_1)
     intensities_2 = np.array(intensities_2)
@@ -72,6 +74,7 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
     bins = np.linspace(0, max, bins)
     hists = []  
     cmaps = []
+    cmaps_white = []
     if cmap is not None:
         cmaps.append(cmap)
         hist, xedges, yedges = np.histogram2d(intensities_2.ravel(), intensities_1.ravel(), bins=bins, density=True)
@@ -92,30 +95,55 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
             hists.append(hist)
             if color is None or i == 0:
         
-                if colors is not None:
-                    cmaps.append(LinearSegmentedColormap.from_list(f'cmap{i}', [(1,1,1), colors[i]]))
+                if not black_background:
+                    if colors is not None:
+                        cmaps.append(LinearSegmentedColormap.from_list(f'cmap{i}', [(1,1,1), colors[i]]))
+                    else:
+                        cmaps.append( LinearSegmentedColormap.from_list(f'cmap{i}', [(1,1,1), color]))
                 else:
-                    cmaps.append( LinearSegmentedColormap.from_list(f'cmap{i}', [(1,1,1), color]))
-                            
+                    if colors is not None:
+                        cmaps.append(LinearSegmentedColormap.from_list(f'cmap{i}', [(0, 0, 0, 0), colors[i]]))
+                        cmaps_white.append(LinearSegmentedColormap.from_list(f'cmap{i}', [(1, 1, 1), colors[i]]))
+                    else:
+                        cmaps.append( LinearSegmentedColormap.from_list(f'cmap{i}', [(0,0,0, 0), color]))
 
         # Compute the color of each bin by blending the colors from the two colormaps
         # loop over all histograms and colormaps
         hists = [hist / np.max(hist) for hist in hists]
         if len(cmaps) > 1:
-            # blended_color = np.min(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
-            blended_color = np.prod(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
+            if not black_background:
+                # blended_color = np.min(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
+                blended_color = np.prod(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
+            else:
+                color_blend = np.min(np.stack([cmap(hist) for cmap, hist in zip(cmaps_white, hists)], axis=0), axis=0)
+                alpha_blend = np.max(np.stack([cmap(hist) for cmap, hist in zip(cmaps, hists)], axis=0), axis=0)
+                blended_color = color_blend 
+                blended_color[:, :, 3] = alpha_blend[:, :, 3]
 
         else:
             blended_color = cmaps[0](np.max(hists, axis=0))
+
+
+        # Make a transparent background
+        # add alpha based on luminance
+        # 0.2126R + 0.7152G + 0.0722B
+        # luminance = blended_color[:, :, 0] * 0.2126 + blended_color[:, :, 1] * 0.7152 + blended_color[:, :, 2] * 0.0722
+        # (0.299*R + 0.587*G + 0.114*B)
+        # luminance = blended_color[:, :, 0] * 0.299 + blended_color[:, :, 1] * 0.587 + blended_color[:, :, 2] * 0.114
+        # sqrt( 0.299*R^2 + 0.587*G^2 + 0.114*B^2 )
+        # luminance = np.sqrt(blended_color[:, :, 0]**2 * 0.299 + blended_color[:, :, 1]**2 * 0.587 + blended_color[:, :, 2]**2 * 0.114)
+
+
         # Plot the blended color image
         ax.imshow(blended_color, origin='lower', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
+        
         # plot a center point circle
         if plot_center_coords is not None:
             for i, plot_center_coord in enumerate(plot_center_coords):                
                 ax.add_patch(matplotlib.patches.Circle(plot_center_coord, 1, color=colors[i]))
         
         ax.set(xlabel='Photons at x1', ylabel='Photons at x2')
-        default_format(ax)
+        clear_spines(ax)
 
     add_multiple_colorbars( ax, cmaps)
 

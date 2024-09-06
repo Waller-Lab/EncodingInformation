@@ -339,7 +339,7 @@ def add_shot_noise_to_experimenal_data(image_stack, photon_fraction, seed=None):
 
     image_stack: stack of images to add noise to
     photon_fraction: fraction of photons to keep
-    
+    seed: random seed
     """
     if seed is None:
         seed = onp.random.randint(0, 100000)

@@ -221,7 +221,7 @@ def make_convolutional_encoder(conv_kernel):
 
 def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=False,
                      tolerance=1e-6, momentum=0.9, loss_improvement_patience=800, max_epochs=100000,
-                     learning_rate_decay=0.999, transition_begin=500,
+                     learning_rate_decay=0.999, transition_begin=500, return_param_history=False,
                        key=None):
     """
     Run optimization with optax, return optimized parameters
@@ -252,6 +252,7 @@ def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=Fal
     best_params = parameters
 
     loss_history = []
+    param_history = []
     for i in range(max_epochs):
         if key is not None:
             key, subkey = jax.random.split(key)
@@ -282,11 +283,16 @@ def run_optimzation(loss_fn, prox_fn, parameters, learning_rate=1e0, verbose=Fal
         # Apply proximal function if provided.
         parameters = prox_fn(parameters)
 
+        if return_param_history:
+            param_history.append(parameters)
+
         if verbose == 'very':
             print(f'{i}: {loss:.7f}')
         elif verbose:
             print(f'{i}: {loss:.7f}\r', end='')
 
+    if return_param_history:
+        return best_params, param_history
     return best_params
 
 def make_convolutional_forward_model_and_target_signal_MSE_loss_fn(object, target_integrated_signal, sampling_indices=None):
@@ -596,4 +602,5 @@ def generate_uniform_random_bandlimited_signals(num_nyquist_samples, num_signals
         signals.extend(valid_signals)
         pbar.update(valid_signals.shape[0])
     pbar.close()
-    return np.array(signals)
+    print('concatenating...')
+    return np.array(signals)[:num_signals]
