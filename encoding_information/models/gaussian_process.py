@@ -15,6 +15,18 @@ import flax.linen as nn
 from flax.training.train_state import TrainState
 from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, make_dataset_generators
 
+
+def match_to_generator_data(images, seed=None):
+    """
+    Important: during the training process, noise is added to the pixel values to account for the 
+    fact that discrete pixel values are used with a continuous density in the model. This is handled by the 
+    make_dataset_generator function in the image_distribution_models module. So we call this here on a the images
+    to ensure that the same noise is added to the images here as was added during training, and then convert back
+    to a jax array
+    """
+    _, dataset_fn = make_dataset_generators(images, batch_size=images.shape[0], num_val_samples=images.shape[0], seed=seed)
+    return next(dataset_fn())
+
 def estimate_full_cov_mat(patches):
     """
     Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches
@@ -474,7 +486,7 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
 
 class StationaryGaussianProcess(ProbabilisticImageModel):
 
-    def __init__(self, images, eigenvalue_floor=1e-3, verbose=False):
+    def __init__(self, images, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """
         Create a StationaryGaussianProcess model and initialize it to the plugin estimate of the stationary covariance matrix
         """
@@ -484,8 +496,10 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         self.initial_params = self._flax_model.init(jax.random.PRNGKey(0)) # Note: this RNG doesnt actually matter because there's no random initialization
 
         # initialize parameters
-        initial_cov_mat = plugin_estimate_stationary_cov_mat(images, eigenvalue_floor=eigenvalue_floor, suppress_warning=True, verbose=verbose)
-        mean_vec = np.ones(self.image_shape[0]**2) * np.mean(images)        
+        self.images = images
+        data_generator_matched = match_to_generator_data(images, seed=seed)
+        initial_cov_mat = plugin_estimate_stationary_cov_mat(data_generator_matched, eigenvalue_floor=eigenvalue_floor, suppress_warning=True, verbose=verbose)
+        mean_vec = np.ones(self.image_shape[0]**2) * np.mean(data_generator_matched)        
         
         eig_vals, eig_vecs = np.linalg.eigh(initial_cov_mat)
         self.initial_params['params']['eig_vals'] = eig_vals
@@ -496,13 +510,16 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 
 
 
-    def fit(self, train_images, learning_rate=1e2, max_epochs=60, steps_per_epoch=1,  patience=15, 
+    def fit(self, train_images=None, data_seed=None,
+            learning_rate=1e2, max_epochs=60, steps_per_epoch=1,  patience=15, 
             batch_size=12, num_val_samples=None, percent_samples_for_validation=0.1,
             eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
             precondition_gradient=False, verbose=True):
         
-        num_val_samples = int(train_images.shape[0] * percent_samples_for_validation) if num_val_samples is None else num_val_samples
+        if train_images is None:
+            train_images = self.images
 
+        num_val_samples = int(train_images.shape[0] * percent_samples_for_validation) if num_val_samples is None else num_val_samples
         
         
         self._optimizer = optax.chain(
@@ -558,6 +575,7 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 
         best_params, val_loss_history = train_model(train_images=train_images, state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
                                                     steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, train_step=_train_step, 
+                                                    seed=data_seed,
                                                     verbose=verbose)
         # ensure that eigenvalues are positive definite
         if best_params['params']['eig_vals'].min() < 0:
@@ -578,7 +596,7 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         return val_loss_history
 
 
-    def compute_negative_log_likelihood(self, images, verbose=True):
+    def compute_negative_log_likelihood(self, images, seed=None, verbose=True):
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
         
@@ -591,13 +609,7 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
             eig_vals = np.where(eig_vals < floor, floor, eig_vals)
             cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
             
-        # Important: during the training process, noise is added to the pixel values to account for the 
-        # fact that discrete pixel values are used with a continuous density in the model. This is handled by the 
-        # make_dataset_generator function in the image_distribution_models module. So we call this here on a the images
-        # to ensure that the same noise is added to the images here as was added during training, and then convert back
-        # to a jax array
-        _, dataset_fn = make_dataset_generators(images, batch_size=images.shape[0], num_val_samples=images.shape[0])
-        images = next(dataset_fn())
+        images = match_to_generator_data(images, seed=seed)
 
         lls = _compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
         return -lls.mean()
@@ -651,12 +663,13 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 
 class FullGaussianProcess(ProbabilisticImageModel):
 
-    def __init__(self, images, eigenvalue_floor=1e-3, verbose=False):
+    def __init__(self, images, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """
         Estiamte mean and covariance matrix of a full Gaussian process from images
         """
         self.image_shape = images.shape[1:]
 
+        images = match_to_generator_data(images, seed=seed)
         # initialize parameters
         if verbose:
             print('computing full covariance matrix')
@@ -682,7 +695,8 @@ class FullGaussianProcess(ProbabilisticImageModel):
         warnings.warn('Full Gaussian process does not require fitting. Skipping fit method.')
 
 
-    def compute_negative_log_likelihood(self, images, verbose=True):
+    def compute_negative_log_likelihood(self, images, seed=True, verbose=True):
+        images = match_to_generator_data(images, seed=seed)
         # average nll per pixel
         return -gaussian_likelihood(self.cov_mat, self.mean_vec, images).mean() / np.prod(np.array(images.shape[1:]))
 

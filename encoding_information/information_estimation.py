@@ -298,6 +298,7 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
     return_entropy_model : bool, whether to return the noisy image entropy model
     verbose : bool, whether to print out the estimated values
     """
+    warnings.warn("This function is deprecated. Use estimate_information() instead.")
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
     if np.any(clean_images_if_available < 0):   
         warnings.warn(f"{np.sum(clean_images_if_available < 0) / clean_images_if_available.size:.2%} of pixels are negative.")

@@ -8,12 +8,10 @@ https://github.com/hardmaru/mdn_jax_tutorial/blob/master/mixture_density_network
 
 ## Standard libraries
 import os
-
 import numpy as onp
 from typing import Any
-
-## tqdm for progress bars
 from tqdm import tqdm
+import warnings
 
 ## JAX
 import jax
@@ -24,6 +22,7 @@ from jax.scipy.special import logsumexp
 from flax import linen as nn
 from flax.training.train_state import TrainState
 import optax
+
 
 from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, _evaluate_nll, make_dataset_generators
 
@@ -285,8 +284,15 @@ class PixelCNN(ProbabilisticImageModel):
         self._flax_model = None
 
     def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=40, 
-            sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  seed=0, do_lr_decay=False, verbose=True,
-            add_gaussian_noise=False, add_uniform_noise=True):
+            sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  do_lr_decay=False, verbose=True,
+            add_gaussian_noise=False, add_uniform_noise=True, model_seed=None, data_seed=None,
+            # deprecated
+            seed=None,):
+        if seed is not None:
+            warnings.warn("seed argument is deprecated. Use model_seed and data_seed instead")
+            model_seed = seed
+            data_seed = seed
+        
         train_images = train_images.astype(np.float32)
 
         # check that only one type of noise is added
@@ -304,7 +310,8 @@ class PixelCNN(ProbabilisticImageModel):
         # Use the make dataset generators function because training data may be modified here during training
         # (i.e. adding small amounts of noise to account for discrete data and continuous model)
         _, dataset_fn = make_dataset_generators(train_images, batch_size=400, num_val_samples=train_images.shape[0],
-                                                add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise)
+                                                add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise, 
+                                                seed=data_seed)
         example_images = dataset_fn().next()
 
         if self._flax_model is None:
@@ -316,10 +323,9 @@ class PixelCNN(ProbabilisticImageModel):
                                     condition_vector_size=None if condition_vectors is None else condition_vectors.shape[-1]
                                     )
             # pass in an intial batch
-            initial_params = self._flax_model.init(jax.random.PRNGKey(seed), train_images[:3], 
+            initial_params = self._flax_model.init(jax.random.PRNGKey(model_seed), train_images[:3], 
                                 condition_vectors[:3] if condition_vectors is not None else None)
 
-            
             if do_lr_decay:
                 lr_schedule = optax.exponential_decay(init_value=learning_rate,
                                                     transition_steps=steps_per_epoch,
@@ -336,38 +342,50 @@ class PixelCNN(ProbabilisticImageModel):
             self._state = TrainState.create(apply_fn=apply_fn, params=initial_params, tx=self._optimizer)        
         
         if condition_vectors is None:
+
+            
+            def loss_fn(params, state, imgs):
+                return state.apply_fn(params, imgs)
+            grad_fn = jax.value_and_grad(loss_fn)
+
             @jax.jit
             def train_step(state, imgs):
                 """
                 A standard gradient descent training step
                 """
-                loss_fn = lambda params: state.apply_fn(params, imgs)
-                loss, grads = jax.value_and_grad(loss_fn)(state.params)
+                loss, grads = grad_fn(state.params, state, imgs)
                 state = state.apply_gradients(grads=grads)
                 return state, loss
         else:
+
+            def loss_fn(params, state, imgs, condition_vecs):
+                return state.apply_fn(params, imgs, condition_vecs)
+            grad_fn = jax.value_and_grad(loss_fn)
+
             @jax.jit
             def train_step(state, imgs, condition_vecs):
                 """
                 A standard gradient descent training step
                 """
-                loss_fn = lambda params: state.apply_fn(params, imgs, condition_vecs)
-                loss, grads = jax.value_and_grad(loss_fn)(state.params)
+                loss, grads = grad_fn(state.params, state, imgs, condition_vecs)
                 state = state.apply_gradients(grads=grads)
-                return state, loss 
+                return state, loss
 
 
         best_params, val_loss_history = train_model(train_images=train_images, condition_vectors=condition_vectors, train_step=train_step,
                                                     state=self._state, batch_size=batch_size, num_val_samples=int(num_val_samples),
                                                     add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise,
-                                                    steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, verbose=verbose)
+                                                    steps_per_epoch=steps_per_epoch, num_epochs=max_epochs, patience=patience, seed=data_seed,
+                                                    verbose=verbose)
         self._state = self._state.replace(params=best_params)
         self.val_loss_history = val_loss_history
         return val_loss_history
 
 
 
-    def compute_negative_log_likelihood(self, data, conditioning_vecs=None, verbose=True):
+    def compute_negative_log_likelihood(self, data, conditioning_vecs=None, verbose=True, seed=None):
+        # See superclass for docstring
+
         if data.ndim == 3:
             # add a trailing channel dimension if necessary
             data = data[..., np.newaxis]
@@ -381,14 +399,16 @@ class PixelCNN(ProbabilisticImageModel):
             raise ValueError("Data shape is different than image shape of trained model. This is not yet supported"
                              "Expected {}, got {}".format(self.image_shape, data.shape[1:3]))
 
+        # get test data generator. Here all data is "validation", because the data passed into this should already be
+        # (in the typical case) a test set
         _, dataset_fn = make_dataset_generators(data, batch_size=32, num_val_samples=data.shape[0], 
                                                 add_gaussian_noise=self.add_gaussian_noise, add_uniform_noise=self.add_uniform_noise,
-                                                condition_vectors=conditioning_vecs)
+                                                condition_vectors=conditioning_vecs, seed=seed)
         @jax.jit
         def conditional_eval_step(state, imgs, condition_vecs):
             return state.apply_fn(state.params, imgs, condition_vecs)
 
-        return _evaluate_nll(dataset_fn(), self._state, verbose=verbose, 
+        return _evaluate_nll(dataset_fn(), self._state, 
                             eval_step=conditional_eval_step if conditioning_vecs is not None else None)
 
     def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
