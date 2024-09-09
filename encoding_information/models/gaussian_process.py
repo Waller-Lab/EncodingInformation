@@ -596,7 +596,10 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
         return val_loss_history
 
 
-    def compute_negative_log_likelihood(self, images, seed=None, verbose=True):
+    def compute_negative_log_likelihood(self, images, data_seed=None, verbose=True, seed=None):
+        if seed is not None:
+            warnings.warn('seed argument is deprecated. Use data_seed instead')
+            data_seed = seed
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
         
@@ -609,7 +612,7 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
             eig_vals = np.where(eig_vals < floor, floor, eig_vals)
             cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
             
-        images = match_to_generator_data(images, seed=seed)
+        images = match_to_generator_data(images, seed=data_seed)
 
         lls = _compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
         return -lls.mean()
@@ -695,8 +698,11 @@ class FullGaussianProcess(ProbabilisticImageModel):
         warnings.warn('Full Gaussian process does not require fitting. Skipping fit method.')
 
 
-    def compute_negative_log_likelihood(self, images, seed=True, verbose=True):
-        images = match_to_generator_data(images, seed=seed)
+    def compute_negative_log_likelihood(self, images, data_seed=None, verbose=True, seed=None):
+        if seed is not None:
+            warnings.warn('seed argument is deprecated. Use data_seed instead')
+            data_seed = seed
+        images = match_to_generator_data(images, seed=data_seed)
         # average nll per pixel
         return -gaussian_likelihood(self.cov_mat, self.mean_vec, images).mean() / np.prod(np.array(images.shape[1:]))
 
