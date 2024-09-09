@@ -1,3 +1,10 @@
+[![Documentation Status](https://readthedocs.org/projects/encodinginformation/badge/?version=latest)](https://encodinginformation.readthedocs.io/en/latest/?badge=latest)
+[![License](https://img.shields.io/pypi/l/encodinginformation.svg)](https://github.com/EncodingInformation/EncodingInformation/raw/master/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/encodinginformation.svg)](https://pypi.org/project/encoding-information)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/encoding-information.svg)](https://pypistats.org/packages/encoding-information)
+   
+   
+
 # Mutual Information Estimation Installation Guide
 
 The minimal installation requires jax and tensorflow. Installing jax after other deep learning packages seems to work best due to difficulties with CUDA and CuDNN installations.
