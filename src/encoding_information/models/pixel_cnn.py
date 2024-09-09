@@ -259,6 +259,8 @@ class _PixelCNNFlaxImpl(nn.Module):
         # Apply ELU before 1x1 convolution for non-linearity on residual connection
         out = self.conv_out(nn.elu(h_stack))
 
+        # TODO: maybe append absolute spatial position here to allow for more accurate spatially patterned outputs?
+
         # must be positive and within data range
         mu = np.clip(self.mu_dense(out), self.train_data_min, self.train_data_max) 
 
@@ -274,7 +276,8 @@ class _PixelCNNFlaxImpl(nn.Module):
 
 class PixelCNN(ProbabilisticImageModel):
     """
-    Translation layer between the PixelCNNFlaxImpl and the probabilistic image model API
+    This class handles the training and evaluation of the PixelCNN model, which is implemented in Flax.
+    It also wraps the model in the ProbabilisticImageModel interface for easy comparison with other models.
 
     """
 
@@ -383,8 +386,11 @@ class PixelCNN(ProbabilisticImageModel):
 
 
 
-    def compute_negative_log_likelihood(self, data, conditioning_vecs=None, verbose=True, seed=None):
+    def compute_negative_log_likelihood(self, data, conditioning_vecs=None,  data_seed=None, average=True, verbose=True, seed=None):
         # See superclass for docstring
+        if seed is not None:
+            warnings.warn("seed argument is deprecated. Use data_seed instead")
+            data_seed = seed
 
         if data.ndim == 3:
             # add a trailing channel dimension if necessary
@@ -401,15 +407,15 @@ class PixelCNN(ProbabilisticImageModel):
 
         # get test data generator. Here all data is "validation", because the data passed into this should already be
         # (in the typical case) a test set
-        _, dataset_fn = make_dataset_generators(data, batch_size=32, num_val_samples=data.shape[0], 
+        _, dataset_fn = make_dataset_generators(data, batch_size=32 if average else 1, num_val_samples=data.shape[0], 
                                                 add_gaussian_noise=self.add_gaussian_noise, add_uniform_noise=self.add_uniform_noise,
-                                                condition_vectors=conditioning_vecs, seed=seed)
+                                                condition_vectors=conditioning_vecs, seed=data_seed)
         @jax.jit
         def conditional_eval_step(state, imgs, condition_vecs):
             return state.apply_fn(state.params, imgs, condition_vecs)
 
-        return _evaluate_nll(dataset_fn(), self._state, 
-                            eval_step=conditional_eval_step if conditioning_vecs is not None else None)
+        return _evaluate_nll(dataset_fn(), self._state, return_average=average,
+                            eval_step=conditional_eval_step if conditioning_vecs is not None else None, verbose=verbose)
 
     def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         if seed is None:

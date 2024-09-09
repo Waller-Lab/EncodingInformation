@@ -52,7 +52,7 @@ class ProbabilisticImageModel(ABC):
         pass
     
     @abstractmethod
-    def compute_negative_log_likelihood(self, images, seed=123, verbose=True):
+    def compute_negative_log_likelihood(self, images, data_seed=123, average=True, verbose=True):
         """
         Compute the NLL of the images under the model
 
@@ -62,8 +62,10 @@ class ProbabilisticImageModel(ABC):
             Array of images, shape (N, H, W)
         verbose : bool, optional
             Whether to print progress
-        seed : int, optional
+       data_seed : int, optional
             Random seed for shuffling images (and possibly adding noise)
+        average : bool, optional
+            Whether to average the NLL over all images
 
         Returns
         -------
@@ -171,20 +173,27 @@ def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noi
     return train_ds.as_numpy_iterator(), lambda : val_ds.as_numpy_iterator()
 
 
-def _evaluate_nll(data_iterator, state, eval_step=None, batch_size=16):
+def _evaluate_nll(data_iterator, state, eval_step=None, batch_size=16, return_average=True, verbose=False):
     """
     Compute negative log likelihood over many batches
 
     batch_size only comes into play if data_iterator is a numpy array
+
+    if return_average is False, its up to the user to ensure that the batch size of the data_iterator is 1
     """
 
     if eval_step is None: # default eval step
         eval_step = jax.jit(lambda state, imgs: state.apply_fn(state.params, imgs))
 
     total_nll, count = 0, 0
+    nlls = []
     if isinstance(data_iterator, np.ndarray) or isinstance(data_iterator, onp.ndarray):
+        if not return_average:
+            batch_size = 1
+            print('return_average is False but batch_size is not 1. Setting batch_size to 1.')
         data_iterator = np.array_split(data_iterator, len(data_iterator) // batch_size + 1)  # split into batches of batch_size or less
-        data_iterator = tqdm(data_iterator, desc='Computing loss')
+    if verbose:
+        data_iterator = tqdm(data_iterator, desc='Evaluating NLL')
     for batch in data_iterator:
         if isinstance(batch, tuple):
             images, condition_vector = batch
@@ -192,11 +201,15 @@ def _evaluate_nll(data_iterator, state, eval_step=None, batch_size=16):
             images = batch
             condition_vector = None
         batch_nll_per_pixel = eval_step(state, images) if condition_vector is None else eval_step(state, images, condition_vector)
-        total_nll += images.shape[0] * batch_nll_per_pixel
-        count += images.shape[0]
-    # compute average nll per pixel
-    nll = (total_nll / count).item()
-    return nll
+        if return_average:
+            total_nll += images.shape[0] * batch_nll_per_pixel
+            count += images.shape[0]
+        else:
+            nlls.append(batch_nll_per_pixel)
+    if return_average:
+        return (total_nll / count).item()
+    else:
+        return np.array(nlls)
 
 
 def train_model(train_images, state, batch_size, num_val_samples,
