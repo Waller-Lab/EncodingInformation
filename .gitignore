@@ -35,3 +35,24 @@ imager_experiments/archive_code/*
 *.cached_old
 
 *.npy
+
+
+Icon
+venv
+
+build/
+dist/
+*.egg-info
+*.egg-info test
+*.pyc
+__pycache__/
+
+
+#jupyter
+.ipynb_checkpoints
+#vim
+*.swp
+#vs code
+.vscode/
+#OS files
+.DS_Store

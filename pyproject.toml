@@ -7,9 +7,8 @@ name = "encoding_information"
 authors = [{name = "Henry Pinkard"}]
 license = {file = "LICENSE"}
 classifiers = [
-    "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: BSD License"
 ]
-
 dependencies = [
     "numpy"
 ]
@@ -18,4 +17,4 @@ description = "Estimating encoded information"
 readme = "README.md"
 
 [project.urls]
-Home = "https://github.com/micro-manager/mmpycorex"
+Home = "https://github.com/Waller-Lab/EncodingInformation"
