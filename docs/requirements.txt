@@ -1,4 +1,4 @@
-sphinx
+sphinx>=7.0.0,<8.0.0 # version 8 make RTD fail
 sphinx-autodoc-typehints
 sphinx-rtd-theme
 sphinx-togglebutton
