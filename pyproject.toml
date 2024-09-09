@@ -11,10 +11,15 @@ classifiers = [
 ]
 dependencies = [
     "numpy"
+
 ]
 dynamic = ["version"]
 description = "Estimating encoded information"
 readme = "README.md"
 
+# documentation
+docs = ["sphinx"]
+
 [project.urls]
 Home = "https://github.com/Waller-Lab/EncodingInformation"
+
