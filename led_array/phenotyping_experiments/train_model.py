@@ -20,7 +20,7 @@ from bsccm import BSCCM
 import tensorflow as tf
 import tensorflow.keras as tfk
 from led_array.tf_util import prepare_datasets, compute_mean_sd
-from encoding_information.bsccm_utils import get_bsccm_image_marker_generator
+from encoding_information.datasets.bsccm_utils import get_bsccm_image_marker_generator
 # from analysis.visualization import plot_density_network_output
 from led_array.models.callbacks import DensityNetworkVisualizeCallback, ElapsedTimeCallback
 from led_array.models.marker_models import build_marker_prediction_model, create_marker_prediction_loss
