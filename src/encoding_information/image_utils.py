@@ -12,7 +12,7 @@ import jax.numpy as np
 
 def add_noise(images, ensure_positive=True, gaussian_sigma=None, key=None, seed=None, batch_size=1000):
     """
-    Add poisson noise or additive Gaussian noise to a stack of noiseless images
+    Add poisson noise or additive Gaussian noise to a stack of noiseless images. This uses jax to speed performance
 
     images : ndarray NxHxW or Nx(num pixels) array of images or image patches
     ensure_positive : bool, whether to ensure the noisy images are nonnegative

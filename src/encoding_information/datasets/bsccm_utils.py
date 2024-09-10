@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as onp
 import jax.numpy as np
+import jax
 from pathlib import Path
 import matplotlib.gridspec as gridspec
 import os
@@ -10,8 +11,68 @@ import warnings
 from bsccm import BSCCM
 from tqdm import tqdm
 from scipy import ndimage
-import jax
 from encoding_information.image_utils import add_noise
+from encoding_information.datasets.base_class import MeasurementDatasetBase
+
+
+class BSCCMDataset(MeasurementDatasetBase):
+
+    def __init__(self, path):
+        # load the dataset. This just opens the index file but does not pull anything into memory
+        self._bsccm = BSCCM(path, cache_index=True)
+
+    def get_shape(self, channels= 'LED119', edge_crop=24):
+        if isinstance(channels, str):
+            channels = [channels]
+        images = load_bsccm_images(self._bsccm, channels[0], num_images=1, edge_crop=edge_crop, convert_units_to_photons=True)
+        single_image_shape = images[0].shape
+        return (*single_image_shape,) + (len(channels),)
+
+
+    def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=123456,
+                          edge_crop=24, channels='LED119'):
+        if noise != 'Poisson':
+            raise NotImplementedError('Only Poisson noise is supported')
+        indices = self._bsccm.get_indices(batch=0)
+        if num_measurements > indices.size:
+            raise Exception(f'Cannot load {num_measurements} measurements, only {indices.size} available')
+        if data_seed is not None:
+            onp.random.seed(data_seed)
+            indices = onp.random.choice(indices, size=num_measurements, replace=False)
+        else:
+            indices = indices[:num_measurements]
+        # TODO different channels
+        if isinstance(channels, str):
+            channels = [channels]
+        images = onp.stack([load_bsccm_images(self._bsccm, channel, edge_crop=edge_crop, indices=indices, 
+                                   convert_units_to_photons=True, use_correction_factor=True) for channel in channels], axis=-1)
+        
+        # rescale mean
+        if mean is not None:
+            if num_measurements < 100:
+                warnings.warn('Fewer than 100 measurements used to compute mean')
+            # pick up to 500 random images to compute the mean
+            mean_indices = onp.random.choice(onp.arange(images.shape[0]), size=min(1000, num_measurements), replace=False)
+            photons_per_pixel = images[mean_indices].mean()
+            rescale_mean = mean - bias
+            rescale_fraction = rescale_mean / photons_per_pixel
+            if rescale_fraction > 1:
+                raise Exception('Cannot rescale to more photons than the data has because the data is already noisy')
+        
+            images =  add_shot_noise_to_experimenal_data(images, rescale_fraction, seed=noise_seed)
+
+        #rescale bias
+        if bias is not None:
+            # compute a constant image for the bias
+            bias_image = onp.ones_like(images) * bias
+            # add Poisson noise from the bias
+            noisy_background = add_noise(bias_image, seed=noise_seed)
+            images += noisy_background
+
+        return onp.array(images)
+
+
+
 
 def load_data_from_config(config, data_dir):
     """
@@ -131,7 +192,7 @@ def get_bsccm_image_marker_generator(bsccm, channels,
         indices_subset = onp.random.choice(indices, size=1000, replace=False)
         images = load_bsccm_images(bsccm, channels[0], indices=indices_subset, use_correction_factor=use_correction_factor,
                                    edge_crop=edge_crop, convert_units_to_photons=True, median_filter=median_filter)
-        mean_photons_per_pixel = np.mean(images)
+        mean_photons_per_pixel = onp.mean(images)
         rescale_fraction = photons_per_pixel / mean_photons_per_pixel
         if rescale_fraction > 1:
             raise Exception('Rescale fraction must be less than 1')
@@ -239,9 +300,9 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
     if seed is not None:
         if indices is not None:
             raise Exception('Cannot set seed if indices is not None')
-        np.random.seed(seed)
+        onp.random.seed(seed)
         all_indices = dataset.get_indices()
-        indices = np.random.choice(all_indices, size=len(indices), replace=False)
+        indices = onp.random.choice(all_indices, size=len(indices), replace=False)
     images = []
     iter = tqdm(indices) if verbose else indices
     for i in iter:
@@ -249,13 +310,13 @@ def load_bsccm_images(dataset, channel, num_images=1000, edge_crop=0, empty_slid
             images.append(dataset.get_background(i, percentile=50, channel=channel))
         else:
             images.append(dataset.read_image(i, channel=channel))
-    images =  np.stack(images)
+    images =  onp.stack(images)
     if edge_crop > 0:
         images = images[:, edge_crop:-edge_crop, edge_crop:-edge_crop]
     if convert_units_to_photons:
         images = _convert_to_photons(images, **dataset.global_metadata['led_array']['camera'], use_correction_factor=use_correction_factor )
     if median_filter:
-        images = np.array([ndimage.median_filter(img, size=3) for img in images])
+        images = onp.array([ndimage.median_filter(img, size=3) for img in images])
     return images
 
 
