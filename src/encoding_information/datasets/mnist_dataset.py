@@ -1,5 +1,5 @@
 import tensorflow as tf
-from encoding_information.datasets.base_class import MeasurementDatasetBase
+from encoding_information.datasets.dataset_base_class import MeasurementDatasetBase
 import numpy as np
 
 from encoding_information.image_utils import add_noise
