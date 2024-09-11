@@ -13,7 +13,7 @@ import optax
 import warnings
 import flax.linen as nn
 from flax.training.train_state import TrainState
-from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, make_dataset_generators
+from encoding_information.models.model_base_class import MeasurementModel, train_model, make_dataset_generators
 
 
 def match_to_generator_data(images, seed=None):
@@ -484,7 +484,7 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
 ##################################################################################################
 #### Wrapper for the Flax implementation of Gaussian processes to the probabilistic image model API ######
 
-class StationaryGaussianProcess(ProbabilisticImageModel):
+class StationaryGaussianProcess(MeasurementModel):
 
     def __init__(self, images, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """
@@ -664,7 +664,7 @@ class StationaryGaussianProcess(ProbabilisticImageModel):
 ##################################################################################################
 #### Full (non-stationary Gaussian Process) ######
 
-class FullGaussianProcess(ProbabilisticImageModel):
+class FullGaussianProcess(MeasurementModel):
 
     def __init__(self, images, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """

@@ -12,7 +12,7 @@ from bsccm import BSCCM
 from tqdm import tqdm
 from scipy import ndimage
 from encoding_information.image_utils import add_noise
-from encoding_information.datasets.base_class import MeasurementDatasetBase
+from encoding_information.datasets.dataset_base_class import MeasurementDatasetBase
 
 
 class BSCCMDataset(MeasurementDatasetBase):

@@ -7,9 +7,9 @@ from tqdm import tqdm
 import warnings
 
 
-class ProbabilisticImageModel(ABC):
+class MeasurementModel(ABC):
     """
-    Base class for different probabilistic models images
+    Base class for different probabilistic models of images and other types of measurements
     """
 
     @abstractmethod

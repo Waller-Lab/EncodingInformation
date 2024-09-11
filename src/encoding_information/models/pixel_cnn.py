@@ -24,7 +24,7 @@ from flax.training.train_state import TrainState
 import optax
 
 
-from encoding_information.models.image_distribution_models import ProbabilisticImageModel, train_model, _evaluate_nll, make_dataset_generators
+from encoding_information.models.model_base_class import MeasurementModel, train_model, _evaluate_nll, make_dataset_generators
 
 
 
@@ -274,7 +274,7 @@ class _PixelCNNFlaxImpl(nn.Module):
 
 
 
-class PixelCNN(ProbabilisticImageModel):
+class PixelCNN(MeasurementModel):
     """
     This class handles the training and evaluation of the PixelCNN model, which is implemented in Flax.
     It also wraps the model in the ProbabilisticImageModel interface for easy comparison with other models.
