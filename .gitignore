@@ -35,6 +35,7 @@ imager_experiments/archive_code/*
 *.cached_old
 
 *.npy
+model_fitting_tests/*
 
 
 Icon
