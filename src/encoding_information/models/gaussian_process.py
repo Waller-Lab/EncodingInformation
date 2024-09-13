@@ -13,10 +13,10 @@ import optax
 import warnings
 import flax.linen as nn
 from flax.training.train_state import TrainState
-from encoding_information.models.model_base_class import MeasurementModel, train_model, make_dataset_generators
+from encoding_information.models.model_base_class import MeasurementModel, MeasurementType, train_model, make_dataset_generators
 
 
-def match_to_generator_data(images, seed=None):
+def match_to_generator_data(data, seed=None):
     """
     Important: during the training process, noise is added to the pixel values to account for the 
     fact that discrete pixel values are used with a continuous density in the model. This is handled by the 
@@ -24,7 +24,7 @@ def match_to_generator_data(images, seed=None):
     to ensure that the same noise is added to the images here as was added during training, and then convert back
     to a jax array
     """
-    _, dataset_fn = make_dataset_generators(images, batch_size=images.shape[0], num_val_samples=images.shape[0], seed=seed)
+    _, dataset_fn = make_dataset_generators(data, batch_size=data.shape[0], num_val_samples=data.shape[0], seed=seed)
     return next(dataset_fn())
 
 def estimate_full_cov_mat(patches):
@@ -485,11 +485,16 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
 #### Wrapper for the Flax implementation of Gaussian processes to the probabilistic image model API ######
 
 class StationaryGaussianProcess(MeasurementModel):
+    """
+    Stationary 2D Gaussian process for single channel images
+    """
 
     def __init__(self, images, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """
         Create a StationaryGaussianProcess model and initialize it to the plugin estimate of the stationary covariance matrix
         """
+        super().__init__(MeasurementType.HW, measurement_dtype=float)
+        self._validate_data(images)
         self.image_shape = images.shape[1:]
 
         self._flax_model = _StationaryGaussianProcessFlaxImpl(size=np.prod(np.array(self.image_shape)))
@@ -518,6 +523,8 @@ class StationaryGaussianProcess(MeasurementModel):
         
         if train_images is None:
             train_images = self.images
+
+        self._validate_data(train_images)
 
         num_val_samples = int(train_images.shape[0] * percent_samples_for_validation) if num_val_samples is None else num_val_samples
         
@@ -666,17 +673,21 @@ class StationaryGaussianProcess(MeasurementModel):
 
 class FullGaussianProcess(MeasurementModel):
 
-    def __init__(self, images, eigenvalue_floor=1e-3, seed=None, verbose=False):
+    def __init__(self, data, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """
         Estiamte mean and covariance matrix of a full Gaussian process from images
         """
-        self.image_shape = images.shape[1:]
+        super().__init__(measurement_types=None, measurement_dtype=float)
+        self._validate_data(data)
+        self._measurement_shape = data.shape[1:]
+        # vectorize
+        data = data.reshape(data.shape[0], -1)
 
-        images = match_to_generator_data(images, seed=seed)
+        data = match_to_generator_data(data, seed=seed)
         # initialize parameters
         if verbose:
             print('computing full covariance matrix')
-        self.cov_mat = estimate_full_cov_mat(images)
+        self.cov_mat = estimate_full_cov_mat(data)
         # ensure positive definiteness
         eigvals, eig_vecs = np.linalg.eigh( self.cov_mat)
         eigvals = np.where(eigvals < eigenvalue_floor, eigenvalue_floor, eigvals)
@@ -691,26 +702,30 @@ class FullGaussianProcess(MeasurementModel):
 
         if verbose:
             print('computing mean vector')
-        self.mean_vec = np.mean(images, axis=0).flatten()     
+        self.mean_vec = np.mean(data, axis=0).flatten()     
         
 
     def fit(self, *args, **kwargs):
-        warnings.warn('Full Gaussian process does not require fitting. Skipping fit method.')
+        warnings.warn('Gaussian process is already fit. No need to call fit method')
 
 
-    def compute_negative_log_likelihood(self, images, data_seed=None, verbose=True, seed=None):
+    def compute_negative_log_likelihood(self, data, data_seed=None, verbose=True, seed=None):
         if seed is not None:
             warnings.warn('seed argument is deprecated. Use data_seed instead')
             data_seed = seed
-        images = match_to_generator_data(images, seed=data_seed)
-        # average nll per pixel
-        return -gaussian_likelihood(self.cov_mat, self.mean_vec, images).mean() / np.prod(np.array(images.shape[1:]))
 
-    
+        self._validate_data(data)
+        data = data.reshape(data.shape[0], -1)
+        data = match_to_generator_data(data, seed=data_seed)
+        # average nll per pixel
+        return -gaussian_likelihood(self.cov_mat, self.mean_vec, data).mean() / np.prod(np.array(data.shape[1:]))
+
         
     def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         if sample_shape is not None and sample_shape != int(np.sqrt(self.cov_mat.shape[0])):
             raise ValueError('Sample shape must match the shape of training images')
         samples = generate_multivariate_gaussian_samples(self.mean_vec, self.cov_mat, num_samples, seed=seed)
+        # reshape to original measurement shape
+        samples = samples.reshape(num_samples, *self._measurement_shape)
         return samples
 

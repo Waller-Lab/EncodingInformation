@@ -5,12 +5,93 @@ import jax
 import numpy as onp
 from tqdm import tqdm
 import warnings
+from enum import Enum, auto
+from typing import List, Union
 
+from abc import ABC, abstractmethod
+import numpy as np
+from functools import partial
+from jax import jit
+
+
+class MeasurementNoiseModel(ABC):
+
+    @abstractmethod
+    def estimate_conditional_entropy(self, *args):
+        pass
+
+
+class MeasurementType(Enum):
+    HW = auto() # single channel image 
+    HWC = auto() # multi-channel image
+    D = auto() # vectorized data
 
 class MeasurementModel(ABC):
     """
     Base class for different probabilistic models of images and other types of measurements
     """
+    
+    def __init__(self, measurement_types: Union[MeasurementType, List[MeasurementType]] = None, measurement_dtype: type = float) -> None:
+        """
+        Initialize the model with the type of measurement and data type.
+
+        Parameters
+        ----------
+        measurement_type : MeasurementType
+            Type of measurement (MeasurementType.HW, MeasurementType.HWC, or MeasurementType.D).
+            If None, then the model can accept any type of measurement.
+        measurement_dtype : type
+            Data type of the measurements (float or complex)
+        """
+        if measurement_types is None:
+            self.measurement_types = None
+        else:
+            self.measurement_types = measurement_types if isinstance(measurement_types, list) or \
+                        isinstance(measurement_types, tuple) else [measurement_types]
+    
+        if measurement_dtype not in (float, complex):
+            raise ValueError("measurement_dtype must be either float or complex")
+        self.measurement_dtype = measurement_dtype
+
+    def _validate_data(self, data: Union[List, np.ndarray, onp.ndarray]):
+        """
+        Validate that the input data matches the expected type and dtype. This should operate on a batch of data.
+
+        Parameters
+        ----------
+        data : Union[List, np.ndarray, onp.ndarray]
+            Input data to validate
+
+        Raises
+        ------
+        ValueError
+            If the data shape or dtype doesn't match the expected type
+        """
+        if isinstance(data, list):
+            data = np.array(data)
+
+        if self.measurement_dtype == float and not np.issubdtype(data.dtype, np.floating):
+            raise ValueError(f"Expected float dtype, but got {data.dtype}")
+        elif self.measurement_dtype == complex and not np.issubdtype(data.dtype, np.complexfloating):
+            raise ValueError(f"Expected complex dtype, but got {data.dtype}")
+        
+        # Check if data matches any of the valid measurement types
+        if self.measurement_types is not None:
+            valid = False
+            for measurement_type in self.measurement_types:
+                if  measurement_type.name == MeasurementType.HW.name and len(data.shape) == 3:
+                    valid = True
+                    break
+                elif measurement_type.name == MeasurementType.HWC.name and len(data.shape) == 4:
+                    valid = True
+                    break
+                elif measurement_type.name == MeasurementType.D.name and len(data.shape) == 2:
+                    valid = True
+                    break
+
+            if not valid:
+                raise ValueError(f"Data shape {data.shape} does not match any valid measurement type {self.measurement_types}")
+
 
     @abstractmethod
     def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
@@ -110,7 +191,7 @@ def _add_uniform_noise_fn(images, condition_vectors=None):
     else:
         return noisy_images
 
-def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noise=True, 
+def make_dataset_generators(data, batch_size, num_val_samples, add_uniform_noise=True, 
                             add_gaussian_noise=False, condition_vectors=None, seed=None):
     """
     Use tensorflow datasets to make fast data pipelines
@@ -118,29 +199,20 @@ def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noi
     if seed is not None:
         tf.random.set_seed(seed)
 
-    if num_val_samples > images.shape[0]:
+    if num_val_samples > data.shape[0]:
         raise ValueError("Number of validation samples must be less than the number of training samples")
     
-    # add trailing channel dimension if necessary
-    if images.ndim == 3:
-        images = images[..., np.newaxis]
 
-    # add trailing channel dimension if necessary
-    if images.ndim == 3:
-        images = images[..., np.newaxis]
-    elif images.shape[-1] != 1:
-        raise ValueError("Only supports single-channel images currently")                
-
-    images = images.astype(np.float32)
+    data = data.astype(np.float32)
 
 
     # split images into train and validation
-    val_images = images[:num_val_samples]
-    train_images = images[num_val_samples:]
+    val_images = data[:num_val_samples]
+    train_images = data[num_val_samples:]
 
     if condition_vectors is not None:
         # Validate the shape of condition_vectors
-        if condition_vectors.shape[0] != images.shape[0]:
+        if condition_vectors.shape[0] != data.shape[0]:
             raise ValueError("Condition vectors and images must have the same number of samples")
 
         # Combine images and condition_vectors

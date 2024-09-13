@@ -24,7 +24,8 @@ from flax.training.train_state import TrainState
 import optax
 
 
-from encoding_information.models.model_base_class import MeasurementModel, train_model, _evaluate_nll, make_dataset_generators
+from encoding_information.models.model_base_class import MeasurementModel, MeasurementType, \
+            train_model, _evaluate_nll, make_dataset_generators
 
 
 
@@ -282,6 +283,7 @@ class PixelCNN(MeasurementModel):
     """
 
     def __init__(self, num_hidden_channels=64, num_mixture_components=40):
+        super().__init__([MeasurementType.HW, MeasurementType.HWC], measurement_dtype=float)
         self.num_hidden_channels = num_hidden_channels
         self.num_mixture_components = num_mixture_components
         self._flax_model = None
@@ -295,7 +297,19 @@ class PixelCNN(MeasurementModel):
             warnings.warn("seed argument is deprecated. Use model_seed and data_seed instead")
             model_seed = seed
             data_seed = seed
+
+        if model_seed is not None:
+            onp.random.seed(model_seed)
+        model_key = jax.random.PRNGKey(onp.random.randint(0, 100000))
         
+        self._validate_data(train_images)
+
+        # TODO:
+        # check if data has trailing channel dimension
+        # if train_images.ndim == 3:
+        #     train_images = train_images[..., np.newaxis]
+
+
         train_images = train_images.astype(np.float32)
 
         # check that only one type of noise is added
@@ -325,8 +339,8 @@ class PixelCNN(MeasurementModel):
                                     train_data_min=np.min(example_images), train_data_max=np.max(example_images), sigma_min=sigma_min,
                                     condition_vector_size=None if condition_vectors is None else condition_vectors.shape[-1]
                                     )
-            # pass in an intial batch
-            initial_params = self._flax_model.init(jax.random.PRNGKey(model_seed), train_images[:3], 
+            # pass in an intial batch            
+            initial_params = self._flax_model.init(model_key, train_images[:3], 
                                 condition_vectors[:3] if condition_vectors is not None else None)
 
             if do_lr_decay:
@@ -346,7 +360,6 @@ class PixelCNN(MeasurementModel):
         
         if condition_vectors is None:
 
-            
             def loss_fn(params, state, imgs):
                 return state.apply_fn(params, imgs)
             grad_fn = jax.value_and_grad(loss_fn)
@@ -416,6 +429,7 @@ class PixelCNN(MeasurementModel):
 
         return _evaluate_nll(dataset_fn(), self._state, return_average=average,
                             eval_step=conditional_eval_step if conditioning_vecs is not None else None, verbose=verbose)
+
 
     def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
         if seed is None:
