@@ -69,10 +69,11 @@ class BSCCMDataset(MeasurementDatasetBase):
             noisy_background = add_noise(bias_image, seed=noise_seed)
             images += noisy_background
 
-        return onp.array(images)
-
-
-
+        images =  onp.array(images)
+        # if only one channel requested, remove the channel dimension
+        if len(channels) == 1 and images.ndim == 4 and images.shape[-1] == 1:
+            images = images[..., 0]
+        return images
 
 def load_data_from_config(config, data_dir):
     """

@@ -12,6 +12,67 @@ import jax.numpy as np
 import warnings
 
 
+def estimate_information(measurement_model, noise_model, train_set, test_set, 
+                         confidence_interval=None, num_bootstraps=11):
+    """
+    Estimate mutual information in bits per pixel given a probabilistic model of the measurement process p(y)
+    and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
+    which represents the uncertainty in the estimate due to the finite size of the test set.
+
+    measurement_model : MeasurementModel 
+        A probabilistic model of the measurement process p(y|x) (e.g. PixelCNN, FullGaussian, etc). 
+        see encoding_information.models
+    noise_model : NoiseModel
+        A probabilistic model of the noise process p(y|x) (e.g. GaussianNoiseModel, PoissonNoiseModel)
+        see encoding_information.models
+    train_set : ndarray, shape (n_samples, ...)
+        The training set of noisy measurements. It can have different shapes depending on the data type/model. 
+        For single channel images, it is (n_samples, H, W), for multi-channel images (n_samples, H, W, C), for
+        vectorized measurements (n_samples, n_dimensions)
+    test_set : ndarray, shape (n_samples, ...)
+        The test set of noisy measurements, which should have the same shape as the training set.
+    confidence_interval : float, optional
+        If provided, estimate a confidence interval for the mutual information by bootstrapping the test set.
+        e.g. 0.9 for a 90% confidence interval.
+    num_bootstraps : int, optional
+        The number of times the test set should be resampled to estimate the confidence interval.
+    """
+    # make sure confidence interval is between 0 and 1
+    if confidence_interval is not None:
+        if confidence_interval <= 0 or confidence_interval >= 1:
+            raise ValueError("Confidence interval must be between 0 and 1")
+    
+    full_dataset = np.concatenate([train_set, test_set])
+    nll = measurement_model.compute_negative_log_likelihood(test_set)
+    hy_given_x = noise_model.estimate_conditional_entropy(full_dataset)
+    mutual_info = (nll - hy_given_x) / np.log(2)
+    if confidence_interval is None:
+        return mutual_info    
+    
+    # estimate confidence interval by bootstrapping data
+    nlls = []
+    hy_given_xs = []
+    for i in tqdm(range(num_bootstraps), desc='Bootstrapping to compute confidence interval'):
+        # resample test set
+        bootstrap_indices = np.random.choice(len(test_set), len(test_set), replace=True)
+        bootstrap_test_set = test_set[bootstrap_indices]
+        nlls.append(measurement_model.compute_negative_log_likelihood(bootstrap_test_set, verbose=False))
+
+        # resample full dataset for conditional entropy
+        bootstrap_indices = np.random.choice(len(full_dataset), len(full_dataset), replace=True)
+        bootstrap_full_dataset = full_dataset[bootstrap_indices]
+        hy_given_xs.append(noise_model.estimate_conditional_entropy(bootstrap_full_dataset))
+    nlls = np.array(nlls)
+    hy_given_xs = np.array(hy_given_xs)
+    # take all random combinations of nlls and hy_given_xs
+    mutual_infos = (nlls[None, :] - hy_given_xs[:, None]) / np.log(2)
+    mutual_infos = mutual_infos.flatten()
+    # compute confidence interval
+    lower_bound = np.percentile(mutual_infos, 100 * confidence_interval / 2)
+    upper_bound = np.percentile(mutual_infos, 100 * (1 - confidence_interval / 2))
+    return mutual_info, lower_bound, upper_bound
+
+
 def analytic_multivariate_gaussian_entropy(cov_matrix):
     """
     Numerically stable computation of the analytic entropy of a multivariate gaussian
@@ -36,7 +97,7 @@ def _do_nearest_neighbors_entropy_estimate(X, N, d, k=3):
     """
     Just-in-time compiled helper function for nearest_neighbors_entropy_estimate.
     """
-    nn = nearest_neighbors_distance(X, k)
+    nn = _nearest_neighbors_distance(X, k)
 
     # compute the log volume of the d-dimensional ball with raidus of the nearest neighbor distance
     log_vd = d * np.log(nn) + d/2 * np.log(np.pi) - gammaln(d/2 + 1)
@@ -46,7 +107,7 @@ def _do_nearest_neighbors_entropy_estimate(X, N, d, k=3):
 
 
 @partial(jit, static_argnums=1)
-def nearest_neighbors_distance(X, k):
+def _nearest_neighbors_distance(X, k):
     """
     Compute the distance to the kth nearest neighbor for each point in X by
     exhaustively searching all points in X.
@@ -73,6 +134,7 @@ def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
     gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
             otherwise assume poisson noise.
     """
+    warnings.warn("This function is deprecated. Use GaussianNoiseModel or PoissonNoiseModel instead.")
     # vectorize
     images = images.reshape(-1, images.shape[-2] * images.shape[-1])
     n_pixels = images.shape[-1]
@@ -180,6 +242,8 @@ def  estimate_task_specific_mutual_information(noisy_images, labels, test_set_fr
                                  return_entropy_model=False,
                                  verbose=False,):
     """
+    DEPRECATED: use estimate_information() instead.
+
     Estimate the mutual information (in bits per pixel) between the noisy images and the labels using a PixelCNN entropy model.
 
     noisy_images : ndarray NxHxW array of images or image patches
@@ -200,6 +264,7 @@ def  estimate_task_specific_mutual_information(noisy_images, labels, test_set_fr
     return_entropy_model : bool, whether to return the noisy image entropy model
     verbose : bool, whether to print out the estimated values
     """
+    warnings.warn("This function is deprecated. Use estimate_information() instead.")
     if np.any(noisy_images < 0):   
         warnings.warn(f"{np.sum(noisy_images < 0) / noisy_images.size:.2%} of pixels are negative.")
     if np.mean(noisy_images) < 20:
@@ -257,6 +322,8 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                                  do_lr_decay=False, add_gaussian_training_noise=False, condition_vectors=None, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
+    DEPRECATED: use estimate_information() instead.
+
     Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
     images using a probabilistic model (either a stationary Gaussian process or a PixelCNN) and subtracting the conditional entropy
     assuming Poisson distributed shot noise, or additive Gaussian noise. Uses clean_images to estimate the conditional entropy
