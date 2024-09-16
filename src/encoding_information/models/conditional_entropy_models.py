@@ -16,7 +16,7 @@ class AnalyticGaussianNoiseModel(MeasurementNoiseModel):
         """
         self.sigma = sigma
 
-    def estimate_conditional_entropy(self):
+    def estimate_conditional_entropy(self, images):
         """
         Compute the conditional entropy H(Y | X) for Gaussian noise.
         """
@@ -45,3 +45,24 @@ class PoissonNoiseModel(MeasurementNoiseModel):
         per_image_entropies = np.sum(gaussian_approx, axis=1) / n_pixels
         return np.mean(per_image_entropies) # h(y|x) per pixel
 
+
+class AnalyticComplexPixelGaussianNoiseModel(MeasurementNoiseModel):
+    """
+    Analytical model for estimating the conditional entropy H(Y | X) when the noise process is additive independent Gaussian noise at each pixel 
+    with different standard deviation at each pixel.
+    """
+
+    def __init__(self, sigma_vec):
+        """
+        :param sigma_vec: Vector of standard deviations of the Gaussian noise at each pixel
+        """
+        self.sigma_vec = sigma_vec
+
+    def estimate_conditional_entropy(self):
+        # input vector here if it's complex-valued items will be half the length of the vector used in the other computations. this has the number of complex-valued pixels. 
+        # D log2 2 pi e + 2 sum log_2 sigma_i
+
+        # returning total conditional entropy here
+        constant_term = self.sigma_vec.shape[0] * np.log(2 * np.pi * np.exp(1))
+        sum_log_sigmas = 2 * np.sum(np.log(self.sigma_vec))
+        return constant_term + sum_log_sigmas
