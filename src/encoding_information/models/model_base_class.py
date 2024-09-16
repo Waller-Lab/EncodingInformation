@@ -5,17 +5,98 @@ import jax
 import numpy as onp
 from tqdm import tqdm
 import warnings
+from enum import Enum, auto
+from typing import List, Union
+
+from abc import ABC, abstractmethod
+import numpy as np
+from functools import partial
+from jax import jit
 
 
-class ProbabilisticImageModel(ABC):
+class MeasurementNoiseModel(ABC):
+
+    @abstractmethod
+    def estimate_conditional_entropy(self, *args):
+        pass
+
+
+class MeasurementType(Enum):
+    HW = auto() # single channel image 
+    HWC = auto() # multi-channel image
+    D = auto() # vectorized data
+
+class MeasurementModel(ABC):
     """
-    Base class for different probabilistic models images
+    Base class for different probabilistic models of images and other types of measurements
     """
+    
+    def __init__(self, measurement_types: Union[MeasurementType, List[MeasurementType]] = None, measurement_dtype: type = float) -> None:
+        """
+        Initialize the model with the type of measurement and data type.
+
+        Parameters
+        ----------
+        measurement_type : MeasurementType
+            Type of measurement (MeasurementType.HW, MeasurementType.HWC, or MeasurementType.D).
+            If None, then the model can accept any type of measurement.
+        measurement_dtype : type
+            Data type of the measurements (float or complex)
+        """
+        if measurement_types is None:
+            self.measurement_types = None
+        else:
+            self.measurement_types = measurement_types if isinstance(measurement_types, list) or \
+                        isinstance(measurement_types, tuple) else [measurement_types]
+    
+        if measurement_dtype not in (float, complex):
+            raise ValueError("measurement_dtype must be either float or complex")
+        self.measurement_dtype = measurement_dtype
+
+    def _validate_data(self, data: Union[List, np.ndarray, onp.ndarray]):
+        """
+        Validate that the input data matches the expected type and dtype. This should operate on a batch of data.
+
+        Parameters
+        ----------
+        data : Union[List, np.ndarray, onp.ndarray]
+            Input data to validate
+
+        Raises
+        ------
+        ValueError
+            If the data shape or dtype doesn't match the expected type
+        """
+        if isinstance(data, list):
+            data = np.array(data)
+
+        if self.measurement_dtype == float and not np.issubdtype(data.dtype, np.floating):
+            raise ValueError(f"Expected float dtype, but got {data.dtype}")
+        elif self.measurement_dtype == complex and not np.issubdtype(data.dtype, np.complexfloating):
+            raise ValueError(f"Expected complex dtype, but got {data.dtype}")
+        
+        # Check if data matches any of the valid measurement types
+        if self.measurement_types is not None:
+            valid = False
+            for measurement_type in self.measurement_types:
+                if  measurement_type.name == MeasurementType.HW.name and len(data.shape) == 3:
+                    valid = True
+                    break
+                elif measurement_type.name == MeasurementType.HWC.name and len(data.shape) == 4:
+                    valid = True
+                    break
+                elif measurement_type.name == MeasurementType.D.name and len(data.shape) == 2:
+                    valid = True
+                    break
+
+            if not valid:
+                raise ValueError(f"Data shape {data.shape} does not match any valid measurement type {self.measurement_types}")
+
 
     @abstractmethod
     def fit(self, train_images, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=10, 
             batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,
-            seed=0, verbose=True):
+            data_seed=None, model_seed=None, verbose=True):
         """
         Fit the model to the images
 
@@ -37,8 +118,10 @@ class ProbabilisticImageModel(ABC):
             Number of validation samples to use. If None, use percent_samples_for_validation
         percent_samples_for_validation : float, optional
             Percentage of samples to use for validation
-        seed : int, optional
-            Random seed to initialize the model
+        data_seed : int, optional
+            Random seed that controls shuffling and adding noise to data
+        model_seed : int, optional
+            Random seed that controls initialization of weights
         verbose : bool, optional
             Whether to print training progress
 
@@ -50,7 +133,7 @@ class ProbabilisticImageModel(ABC):
         pass
     
     @abstractmethod
-    def compute_negative_log_likelihood(self, images, verbose=True):
+    def compute_negative_log_likelihood(self, images, data_seed=123, average=True, verbose=True):
         """
         Compute the NLL of the images under the model
 
@@ -60,6 +143,10 @@ class ProbabilisticImageModel(ABC):
             Array of images, shape (N, H, W)
         verbose : bool, optional
             Whether to print progress
+       data_seed : int, optional
+            Random seed for shuffling images (and possibly adding noise)
+        average : bool, optional
+            Whether to average the NLL over all images
 
         Returns
         -------
@@ -84,7 +171,7 @@ class ProbabilisticImageModel(ABC):
         """
         pass
 
-def add_gaussian_noise_fn(images, condition_vectors=None):
+def _add_gaussian_noise_fn(images, condition_vectors=None):
     """
     Add gaussian noise to images
     """
@@ -94,7 +181,7 @@ def add_gaussian_noise_fn(images, condition_vectors=None):
     else:
         return noisy_images
 
-def add_uniform_noise_fn(images, condition_vectors=None):
+def _add_uniform_noise_fn(images, condition_vectors=None):
     """
     Add uniform noise to images
     """
@@ -104,33 +191,28 @@ def add_uniform_noise_fn(images, condition_vectors=None):
     else:
         return noisy_images
 
-def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noise=True, add_gaussian_noise=False, condition_vectors=None):
+def make_dataset_generators(data, batch_size, num_val_samples, add_uniform_noise=True, 
+                            add_gaussian_noise=False, condition_vectors=None, seed=None):
     """
     Use tensorflow datasets to make fast data pipelines
     """
-    if num_val_samples > images.shape[0]:
+    if seed is not None:
+        tf.random.set_seed(seed)
+
+    if num_val_samples > data.shape[0]:
         raise ValueError("Number of validation samples must be less than the number of training samples")
     
-    # add trailing channel dimension if necessary
-    if images.ndim == 3:
-        images = images[..., np.newaxis]
 
-    # add trailing channel dimension if necessary
-    if images.ndim == 3:
-        images = images[..., np.newaxis]
-    elif images.shape[-1] != 1:
-        raise ValueError("Only supports single-channel images currently")                
-
-    images = images.astype(np.float32)
+    data = data.astype(np.float32)
 
 
     # split images into train and validation
-    val_images = images[:num_val_samples]
-    train_images = images[num_val_samples:]
+    val_images = data[:num_val_samples]
+    train_images = data[num_val_samples:]
 
     if condition_vectors is not None:
         # Validate the shape of condition_vectors
-        if condition_vectors.shape[0] != images.shape[0]:
+        if condition_vectors.shape[0] != data.shape[0]:
             raise ValueError("Condition vectors and images must have the same number of samples")
 
         # Combine images and condition_vectors
@@ -150,12 +232,12 @@ def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noi
         raise ValueError("Cannot add both gaussian and uniform noise")
     
     if add_gaussian_noise:
-        train_ds = train_ds.map(add_gaussian_noise_fn)
-        val_ds = val_ds.map(add_gaussian_noise_fn)
+        train_ds = train_ds.map(_add_gaussian_noise_fn)
+        val_ds = val_ds.map(_add_gaussian_noise_fn)
 
     if add_uniform_noise:
-        train_ds = train_ds.map(add_uniform_noise_fn)
-        val_ds = val_ds.map(add_uniform_noise_fn)
+        train_ds = train_ds.map(_add_uniform_noise_fn)
+        val_ds = val_ds.map(_add_uniform_noise_fn)
 
     train_ds = train_ds.repeat().shuffle(1024).batch(batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
     val_ds = val_ds.shuffle(1024).batch(batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
@@ -163,21 +245,27 @@ def make_dataset_generators(images, batch_size, num_val_samples, add_uniform_noi
     return train_ds.as_numpy_iterator(), lambda : val_ds.as_numpy_iterator()
 
 
-def _evaluate_nll(data_iterator, state, eval_step=None, seed=0, batch_size=16, verbose=True):
+def _evaluate_nll(data_iterator, state, eval_step=None, batch_size=16, return_average=True, verbose=False):
     """
     Compute negative log likelihood over many batches
 
     batch_size only comes into play if data_iterator is a numpy array
+
+    if return_average is False, its up to the user to ensure that the batch size of the data_iterator is 1
     """
 
     if eval_step is None: # default eval step
         eval_step = jax.jit(lambda state, imgs: state.apply_fn(state.params, imgs))
 
-    key = jax.random.PRNGKey(seed)
     total_nll, count = 0, 0
+    nlls = []
     if isinstance(data_iterator, np.ndarray) or isinstance(data_iterator, onp.ndarray):
+        if not return_average:
+            batch_size = 1
+            print('return_average is False but batch_size is not 1. Setting batch_size to 1.')
         data_iterator = np.array_split(data_iterator, len(data_iterator) // batch_size + 1)  # split into batches of batch_size or less
-        data_iterator = tqdm(data_iterator, desc='Computing loss')
+    if verbose:
+        data_iterator = tqdm(data_iterator, desc='Evaluating NLL')
     for batch in data_iterator:
         if isinstance(batch, tuple):
             images, condition_vector = batch
@@ -185,16 +273,20 @@ def _evaluate_nll(data_iterator, state, eval_step=None, seed=0, batch_size=16, v
             images = batch
             condition_vector = None
         batch_nll_per_pixel = eval_step(state, images) if condition_vector is None else eval_step(state, images, condition_vector)
-        total_nll += images.shape[0] * batch_nll_per_pixel
-        count += images.shape[0]
-    # compute average nll per pixel
-    nll = (total_nll / count).item()
-    return nll
+        if return_average:
+            total_nll += images.shape[0] * batch_nll_per_pixel
+            count += images.shape[0]
+        else:
+            nlls.append(batch_nll_per_pixel)
+    if return_average:
+        return (total_nll / count).item()
+    else:
+        return np.array(nlls)
 
 
 def train_model(train_images, state, batch_size, num_val_samples,
                  steps_per_epoch, num_epochs, patience, train_step, condition_vectors=None,
-                 add_gaussian_noise=False, add_uniform_noise=True,
+                 add_gaussian_noise=False, add_uniform_noise=True, seed=None,
                   verbose=True):
     """
     Training loop with early stopping. Returns a callable with 
@@ -204,7 +296,7 @@ def train_model(train_images, state, batch_size, num_val_samples,
         warnings.warn(f'Number of validation samples must be less than the number of training samples. Using {num_val_samples} validation samples instead.')
     train_ds_iterator, val_loader_maker_fn = make_dataset_generators(train_images,
                      batch_size=batch_size, num_val_samples=num_val_samples, condition_vectors=condition_vectors,
-                     add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise
+                     add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise, seed=seed
                      )
 
     if condition_vectors is not None:
@@ -213,7 +305,7 @@ def train_model(train_images, state, batch_size, num_val_samples,
         eval_step = jax.jit(lambda state, imgs: state.apply_fn(state.params, imgs))
 
     best_params = state.params
-    eval_nll = _evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step, verbose=verbose)
+    eval_nll = _evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step)
     if verbose:
         print(f'Initial validation NLL: {eval_nll:.2f}')
     
@@ -224,7 +316,9 @@ def train_model(train_images, state, batch_size, num_val_samples,
         avg_loss = 0
         iter = range(steps_per_epoch)
         for _ in iter if not verbose else tqdm(iter, desc=f'Epoch {epoch_idx}'):
+
             batch = next(train_ds_iterator)
+
             if condition_vectors is None:
                 state, loss = train_step(state, batch)
             else:
@@ -232,7 +326,7 @@ def train_model(train_images, state, batch_size, num_val_samples,
 
             avg_loss += loss / steps_per_epoch
         
-        eval_nll = _evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step, verbose=verbose) 
+        eval_nll = _evaluate_nll(val_loader_maker_fn(), state, eval_step=eval_step) 
         if np.isnan(eval_nll):
             warnings.warn('NaN encountered in validation loss. Stopping early.')
             break
