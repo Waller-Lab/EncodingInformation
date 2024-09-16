@@ -87,8 +87,7 @@ def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=
     if key is None:
         key = jax.random.PRNGKey(onp.random.randint(0, 100000) if seed is None else seed)
     samples = jax.random.multivariate_normal(key, mean_vec, cov_mat, (num_samples,))
-    images = samples.reshape(num_samples, int(np.sqrt(cov_mat.shape[0])), int(np.sqrt(cov_mat.shape[0])))
-    return images
+    return samples
 
 
 def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False, verbose=False):  
@@ -722,8 +721,9 @@ class FullGaussianProcess(MeasurementModel):
 
         
     def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
-        if sample_shape is not None and sample_shape != int(np.sqrt(self.cov_mat.shape[0])):
-            raise ValueError('Sample shape must match the shape of training images')
+        if sample_shape is not None:
+            # make sure sample shape is the same as the measurement shape
+            assert sample_shape == self._measurement_shape, 'sample shape must be the same as the measurement shape'
         samples = generate_multivariate_gaussian_samples(self.mean_vec, self.cov_mat, num_samples, seed=seed)
         # reshape to original measurement shape
         samples = samples.reshape(num_samples, *self._measurement_shape)

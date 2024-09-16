@@ -21,7 +21,7 @@ class BSCCMDataset(MeasurementDatasetBase):
         # load the dataset. This just opens the index file but does not pull anything into memory
         self._bsccm = BSCCM(path, cache_index=True)
 
-    def get_shape(self, channels= 'LED119', edge_crop=24):
+    def get_shape(self, channels= 'DPC_Left', edge_crop=24):
         if isinstance(channels, str):
             channels = [channels]
         images = load_bsccm_images(self._bsccm, channels[0], num_images=1, edge_crop=edge_crop, convert_units_to_photons=True)
@@ -30,7 +30,7 @@ class BSCCMDataset(MeasurementDatasetBase):
 
 
     def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=123456,
-                          edge_crop=24, channels='LED119'):
+                          edge_crop=24, channels='DPC_Left'):
         if noise != 'Poisson':
             raise NotImplementedError('Only Poisson noise is supported')
         indices = self._bsccm.get_indices(batch=0)
