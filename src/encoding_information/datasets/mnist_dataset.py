@@ -16,7 +16,7 @@ class MNISTDataset(MeasurementDatasetBase):
         self._image_data = np.concatenate([x_train, x_test], axis=0)
         self._label_data = np.concatenate([y_train, y_test], axis=0)
 
-    def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=123456):
+    def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=None):
         if noise not in ['Poisson', None]:
             raise Exception('Only Poisson noise is supported')
 
