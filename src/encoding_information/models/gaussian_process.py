@@ -13,7 +13,7 @@ import optax
 import warnings
 import flax.linen as nn
 from flax.training.train_state import TrainState
-from encoding_information.models.model_base_class import MeasurementModel, MeasurementType, train_model, make_dataset_generators
+from .model_base_class import MeasurementModel, MeasurementType, train_model, make_dataset_generators
 
 
 def match_to_generator_data(data, seed=None):

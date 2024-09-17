@@ -24,7 +24,7 @@ from flax.training.train_state import TrainState
 import optax
 
 
-from encoding_information.models.model_base_class import MeasurementModel, MeasurementType, \
+from .model_base_class import MeasurementModel, MeasurementType, \
             train_model, _evaluate_nll, make_dataset_generators
 
 
