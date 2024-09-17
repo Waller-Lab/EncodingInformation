@@ -1,5 +1,6 @@
 from jax import jit
 import jax.numpy as np
+import warnings
 
 from encoding_information.models.model_base_class import MeasurementNoiseModel
 
@@ -16,13 +17,12 @@ class AnalyticGaussianNoiseModel(MeasurementNoiseModel):
         """
         self.sigma = sigma
 
-    def estimate_conditional_entropy(self, images):
+    def estimate_conditional_entropy(self, images=None):
         """
         Compute the conditional entropy H(Y | X) for Gaussian noise.
-        """
-        # Vectorize images
-        images = images.reshape(-1, images.shape[-2] * images.shape[-1])
-        
+        """   
+        if images is not None:
+            warnings.warn("The images argument is not used in the Analytic Gaussian noise model.")
         # Conditional entropy H(Y | X) for Gaussian noise
         return 0.5 * np.log(2 * np.pi * np.e * self.sigma**2)
 
@@ -48,7 +48,7 @@ class PoissonNoiseModel(MeasurementNoiseModel):
 
 class AnalyticComplexPixelGaussianNoiseModel(MeasurementNoiseModel):
     """
-    Analytical model for estimating the conditional entropy H(Y | X) when the noise process is additive independent Gaussian noise at each pixel 
+    Analytical model for estimating the conditional entropy H(Y | X) with complex-valued pixels when the noise process is additive independent Gaussian noise at each pixel 
     with different standard deviation at each pixel.
     """
 
