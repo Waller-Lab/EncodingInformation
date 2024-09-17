@@ -12,211 +12,144 @@ from torch.utils.data import Dataset, DataLoader
 from numcodecs import Blosc
 import glob
 from encoding_information.image_utils import add_noise
+from tqdm import tqdm
+from jax import jit
+from jax import random
 
-class CFADataset(MeasurementDatasetBase):
+class ColorFilterArrayDataset(MeasurementDatasetBase):
     """
-    Handles large image datasets using Zarr arrays with patch extraction and filtering.
+    Dataset of natural images with with various Bayer-like filters applied.
+
+    Shi's Re-processing of Gehler's Raw Dataset
+    https://www.cs.sfu.ca/~colour/data/shi_gehler/
+
+    Lilong Shi and Brian Funt, "Re-processed Version of the Gehler Color Constancy Dataset of 568 Images,"
+
+    Original source:
+
+    Peter Gehler and Carsten Rother and Andrew Blake and Tom Minka and Toby Sharp, "Bayesian Color Constancy Revisited,"
+    Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition, 2008.
+    and http://www.kyb.mpg.de/bs/people/pgehler/colour/index.html.
     
-    Args:
-        zarr_path (str): Path to the Zarr store.
-        patch_size (tuple): Tuple of patch height and width.
-        filter_matrix (np.ndarray): The Bayer filter matrix to apply.
-        mean_value (float, optional): The mean value of the dataset.
-    
-    Attributes:
-        zarr_path (str): Path to the Zarr store.
-        patch_size (tuple): Tuple of patch height and width.
-        filter_matrix (np.ndarray): The Bayer filter matrix to apply.
-        mean_value (float): Mean value of the dataset.
-        zarr_store (zarr.core.Array): Zarr array.
-        image_arrays (da.Array): Dask array from Zarr store.
-        image_shape (tuple): Shape of the image dataset.
-        total_patches (int): Total number of patches.
     """
 
-    def __init__(self, zarr_path, patch_size, filter_matrix, mean_value=None):
+    def __init__(self, zarr_path, tile_size=128):
+        """
+        Initialize the dataset.
+
+        Args:
+            zarr_path (str): Path to the Zarr store containing the dataset.
+            tile_size (int): Size of the tiles to split the images into. This is done beceause the raw data is 
+                (568, 4, 1359, 2041), but we often want a greater number of smaller images. So we split the images into
+                non-overlapping tiles of size (tile_size, tile_size).
+        """
         self.zarr_path = zarr_path
-        self.patch_size = patch_size
-        self.filter_matrix = filter_matrix
-        self.mean_value = mean_value
+        self._tile_size = tile_size
 
         # Open Zarr store
-        self.zarr_store = zarr.open(zarr_path, mode='r')
+        self._zarr_store = zarr.open(zarr_path, mode='r')
 
         # Create Dask array from Zarr store
-        self.image_arrays = da.from_zarr(self.zarr_store)
+        self._raw_data_dask_array = da.from_zarr(self._zarr_store)
 
-        # Get image shape and compute total patches
-        self.image_shape = self.zarr_store.shape  # (num_images, channels, height, width)
-        self.total_patches = self._compute_total_patches()
-
-    def _compute_total_patches(self):
-        """
-        Compute the total number of possible patches across all images.
+        # split the raw data into non-overlapping tiles
+        N, C, H, W = self._raw_data_dask_array.shape
+        # Reshape the image arrays into tiles
+        M = (H // tile_size) * (W // tile_size) * N
+        # crop the images so that they are divisible by tile_size
+        image_array = self._raw_data_dask_array[:, :, :H // tile_size * tile_size, :W // tile_size * tile_size]
+        reshaped = image_array.reshape(N, C, H // tile_size, tile_size, W // tile_size, tile_size)
         
-        Returns:
-            int: Total number of patches.
-        
-        Raises:
-            ValueError: If patch size is larger than the image size.
+        # Transpose to bring the tiles in the desired order: M x tile_size x tile_size x C
+        self._tiles = reshaped.transpose(0, 2, 4, 3, 5, 1).reshape(M, tile_size, tile_size, C)
+
+
+    def get_measurements(self, num_measurements, mean=2000, bias=0, filter_matrix= np.array([[0, 1], [1, 2]]),
+                         data_seed=None, noise_seed=None,
+                       
+                         noise='Poisson',):
         """
-        num_images, _, img_h, img_w = self.image_shape
-        patch_h, patch_w = self.patch_size
-        patches_h = img_h - patch_h + 1
-        patches_w = img_w - patch_w + 1
+        Get a set of measurements from the dataset. Applys a Bayer-like filter to the measurements (i.e. RGB + White).
+        The default filter is the one used in the Bayer filter: [[0, 1], [1, 2]] i.e. [[R, G], [G, B]]. Also rescales
+        the mean value of the images to the desired value and optionally adds noise
 
-        if patches_h <= 0 or patches_w <= 0:
-            raise ValueError("Patch size is larger than the image size.")
-
-        return num_images * patches_h * patches_w
-
-    def get_measurements(self, num_measurements, mean=None, bias=0, data_seed=None, noise_seed=123456,
-                         noise='Poisson', **kwargs):
-        """
-        Get measurements with optional noise and bias.
-        
         Args:
-            num_measurements (int): Number of measurements to return.
-            mean (float, optional): Mean value to scale the measurements.
-            bias (float, optional): Bias to be added to the measurements.
-            data_seed (int, optional): Seed for random data selection.
-            noise_seed (int, optional): Seed for noise generation.
-            noise (str, optional): Type of noise to apply. Defaults to 'Poisson'.
-            kwargs: Additional parameters.
-        
-        Returns:
-            np.ndarray: Measurements with optional noise and bias.
-        
-        Raises:
-            ValueError: If unsupported noise type is provided or if `num_measurements`
-                        exceeds the total available patches.
+            num_measurements (int): Number of measurements to generate.
+            mean (float): Mean value to scale the images by. In this context, mean refers to the number of photons 
+                per pixel in the white channel. So any color filter that is applied will further reduce the number of
+                photons per pixel in the color channels.
+
+                This parameter defaults to a big number (2000) because we don't actually know how many photons were collected
+                
+            bias (float): Bias to add to the measurements.
+            filter_matrix (np.ndarray): Filter matrix to apply to the measurements.
+            data_seed (int): Seed for the random number generator.
+            noise_seed (int): Seed for the noise generator.
+            noise (str): Type of noise to add to the measurements.
+
+        Return (num_measurements x H x W x 4) array of measurements, where the channels are R G B W
+
         """
-        if noise not in ['Poisson', None]:
-            raise ValueError('Only Poisson noise is supported')
 
-        if num_measurements > self.total_patches:
-            raise ValueError(f'Cannot load {num_measurements} patches, only {self.total_patches} available')
 
-        if data_seed is not None:
-            np.random.seed(data_seed)
+        # select random tiles
+        if data_seed is None:
+            data_seed = np.random.randint(100000)
+        key = random.PRNGKey(data_seed)
+        indices = random.choice(key, self._tiles.shape[0], shape=(num_measurements,), replace=False)
+        # Select number of tiles equal to the number of measurements we need and convert to a jax array
+        tiles = jnp.array(self._tiles[indices.tolist()]) 
 
-        # Randomly select patch indices
-        patch_indices = np.random.choice(self.total_patches, size=num_measurements, replace=False)
+        ## Apply the filter to all tiles 
+        filter_matrix = jnp.array(filter_matrix)
+        # tile filter matrix to be the same size as the measurements
+        filter_h, filter_w = filter_matrix.shape
+        tile_h, tile_w = self._tile_size, self._tile_size
+        # make sure tile is divisible by filter
+        assert tile_h % filter_h == 0, 'Tile height must be divisible by filter height'
+        assert tile_w % filter_w == 0, 'Tile width must be divisible by filter width'
 
-        # Map patch indices to image indices and patch positions
-        num_images, _, img_h, img_w = self.image_shape
-        patch_h, patch_w = self.patch_size
-        patches_h = img_h - patch_h + 1
-        patches_w = img_w - patch_w + 1
-        patches_per_image = patches_h * patches_w
+        tiled_filter = jnp.tile(filter_matrix, (tile_h // filter_h, tile_w // filter_w))
+        
+        # Do advanced indexing to apply the filter to every tile
+        batch_indices = jnp.arange(tiles.shape[0])[:, None, None]  # Shape: (N, 1, 1)
+        mask = tiled_filter[None, :, :]  # Shape: (1, 256, 256)
+        row_indices = jnp.arange(tile_h)[None, :, None]  # Shape: (1, H, 1)
+        col_indices = jnp.arange(tile_w)[None, None, :]  # Shape: (1, 1, W)
+        # apply the filter
+        filtered_tiles = tiles[batch_indices, row_indices, col_indices, mask]
 
-        image_indices = patch_indices // patches_per_image
-        patch_indices_in_image = patch_indices % patches_per_image
+        # Rescale mean if provided
+        if mean is not None:
+            # TODO: could do this for mean over all the data, but for now just stick to the tiles used
+            white_channel = tiles[..., -1]
+            photons_per_pixel = white_channel.mean()
+            rescale_mean = mean - bias
+            rescale_fraction = rescale_mean / photons_per_pixel
+            filtered_tiles = filtered_tiles * rescale_fraction
+        if bias is not None:
+            filtered_tiles += bias
 
-        # Collect patches using Dask
-        patches = []
-        for idx in range(num_measurements):
-            img_idx = image_indices[idx]
-            patch_idx_in_image = patch_indices_in_image[idx]
-            row = patch_idx_in_image // patches_w
-            col = patch_idx_in_image % patches_w
-
-            # Extract patch lazily
-            patch = self.image_arrays[img_idx, :, row:row + patch_h, col:col + patch_w]
-
-            # Apply mean adjustment if needed
-            if mean is not None and self.mean_value is not None:
-                scaling_factor = mean / self.mean_value
-                patch = patch * scaling_factor
-
-            # Ensure the 4th channel is the sum of the RGB channels
-            patch = patch.compute()  # Compute the patch
-            patch[3] = patch[0] + patch[1] + patch[2]
-
-            # Apply the Bayer filter
-            filtered_patch = self.apply_filter(patch, self.filter_matrix)
-
-            # Add bias
-            if bias != 0:
-                filtered_patch += bias
-
-            patches.append(filtered_patch)
-
-        # Convert patches list to numpy array
-        patches = np.array(patches)
 
         # Add noise if necessary
         if noise == 'Poisson':
-            patches = np.array(add_noise(patches, noise_seed))
+            filtered_tiles = np.array(add_noise(filtered_tiles, noise_seed))
+        elif noise == 'Gaussian':
+            raise NotImplementedError('Gaussian noise not implemented yet')
+        elif noise is None:
+            pass # "clean" measurements
+        else:
+            raise ValueError(f'Noise type {noise} not recognized')
 
-        return patches
+        return filtered_tiles
 
-    def apply_filter(self, patch, filter_matrix):
+
+    def get_shape(self, tile_size=128):
         """
-        Apply the Bayer filter to the patch.
-        
-        Args:
-            patch (np.ndarray): Patch to be filtered.
-            filter_matrix (np.ndarray): Filter matrix to apply.
-        
-        Returns:
-            np.ndarray: Filtered patch.
-        """
-        filter_h, filter_w = filter_matrix.shape
-        patch_h, patch_w = self.patch_size
+        Return the shape of the dataset (using the given tile size).
 
-        # Tile the filter matrix to match the patch size
-        tile_factor_h = patch_h // filter_h
-        tile_factor_w = patch_w // filter_w
-        tiled_filter = np.tile(filter_matrix, (tile_factor_h, tile_factor_w))
-
-        # Apply the tiled filter using indexing
-        filtered_patch = np.zeros((patch_h, patch_w), dtype=patch.dtype)
-        for ch in range(4):
-            mask = (tiled_filter == ch)
-            filtered_patch[mask] = patch[ch][mask]
-
-        return filtered_patch
-
-    def get_shape(self, **kwargs):
-        """
-        Return the shape of the dataset.
-        
-        Args:
-            kwargs: Additional parameters.
-        
         Returns:
             tuple: Shape of the dataset.
         """
-        return self.image_shape
+        return (self._tiles.shape[0], tile_size, tile_size)
 
-
-# def preprocess_and_save_zarr(image_dir, zarr_path, chunk_size):
-#     """
-#     Preprocess the images and save them as a Zarr array with specified chunk size.
-
-#     Args:
-#         image_dir (str): Directory containing the .npy image files.
-#         zarr_path (str): Path where the Zarr store will be saved.
-#         chunk_size (tuple): Chunk size for Zarr array (num_images_chunk, channels_chunk, height_chunk, width_chunk).
-#     """
-#     # Get list of image files
-#     image_files = sorted(glob.glob(os.path.join(image_dir, '*.npy')))
-#     num_images = len(image_files)
-
-#     # Load sample image to get shape
-#     sample_image = np.load(image_files[0], mmap_mode='r')
-#     channels, img_h, img_w = sample_image.shape
-
-#     # Create empty Zarr array
-#     compressor = Blosc(cname='zstd', clevel=3, shuffle=Blosc.BITSHUFFLE)
-#     zarr_store = zarr.open(zarr_path, mode='w', shape=(num_images, channels, img_h, img_w),
-#                            chunks=chunk_size, dtype=sample_image.dtype, compressor=compressor)
-
-#     # Load images and store them in Zarr
-#     for idx, image_file in enumerate(image_files):
-#         image = np.load(image_file, mmap_mode='r')
-#         zarr_store[idx] = image
-#         print(f"Saved image {idx + 1}/{num_images} to Zarr store.")
-
-#     print("Preprocessing complete.")
