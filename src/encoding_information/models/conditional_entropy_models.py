@@ -2,7 +2,7 @@ from jax import jit
 import jax.numpy as np
 import warnings
 
-from encoding_information.models.model_base_class import MeasurementNoiseModel
+from .model_base_class import MeasurementNoiseModel
 
 
 class AnalyticGaussianNoiseModel(MeasurementNoiseModel):
