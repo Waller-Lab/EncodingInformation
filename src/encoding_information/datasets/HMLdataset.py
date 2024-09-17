@@ -7,7 +7,7 @@ from encoding_information.image_utils import add_noise
 from jax import random
 import jax.numpy as jnp
 
-class HML_Dataset(MeasurementDatasetBase):
+class HMLDataset(MeasurementDatasetBase):
     """
     Dataset of grayscale measurements captured with a metalens-based camera.  See Hazineh et al. for more details:
     
