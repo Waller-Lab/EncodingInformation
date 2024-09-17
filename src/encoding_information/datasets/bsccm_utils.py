@@ -29,7 +29,7 @@ class BSCCMDataset(MeasurementDatasetBase):
         return (*single_image_shape,) + (len(channels),)
 
 
-    def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=123456,
+    def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=None,
                           edge_crop=24, channels='DPC_Left'):
         if noise != 'Poisson':
             raise NotImplementedError('Only Poisson noise is supported')

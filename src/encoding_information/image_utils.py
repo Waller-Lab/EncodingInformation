@@ -28,7 +28,8 @@ def _extract_random_patches(data, num_patches, patch_size, verbose):
     return np.array(patches)
 
 
-def extract_patches(data, num_patches=1000, patch_size=16, strategy='random', num_masked_pixels=256, seed=None, verbose=False):
+def extract_patches(data, num_patches=1000, patch_size=16, strategy='random', crop_location=None,
+                    num_masked_pixels=256, seed=None, verbose=False) -> np.ndarray:
     """
     Extract patches from a dataset using various strategies.
     
@@ -55,6 +56,8 @@ def extract_patches(data, num_patches=1000, patch_size=16, strategy='random', nu
         - 'cropped': select a single random location and extract patches centered on that location.
         - 'masked': use a random mask to extract patches. In this case, the patch is returned as a flattened vector.
     
+    crop_location : tuple, optional
+        If strategy is 'cropped', the top left corner of the patch to extract. If None, a random location is chosen.
     num_masked_pixels : int, optional
         Number of pixels to mask in the 'masked' strategy.
     seed : int, optional
@@ -115,8 +118,11 @@ def extract_patches(data, num_patches=1000, patch_size=16, strategy='random', nu
             patches.append(data[image_index, x_index:x_index+patch_size, y_index:y_index+patch_size])
 
     elif strategy == 'cropped':
-        x_index = onp.random.randint(0, data.shape[1] - patch_size + 1)
-        y_index = onp.random.randint(0, data.shape[2] - patch_size + 1)
+        if crop_location is not None:
+            y_index, x_index = crop_location
+        else:
+            x_index = onp.random.randint(0, data.shape[1] - patch_size + 1)
+            y_index = onp.random.randint(0, data.shape[2] - patch_size + 1)
         # throw error if patch count exceeds image count
         if num_patches > data.shape[0]:
             raise ValueError("Number of patches exceeds number of images, which is not possible with cropped strategy")

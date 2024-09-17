@@ -1,11 +1,11 @@
 """
 Functions for estimating entropy and mutual information
 """
-from encoding_information.image_utils import *
+from .image_utils import *
 from jax import jit
 from jax.scipy.special import digamma, gammaln
-from encoding_information.models.gaussian_process import StationaryGaussianProcess, FullGaussianProcess
-from encoding_information.models.pixel_cnn import PixelCNN
+from .models.gaussian_process import StationaryGaussianProcess, FullGaussianProcess
+from .models.pixel_cnn import PixelCNN
 
 from functools import partial
 import jax.numpy as np

@@ -10,7 +10,12 @@ classifiers = [
     "License :: OSI Approved :: BSD License"
 ]
 dependencies = [
-    "numpy"
+    "numpy",
+    "tqdm",
+    "cleanplots",
+    "jax",
+    "flax",
+    "tensorflow"
 
 ]
 dynamic = ["version"]
