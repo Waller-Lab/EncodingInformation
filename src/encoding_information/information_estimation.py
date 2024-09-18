@@ -9,11 +9,12 @@ from .models.pixel_cnn import PixelCNN
 
 from functools import partial
 import jax.numpy as np
+import numpy as onp
 import warnings
 
 
 def estimate_information(measurement_model, noise_model, train_set, test_set, 
-                         confidence_interval=None, num_bootstraps=11):
+                         confidence_interval=None, num_bootstraps=100):
     """
     Estimate mutual information in bits per pixel given a probabilistic model of the measurement process p(y)
     and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
@@ -49,29 +50,32 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     if confidence_interval is None:
         return mutual_info    
     
+    # calculate this way for confidence intervals so it is faster
+    nll = measurement_model.compute_negative_log_likelihood(test_set, average=False)
+
     # estimate confidence interval by bootstrapping data
     nlls = []
     hy_given_xs = []
     for i in tqdm(range(num_bootstraps), desc='Bootstrapping to compute confidence interval'):
         # resample test set
-        bootstrap_indices = np.random.choice(len(test_set), len(test_set), replace=True)
-        bootstrap_test_set = test_set[bootstrap_indices]
-        nlls.append(measurement_model.compute_negative_log_likelihood(bootstrap_test_set, verbose=False))
+        bootstrap_indices = onp.random.choice(len(test_set), len(test_set), replace=True)
+        bootstrapped_nlls = nll[bootstrap_indices]
+        nlls.append(bootstrapped_nlls.mean())
 
         # resample full dataset for conditional entropy
-        bootstrap_indices = np.random.choice(len(full_dataset), len(full_dataset), replace=True)
+        bootstrap_indices = onp.random.choice(len(full_dataset), len(full_dataset), replace=True)
         bootstrap_full_dataset = full_dataset[bootstrap_indices]
         hy_given_xs.append(noise_model.estimate_conditional_entropy(bootstrap_full_dataset))
+
     nlls = np.array(nlls)
     hy_given_xs = np.array(hy_given_xs)
     # take all random combinations of nlls and hy_given_xs
     mutual_infos = (nlls[None, :] - hy_given_xs[:, None]) / np.log(2)
     mutual_infos = mutual_infos.flatten()
     # compute confidence interval
-    lower_bound = np.percentile(mutual_infos, 100 * confidence_interval / 2)
-    upper_bound = np.percentile(mutual_infos, 100 * (1 - confidence_interval / 2))
+    lower_bound = np.percentile(mutual_infos, 50*(1-confidence_interval))
+    upper_bound = np.percentile(mutual_infos, 50*(1+confidence_interval))
     return mutual_info, lower_bound, upper_bound
-
 
 def analytic_multivariate_gaussian_entropy(cov_matrix):
     """
@@ -306,9 +310,9 @@ def  estimate_task_specific_mutual_information(noisy_images, labels, test_set_fr
 
     mutual_info = (h_y - h_y_t) / np.log(2)
     if verbose:
-        print(f"Estimated H(Y|T) (Upper bound) = {h_y_t:.3f} differential entropy/pixel")
-        print(f"Estimated H(Y) (Upper bound) = {h_y:.3f} differential entropy/pixel")
-        print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
+        print(f"Estimated H(Y|T) (Upper bound) = {h_y_t:.4f} differential entropy/pixel")
+        print(f"Estimated H(Y) (Upper bound) = {h_y:.4f} differential entropy/pixel")
+        print(f"Estimated I(Y;X) = {mutual_info:.4f} bits/pixel")
     if return_entropy_model:
         return mutual_info, pixelcnn
     return mutual_info
@@ -436,12 +440,12 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
 
     mutual_info = (h_y - h_y_given_x) / np.log(2)
     if verbose:
-        print(f"Estimated H(Y|X) = {h_y_given_x:.3f} differential entropy/pixel")
+        print(f"Estimated H(Y|X) = {h_y_given_x:.4f} differential entropy/pixel")
         if analytic_marginal_entropy:
-            print(f"Estimated H(Y) = {h_y:.3f} differential entropy/pixel")
+            print(f"Estimated H(Y) = {h_y:.4f} differential entropy/pixel")
         else:
-            print(f"Estimated H(Y) (Upper bound) = {h_y:.3f} differential entropy/pixel")
-        print(f"Estimated I(Y;X) = {mutual_info:.3f} bits/pixel")
+            print(f"Estimated H(Y) (Upper bound) = {h_y:.4f} differential entropy/pixel")
+        print(f"Estimated I(Y;X) = {mutual_info:.4f} bits/pixel")
     if return_entropy_model:
         return mutual_info, noisy_image_model
     return mutual_info 
