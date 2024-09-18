@@ -9,6 +9,7 @@ from .models.pixel_cnn import PixelCNN
 
 from functools import partial
 import jax.numpy as np
+import numpy as onp
 import warnings
 
 
@@ -54,12 +55,12 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     hy_given_xs = []
     for i in tqdm(range(num_bootstraps), desc='Bootstrapping to compute confidence interval'):
         # resample test set
-        bootstrap_indices = np.random.choice(len(test_set), len(test_set), replace=True)
+        bootstrap_indices = onp.random.choice(len(test_set), len(test_set), replace=True)
         bootstrap_test_set = test_set[bootstrap_indices]
         nlls.append(measurement_model.compute_negative_log_likelihood(bootstrap_test_set, verbose=False))
 
         # resample full dataset for conditional entropy
-        bootstrap_indices = np.random.choice(len(full_dataset), len(full_dataset), replace=True)
+        bootstrap_indices = onp.random.choice(len(full_dataset), len(full_dataset), replace=True)
         bootstrap_full_dataset = full_dataset[bootstrap_indices]
         hy_given_xs.append(noise_model.estimate_conditional_entropy(bootstrap_full_dataset))
     nlls = np.array(nlls)
