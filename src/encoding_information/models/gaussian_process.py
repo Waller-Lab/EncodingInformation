@@ -708,7 +708,7 @@ class FullGaussianProcess(MeasurementModel):
         warnings.warn('Gaussian process is already fit. No need to call fit method')
 
 
-    def compute_negative_log_likelihood(self, data, data_seed=None, verbose=True, seed=None):
+    def compute_negative_log_likelihood(self, data, data_seed=None, verbose=True, seed=None, average=True):
         if seed is not None:
             warnings.warn('seed argument is deprecated. Use data_seed instead')
             data_seed = seed
@@ -716,8 +716,11 @@ class FullGaussianProcess(MeasurementModel):
         self._validate_data(data)
         data = data.reshape(data.shape[0], -1)
         data = match_to_generator_data(data, seed=data_seed)
-        # average nll per pixel
-        return -gaussian_likelihood(self.cov_mat, self.mean_vec, data).mean() / np.prod(np.array(data.shape[1:]))
+        # average nll per pixel, but averaged over data or per data point
+        if average:                        
+            return -gaussian_likelihood(self.cov_mat, self.mean_vec, data).mean() / np.prod(np.array(data.shape[1:]))
+        else:
+            return -gaussian_likelihood(self.cov_mat, self.mean_vec, data) / np.prod(np.array(data.shape[1:]))
 
         
     def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
