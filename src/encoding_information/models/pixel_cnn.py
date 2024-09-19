@@ -162,6 +162,7 @@ class GatedMaskedConv(nn.Module):
     
 
 class _PixelCNNFlaxImpl(nn.Module):
+    data_shape : tuple
     num_hidden_channels : int = 64
     num_mixture_components : int = 40
     train_data_mean : float = None
@@ -170,6 +171,7 @@ class _PixelCNNFlaxImpl(nn.Module):
     train_data_max : float = None
     sigma_min : float = 1
     condition_vector_size : int = None
+    use_positional_embedding : bool = False
 
     def setup(self):
         if None in [self.train_data_mean, self.train_data_std, self.train_data_min, self.train_data_max]:
@@ -205,6 +207,12 @@ class _PixelCNNFlaxImpl(nn.Module):
             return random.uniform(rng, shape, dtype=dtype,
                                   minval=self.train_data_min, maxval=self.train_data_max)
         
+        # Parameters for learned positional embedding
+        if self.use_positional_embedding:
+            self.positional_embedding = nn.Embed(num_embeddings=self.data_shape[0] * self.data_shape[1], features=self.num_hidden_channels)
+            # generate unique index for each pixel
+            self.position_indices = np.arange(self.data_shape[0] * self.data_shape[1]).reshape(*self.data_shape[:2])
+
         self.mu_dense = nn.Dense(self.num_mixture_components, bias_init=my_bias_init)
         self.sigma_dense = nn.Dense(self.num_mixture_components)
         self.mix_logit_dense = nn.Dense(self.num_mixture_components)
@@ -260,8 +268,12 @@ class _PixelCNNFlaxImpl(nn.Module):
         # Apply ELU before 1x1 convolution for non-linearity on residual connection
         out = self.conv_out(nn.elu(h_stack))
 
-        # TODO: maybe append absolute spatial position here to allow for more accurate spatially patterned outputs?
-
+        if self.use_positional_embedding:
+            # add positional embedding
+            indices = self.position_indices            
+            # apply positional embedding
+            out = out + self.positional_embedding(indices)
+    
         # must be positive and within data range
         mu = np.clip(self.mu_dense(out), self.train_data_min, self.train_data_max) 
 
@@ -290,7 +302,7 @@ class PixelCNN(MeasurementModel):
 
     def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=40, 
             sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  do_lr_decay=False, verbose=True,
-            add_gaussian_noise=False, add_uniform_noise=True, model_seed=None, data_seed=None,
+            add_gaussian_noise=False, add_uniform_noise=True, model_seed=None, data_seed=None, use_positional_embedding=False,
             # deprecated
             seed=None,):
         if seed is not None:
@@ -303,11 +315,6 @@ class PixelCNN(MeasurementModel):
         model_key = jax.random.PRNGKey(onp.random.randint(0, 100000))
         
         self._validate_data(train_images)
-
-        # TODO:
-        # check if data has trailing channel dimension
-        # if train_images.ndim == 3:
-        #     train_images = train_images[..., np.newaxis]
 
 
         train_images = train_images.astype(np.float32)
@@ -337,8 +344,9 @@ class PixelCNN(MeasurementModel):
             self._flax_model = _PixelCNNFlaxImpl(num_hidden_channels=self.num_hidden_channels, num_mixture_components=self.num_mixture_components,
                                     train_data_mean=np.mean(example_images), train_data_std=np.std(example_images),
                                     train_data_min=np.min(example_images), train_data_max=np.max(example_images), sigma_min=sigma_min,
-                                    condition_vector_size=None if condition_vectors is None else condition_vectors.shape[-1]
-                                    )
+                                    condition_vector_size=None if condition_vectors is None else condition_vectors.shape[-1],
+                                    data_shape=train_images.shape[1:], use_positional_embedding=use_positional_embedding)
+                                    
             # pass in an intial batch            
             initial_params = self._flax_model.init(model_key, train_images[:3], 
                                 condition_vectors[:3] if condition_vectors is not None else None)

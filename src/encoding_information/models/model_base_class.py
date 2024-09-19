@@ -312,7 +312,7 @@ def train_model(train_images, state, batch_size, num_val_samples,
     best_eval = eval_nll
     best_eval_epoch = 0
     val_loss_history = [best_eval]
-    for epoch_idx in range(1, num_epochs+1):
+    for epoch_idx in tqdm(range(1, num_epochs+1), desc='training') if not verbose else range(1, num_epochs+1):
         avg_loss = 0
         iter = range(steps_per_epoch)
         for _ in iter if not verbose else tqdm(iter, desc=f'Epoch {epoch_idx}'):
