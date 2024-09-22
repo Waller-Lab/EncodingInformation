@@ -28,7 +28,7 @@ from encoding_information.information_estimation import *
 from encoding_information.image_utils import *
 from encoding_information.models.gaussian_process import StationaryGaussianProcess
 
-from encoding_information.bsccm_utils import *
+from encoding_information.datasets.bsccm_utils import *
 from bsccm import BSCCM
 from jax import jit
 import numpy as np
