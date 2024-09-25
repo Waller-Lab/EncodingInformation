@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>encoding_information package &mdash; EncodingInformation  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="encoding_information.datasets package" href="encoding_information.datasets.html" />
+    <link rel="prev" title="encoding_information" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            EncodingInformation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">encoding_information</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">encoding_information package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html">encoding_information.datasets package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html">encoding_information.models package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-encoding_information.error_bars">encoding_information.error_bars module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-encoding_information.gpu_utils">encoding_information.gpu_utils module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.gpu_utils.limit_gpu_memory_growth"><code class="docutils literal notranslate"><span class="pre">limit_gpu_memory_growth()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-encoding_information.image_utils">encoding_information.image_utils module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.image_utils.add_noise"><code class="docutils literal notranslate"><span class="pre">add_noise()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.image_utils.extract_patches"><code class="docutils literal notranslate"><span class="pre">extract_patches()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.image_utils.normalize_image_stack"><code class="docutils literal notranslate"><span class="pre">normalize_image_stack()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-encoding_information.information_estimation">encoding_information.information_estimation module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.information_estimation.analytic_multivariate_gaussian_entropy"><code class="docutils literal notranslate"><span class="pre">analytic_multivariate_gaussian_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.information_estimation.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">estimate_conditional_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.information_estimation.estimate_information"><code class="docutils literal notranslate"><span class="pre">estimate_information()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.information_estimation.estimate_mutual_information"><code class="docutils literal notranslate"><span class="pre">estimate_mutual_information()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.information_estimation.estimate_task_specific_mutual_information"><code class="docutils literal notranslate"><span class="pre">estimate_task_specific_mutual_information()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.information_estimation.nearest_neighbors_entropy_estimate"><code class="docutils literal notranslate"><span class="pre">nearest_neighbors_entropy_estimate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.information_estimation.run_bootstrap"><code class="docutils literal notranslate"><span class="pre">run_bootstrap()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-encoding_information.plot_utils">encoding_information.plot_utils module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.add_multiple_colorbars"><code class="docutils literal notranslate"><span class="pre">add_multiple_colorbars()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.plot_eigenvalues"><code class="docutils literal notranslate"><span class="pre">plot_eigenvalues()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.plot_intensity_coord_histogram"><code class="docutils literal notranslate"><span class="pre">plot_intensity_coord_histogram()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.plot_optimization_loss_history"><code class="docutils literal notranslate"><span class="pre">plot_optimization_loss_history()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-encoding_information">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">encoding_information package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html">encoding_information.datasets package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html">encoding_information.models package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.error_bars">encoding_information.error_bars module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.gpu_utils">encoding_information.gpu_utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.gpu_utils.limit_gpu_memory_growth"><code class="docutils literal notranslate"><span class="pre">limit_gpu_memory_growth()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.image_utils">encoding_information.image_utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.image_utils.add_noise"><code class="docutils literal notranslate"><span class="pre">add_noise()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.image_utils.extract_patches"><code class="docutils literal notranslate"><span class="pre">extract_patches()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.image_utils.normalize_image_stack"><code class="docutils literal notranslate"><span class="pre">normalize_image_stack()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.information_estimation">encoding_information.information_estimation module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.analytic_multivariate_gaussian_entropy"><code class="docutils literal notranslate"><span class="pre">analytic_multivariate_gaussian_entropy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">estimate_conditional_entropy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_information"><code class="docutils literal notranslate"><span class="pre">estimate_information()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_mutual_information"><code class="docutils literal notranslate"><span class="pre">estimate_mutual_information()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_task_specific_mutual_information"><code class="docutils literal notranslate"><span class="pre">estimate_task_specific_mutual_information()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.nearest_neighbors_entropy_estimate"><code class="docutils literal notranslate"><span class="pre">nearest_neighbors_entropy_estimate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.run_bootstrap"><code class="docutils literal notranslate"><span class="pre">run_bootstrap()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.plot_utils">encoding_information.plot_utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.add"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.add()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.generate_bins"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.generate_bins()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.get_hist_counts"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.get_hist_counts()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.plot"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.plot()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.add_multiple_colorbars"><code class="docutils literal notranslate"><span class="pre">add_multiple_colorbars()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_eigenvalues"><code class="docutils literal notranslate"><span class="pre">plot_eigenvalues()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_intensity_coord_histogram"><code class="docutils literal notranslate"><span class="pre">plot_intensity_coord_histogram()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_optimization_loss_history"><code class="docutils literal notranslate"><span class="pre">plot_optimization_loss_history()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="encoding_information.datasets.html">encoding_information.datasets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="encoding_information.models.html">encoding_information.models package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">EncodingInformation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">encoding_information</a></li>
+      <li class="breadcrumb-item active">encoding_information package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/encoding_information.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="encoding-information-package">
+<h1>encoding_information package<a class="headerlink" href="#encoding-information-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="encoding_information.datasets.html">encoding_information.datasets package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.datasets.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.datasets.html#module-encoding_information.datasets.bsccm_utils">encoding_information.datasets.bsccm_utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.BSCCMDataset"><code class="docutils literal notranslate"><span class="pre">BSCCMDataset</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.BSCCMDataset.get_measurements"><code class="docutils literal notranslate"><span class="pre">BSCCMDataset.get_measurements()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.BSCCMDataset.get_shape"><code class="docutils literal notranslate"><span class="pre">BSCCMDataset.get_shape()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.add_shot_noise_to_experimenal_data"><code class="docutils literal notranslate"><span class="pre">add_shot_noise_to_experimenal_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.compute_photon_rescale_fraction"><code class="docutils literal notranslate"><span class="pre">compute_photon_rescale_fraction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.generate_synthetic_multi_led_images"><code class="docutils literal notranslate"><span class="pre">generate_synthetic_multi_led_images()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.get_bsccm_image"><code class="docutils literal notranslate"><span class="pre">get_bsccm_image()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.get_bsccm_image_marker_generator"><code class="docutils literal notranslate"><span class="pre">get_bsccm_image_marker_generator()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.get_display_channel_names"><code class="docutils literal notranslate"><span class="pre">get_display_channel_names()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.get_targets_and_display_range"><code class="docutils literal notranslate"><span class="pre">get_targets_and_display_range()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.load_bsccm_images"><code class="docutils literal notranslate"><span class="pre">load_bsccm_images()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.load_data_from_config"><code class="docutils literal notranslate"><span class="pre">load_data_from_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.load_image_with_synthetic_shot_noise"><code class="docutils literal notranslate"><span class="pre">load_image_with_synthetic_shot_noise()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.bsccm_utils.read_images_and_sample_intensities"><code class="docutils literal notranslate"><span class="pre">read_images_and_sample_intensities()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.datasets.html#module-encoding_information.datasets.cfa_dataset">encoding_information.datasets.cfa_dataset module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset"><code class="docutils literal notranslate"><span class="pre">ColorFilterArrayDataset</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset.get_measurements"><code class="docutils literal notranslate"><span class="pre">ColorFilterArrayDataset.get_measurements()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset.get_shape"><code class="docutils literal notranslate"><span class="pre">ColorFilterArrayDataset.get_shape()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.datasets.html#module-encoding_information.datasets.dataset_base_class">encoding_information.datasets.dataset_base_class module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase"><code class="docutils literal notranslate"><span class="pre">MeasurementDatasetBase</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase.get_measurements"><code class="docutils literal notranslate"><span class="pre">MeasurementDatasetBase.get_measurements()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase.get_shape"><code class="docutils literal notranslate"><span class="pre">MeasurementDatasetBase.get_shape()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.datasets.html#module-encoding_information.datasets.hml_dataset">encoding_information.datasets.hml_dataset module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset"><code class="docutils literal notranslate"><span class="pre">HyperspectralMetalensDataset</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.get_measurements"><code class="docutils literal notranslate"><span class="pre">HyperspectralMetalensDataset.get_measurements()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.get_shape"><code class="docutils literal notranslate"><span class="pre">HyperspectralMetalensDataset.get_shape()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.datasets.html#module-encoding_information.datasets.mnist_dataset">encoding_information.datasets.mnist_dataset module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.mnist_dataset.MNISTDataset"><code class="docutils literal notranslate"><span class="pre">MNISTDataset</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.mnist_dataset.MNISTDataset.get_measurements"><code class="docutils literal notranslate"><span class="pre">MNISTDataset.get_measurements()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html#encoding_information.datasets.mnist_dataset.MNISTDataset.get_shape"><code class="docutils literal notranslate"><span class="pre">MNISTDataset.get_shape()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.datasets.html#module-encoding_information.datasets">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="encoding_information.models.html">encoding_information.models package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.models.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.models.html#module-encoding_information.models.conditional_entropy_models">encoding_information.models.conditional_entropy_models module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel"><code class="docutils literal notranslate"><span class="pre">AnalyticGaussianNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">AnalyticGaussianNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.conditional_entropy_models.PoissonNoiseModel"><code class="docutils literal notranslate"><span class="pre">PoissonNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">PoissonNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.models.html#module-encoding_information.models.gaussian_process">encoding_information.models.gaussian_process module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.FullGaussianProcess"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.FullGaussianProcess.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.FullGaussianProcess.fit"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.FullGaussianProcess.generate_samples"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.generate_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.StationaryGaussianProcess"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_analytic_entropy"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.compute_analytic_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.StationaryGaussianProcess.fit"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.StationaryGaussianProcess.generate_samples"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.generate_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.StationaryGaussianProcess.get_cov_mat"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.get_cov_mat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.StationaryGaussianProcess.get_mean_vec"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.get_mean_vec()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.average_diagonals_to_make_doubly_toeplitz"><code class="docutils literal notranslate"><span class="pre">average_diagonals_to_make_doubly_toeplitz()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.estimate_full_cov_mat"><code class="docutils literal notranslate"><span class="pre">estimate_full_cov_mat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.gaussian_likelihood"><code class="docutils literal notranslate"><span class="pre">gaussian_likelihood()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.generate_multivariate_gaussian_samples"><code class="docutils literal notranslate"><span class="pre">generate_multivariate_gaussian_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.generate_stationary_gaussian_process_samples"><code class="docutils literal notranslate"><span class="pre">generate_stationary_gaussian_process_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.make_positive_definite"><code class="docutils literal notranslate"><span class="pre">make_positive_definite()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.match_to_generator_data"><code class="docutils literal notranslate"><span class="pre">match_to_generator_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.nll_per_pixel_from_cov_mat"><code class="docutils literal notranslate"><span class="pre">nll_per_pixel_from_cov_mat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.plugin_estimate_stationary_cov_mat"><code class="docutils literal notranslate"><span class="pre">plugin_estimate_stationary_cov_mat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.gaussian_process.try_to_make_doubly_toeplitz_and_positive_definite"><code class="docutils literal notranslate"><span class="pre">try_to_make_doubly_toeplitz_and_positive_definite()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.models.html#module-encoding_information.models.model_base_class">encoding_information.models.model_base_class module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel"><code class="docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">MeasurementModel.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel.fit"><code class="docutils literal notranslate"><span class="pre">MeasurementModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel.generate_samples"><code class="docutils literal notranslate"><span class="pre">MeasurementModel.generate_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementNoiseModel"><code class="docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">MeasurementNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementType"><code class="docutils literal notranslate"><span class="pre">MeasurementType</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementType.D"><code class="docutils literal notranslate"><span class="pre">MeasurementType.D</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementType.HW"><code class="docutils literal notranslate"><span class="pre">MeasurementType.HW</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementType.HWC"><code class="docutils literal notranslate"><span class="pre">MeasurementType.HWC</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.make_dataset_generators"><code class="docutils literal notranslate"><span class="pre">make_dataset_generators()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.train_model"><code class="docutils literal notranslate"><span class="pre">train_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.models.html#module-encoding_information.models.pixel_cnn">encoding_information.models.pixel_cnn module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.GatedMaskedConv"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.GatedMaskedConv.condition_vector_size"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.condition_vector_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.GatedMaskedConv.dilation"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.GatedMaskedConv.id"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.GatedMaskedConv.name"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.GatedMaskedConv.parent"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.GatedMaskedConv.scope"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.scope</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.c_out"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.c_out</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.dilation"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.kernel_size"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.kernel_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.mask_center"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.mask_center</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.name"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.parent"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.scope"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.scope</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.HorizontalStackConvolution.setup"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.setup()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.MaskedConvolution"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.MaskedConvolution.c_out"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.c_out</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.MaskedConvolution.dilation"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.MaskedConvolution.mask"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.mask</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.MaskedConvolution.name"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.MaskedConvolution.parent"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.MaskedConvolution.scope"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.scope</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PixelCNN"><code class="docutils literal notranslate"><span class="pre">PixelCNN</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PixelCNN.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">PixelCNN.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PixelCNN.fit"><code class="docutils literal notranslate"><span class="pre">PixelCNN.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PixelCNN.generate_samples"><code class="docutils literal notranslate"><span class="pre">PixelCNN.generate_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PreprocessLayer"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PreprocessLayer.mean"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PreprocessLayer.name"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PreprocessLayer.parent"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PreprocessLayer.scope"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.scope</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.PreprocessLayer.std"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.std</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.c_out"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.c_out</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.dilation"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.kernel_size"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.kernel_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.mask_center"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.mask_center</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.name"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.parent"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.scope"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.scope</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.models.html#encoding_information.models.pixel_cnn.VerticalStackConvolution.setup"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.setup()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.models.html#module-encoding_information.models">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-encoding_information.error_bars">
+<span id="encoding-information-error-bars-module"></span><h2>encoding_information.error_bars module<a class="headerlink" href="#module-encoding_information.error_bars" title="Link to this heading"></a></h2>
+</section>
+<section id="module-encoding_information.gpu_utils">
+<span id="encoding-information-gpu-utils-module"></span><h2>encoding_information.gpu_utils module<a class="headerlink" href="#module-encoding_information.gpu_utils" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.gpu_utils.limit_gpu_memory_growth">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.gpu_utils.</span></span><span class="sig-name descname"><span class="pre">limit_gpu_memory_growth</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.gpu_utils.limit_gpu_memory_growth" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-encoding_information.image_utils">
+<span id="encoding-information-image-utils-module"></span><h2>encoding_information.image_utils module<a class="headerlink" href="#module-encoding_information.image_utils" title="Link to this heading"></a></h2>
+<p>Functions for processing images in useful ways extracting patches, adding synthetic noise, etc.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.image_utils.add_noise">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.image_utils.</span></span><span class="sig-name descname"><span class="pre">add_noise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaussian_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.image_utils.add_noise" title="Link to this definition"></a></dt>
+<dd><p>Add poisson noise or additive Gaussian noise to a stack of noiseless images. This uses jax to speed performance</p>
+<p>images : ndarray NxHxW or Nx(num pixels) array of images or image patches
+ensure_positive : bool, whether to ensure the noisy images are nonnegative
+gaussian_sigma : float, if not None, add IID gaussian noise with this sigma. Otherwise add poisson noise.
+key : jax.random.PRNGKey, if not None, use this key to generate the noise. Otherwise, generate a key based on the seed
+seed: int, if key is None, use this seed to generate the key
+batch_size : int, if the number of images is large, split them into batches to avoid memory issues</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.image_utils.extract_patches">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.image_utils.</span></span><span class="sig-name descname"><span class="pre">extract_patches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_patches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">16</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strategy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'random'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crop_location</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_masked_pixels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.image_utils.extract_patches" title="Link to this definition"></a></dt>
+<dd><p>Extract patches from a dataset using various strategies.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></span></p>
+</dd>
+</dl>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
+<dl>
+<dt>data<span class="classifier">ndarray</span></dt><dd><p>Input data from which to extract patches. The input can have one of the following shapes:
+- (N, W, H): N images of size W x H.
+- (N, W, H, C): N images of size W x H with C channels.
+- (N, D): N data points of D-dimensional vectors (for random masking).</p>
+</dd>
+<dt>num_patches<span class="classifier">int, optional</span></dt><dd><p>Number of patches to extract.</p>
+</dd>
+<dt>patch_size<span class="classifier">int, optional</span></dt><dd><p>Size of the square patches.</p>
+</dd>
+<dt>strategy<span class="classifier">str, optional</span></dt><dd><p>The strategy for patch extraction. Options are:
+- ‘random’: randomly sample patches from the data.
+- ‘uniform_random’: sample patches randomly but with padding, ensuring all original pixels</p>
+<blockquote>
+<div><dl class="simple">
+<dt>have equal probability of being included in a patch. This will result in many patches with</dt><dd><p>constant values on one or two edges</p>
+</dd>
+</dl>
+</div></blockquote>
+<ul class="simple">
+<li><p>‘tiled’: split the data into a grid of non-overlapping patches.</p></li>
+<li><p>‘cropped’: select a single random location and extract patches centered on that location.</p></li>
+<li><p>‘masked’: use a random mask to extract patches. In this case, the patch is returned as a flattened vector.</p></li>
+</ul>
+</dd>
+<dt>crop_location<span class="classifier">tuple, optional</span></dt><dd><p>If strategy is ‘cropped’, the top left corner of the patch to extract. If None, a random location is chosen.</p>
+</dd>
+<dt>num_masked_pixels<span class="classifier">int, optional</span></dt><dd><p>Number of pixels to mask in the ‘masked’ strategy.</p>
+</dd>
+<dt>seed<span class="classifier">int, optional</span></dt><dd><p>Random seed for reproducibility.</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>If True, show progress during patch extraction.</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h3>Returns<a class="headerlink" href="#returns" title="Link to this heading"></a></h3>
+<dl>
+<dt>patches<span class="classifier">ndarray</span></dt><dd><p>The extracted patches. The shape of the returned patches depends on the input data shape and strategy:
+- For (N, W, H) or (N, W, H, C), patches will have shape (num_patches, patch_size, patch_size) or</p>
+<blockquote>
+<div><p>(num_patches, patch_size, patch_size, C), respectively.</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>For ‘masked’ strategy with the data will be vectorized into an (N, D) array, patches will have shape</dt><dd><p>(num_patches, num_masked_pixels).</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.image_utils.normalize_image_stack">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.image_utils.</span></span><span class="sig-name descname"><span class="pre">normalize_image_stack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stack</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.image_utils.normalize_image_stack" title="Link to this definition"></a></dt>
+<dd><p>rescale pixel values to account for the fact that different images have different average energies
+(this also rescales noise)</p>
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.information_estimation">
+<span id="encoding-information-information-estimation-module"></span><h2>encoding_information.information_estimation module<a class="headerlink" href="#module-encoding_information.information_estimation" title="Link to this heading"></a></h2>
+<p>Functions for estimating entropy and mutual information</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.information_estimation.analytic_multivariate_gaussian_entropy">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.information_estimation.</span></span><span class="sig-name descname"><span class="pre">analytic_multivariate_gaussian_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.information_estimation.analytic_multivariate_gaussian_entropy" title="Link to this definition"></a></dt>
+<dd><p>Numerically stable computation of the analytic entropy of a multivariate gaussian</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.information_estimation.estimate_conditional_entropy">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.information_estimation.</span></span><span class="sig-name descname"><span class="pre">estimate_conditional_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaussian_noise_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.information_estimation.estimate_conditional_entropy" title="Link to this definition"></a></dt>
+<dd><p>Compute the conditional entropy H(Y | X) in “nats” 
+(differential entropy doesn’t really have units…) per pixel,
+where Y is a random noisy realization of a random clean image X</p>
+<p>images : ndarray clean image HxW or images NxHxW
+gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.</p>
+<blockquote>
+<div><p>otherwise assume poisson noise.</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.information_estimation.estimate_information">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.information_estimation.</span></span><span class="sig-name descname"><span class="pre">estimate_information</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurement_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_set</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_set</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_bootstraps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.information_estimation.estimate_information" title="Link to this definition"></a></dt>
+<dd><p>Estimate mutual information in bits per pixel given a probabilistic model of the measurement process p(y)
+and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
+which represents the uncertainty in the estimate due to the finite size of the test set.</p>
+<dl class="simple">
+<dt>measurement_model<span class="classifier">MeasurementModel </span></dt><dd><p>A probabilistic model of the measurement process p(y|x) (e.g. PixelCNN, FullGaussian, etc). 
+see encoding_information.models</p>
+</dd>
+<dt>noise_model<span class="classifier">NoiseModel</span></dt><dd><p>A probabilistic model of the noise process p(y|x) (e.g. GaussianNoiseModel, PoissonNoiseModel)
+see encoding_information.models</p>
+</dd>
+<dt>train_set<span class="classifier">ndarray, shape (n_samples, …)</span></dt><dd><p>The training set of noisy measurements. It can have different shapes depending on the data type/model. 
+For single channel images, it is (n_samples, H, W), for multi-channel images (n_samples, H, W, C), for
+vectorized measurements (n_samples, n_dimensions)</p>
+</dd>
+<dt>test_set<span class="classifier">ndarray, shape (n_samples, …)</span></dt><dd><p>The test set of noisy measurements, which should have the same shape as the training set.</p>
+</dd>
+<dt>confidence_interval<span class="classifier">float, optional</span></dt><dd><p>If provided, estimate a confidence interval for the mutual information by bootstrapping the test set.
+e.g. 0.9 for a 90% confidence interval.</p>
+</dd>
+<dt>num_bootstraps<span class="classifier">int, optional</span></dt><dd><p>The number of times the test set should be resampled to estimate the confidence interval.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.information_estimation.estimate_mutual_information">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.information_estimation.</span></span><span class="sig-name descname"><span class="pre">estimate_mutual_information</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">noisy_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entropy_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gaussian'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_set_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaussian_noise_sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimate_conditional_from_model_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_iterative_optimization</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gradient_clip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">analytic_marginal_entropy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_hidden_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_mixture_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_lr_decay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_gaussian_training_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_vectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_entropy_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.information_estimation.estimate_mutual_information" title="Link to this definition"></a></dt>
+<dd><p>DEPRECATED: use estimate_information() instead.</p>
+<p>Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
+images using a probabilistic model (either a stationary Gaussian process or a PixelCNN) and subtracting the conditional entropy
+assuming Poisson distributed shot noise, or additive Gaussian noise. Uses clean_images to estimate the conditional entropy
+if provided. Otherwise, approximates the conditional entropy from the noisy images themselves.</p>
+<p>noisy_images : ndarray NxHxW array of images or image patches
+clean_images : ndarray NxHxW array of images or image patches
+entropy_model : str, which model to use for estimating the entropy of the noisy images. Either ‘gaussian’</p>
+<blockquote>
+<div><p>(meaning stationary gaussian process), ‘pixelcnn’, or ‘full_gaussian’ (meaning full covariance matrix)</p>
+</div></blockquote>
+<p>test_set_fraction : float, fraction of the noisy data to use a test set for computing the entropy upper bound</p>
+<dl class="simple">
+<dt>gaussian_noise_sigma<span class="classifier">float, if not None, assume noisy images arose from additive gaussian noise with this sigma.</span></dt><dd><p>Otherwise assume poisson noise.</p>
+</dd>
+<dt>estimate_conditional_from_model_samples<span class="classifier">bool, whether to estimate the conditional entropy from a model fit to them</span></dt><dd><p>rather than from the the data iteself.</p>
+</dd>
+</dl>
+<p>patience : int, How many iterations to wait for validation loss to improve. If None, use the default for the chosen model
+num_val_samples : int, How many samples to use for validation. If None, use the default for the chosen model
+batch_size : int, The batch size to use for training. If None, use the default for the chosen model
+max_epochs : int, The maximum number of epochs to train for. If None, use the default for the chosen model
+learning_rate : float, If None, use the default for the chosen model</p>
+<dl class="simple">
+<dt>use_iterative_optimization<span class="classifier">bool, (if entropy_model=’gaussian’) whether to use iterative optimization to refine </span></dt><dd><p>the stationary Gaussian process estimate</p>
+</dd>
+</dl>
+<p>eigenvalue_floor : float, (if entropy_model=’gaussian’) make the eigenvalues of the covariance matrix at least this large
+gradient_clip : float, (if model=’gaussian’ and use_iterative_optimization=True) clip gradients to this value
+momentum : float, (if model=’gaussian’ and use_iterative_optimization=True) momentum for gradient descent
+analytic_marginal_entropy : bool, (if model=’gaussian’) use the analytic entropy of the Gaussian fit for H(Y) instead</p>
+<blockquote>
+<div><p>of upper bounding it with the negative log likelihood of the Gaussian fit</p>
+</div></blockquote>
+<p>steps_per_epoch : int, (if entropy_model=’pixelcnn’) number of steps per epoch
+num_hidden_channels : int, (if entropy_model=’pixelcnn’) number of hidden channels in the PixelCNN
+num_mixture_components : int, (if entropy_model=’pixelcnn’) number of mixture components in the PixelCNN output
+do_lr_decay : bool, (if entropy_model=’pixelcnn’) whether to decay the learning rate during training
+add_gaussian_training_noise : bool, (if entropy_model=’pixelcnn’) whether to add gaussian noise to the training data instead of uniform noise
+condition_vectors : ndarray, (if entropy_model=’pixelcnn’) array of conditioning vectors to use for the PixelCNN. should be of shape (n_samples, d),</p>
+<blockquote>
+<div><p>where d is the dimensionality of the conditioning vector</p>
+</div></blockquote>
+<p>return_entropy_model : bool, whether to return the noisy image entropy model
+verbose : bool, whether to print out the estimated values</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.information_estimation.estimate_task_specific_mutual_information">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.information_estimation.</span></span><span class="sig-name descname"><span class="pre">estimate_task_specific_mutual_information</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">noisy_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_set_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_hidden_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_mixture_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_lr_decay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_entropy_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.information_estimation.estimate_task_specific_mutual_information" title="Link to this definition"></a></dt>
+<dd><p>DEPRECATED: use estimate_information() instead.</p>
+<p>Estimate the mutual information (in bits per pixel) between the noisy images and the labels using a PixelCNN entropy model.</p>
+<p>noisy_images : ndarray NxHxW array of images or image patches
+labels : ndarray NxK array of one-hot vectors of class labels
+test_set_fraction : float, fraction of the noisy data to use a test set for computing the entropy upper bound</p>
+<p>patience : int, How many iterations to wait for validation loss to improve. If None, use the default for the chosen model
+num_val_samples : int, How many samples to use for validation. If None, use the default for the chosen model
+batch_size : int, The batch size to use for training. If None, use the default for the chosen model
+max_epochs : int, The maximum number of epochs to train for. If None, use the default for the chosen model
+learning_rate : float, If None, use the default for the chosen model</p>
+<p>steps_per_epoch : int, (if entropy_model=’pixelcnn’) number of steps per epoch
+num_hidden_channels : int, (if entropy_model=’pixelcnn’) number of hidden channels in the PixelCNN
+num_mixture_components : int, (if entropy_model=’pixelcnn’) number of mixture components in the PixelCNN output
+do_lr_decay : bool, (if entropy_model=’pixelcnn’) whether to decay the learning rate during training</p>
+<p>return_entropy_model : bool, whether to return the noisy image entropy model
+verbose : bool, whether to print out the estimated values</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.information_estimation.nearest_neighbors_entropy_estimate">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.information_estimation.</span></span><span class="sig-name descname"><span class="pre">nearest_neighbors_entropy_estimate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.information_estimation.nearest_neighbors_entropy_estimate" title="Link to this definition"></a></dt>
+<dd><p>Estimate the entropy (in nats) of a dsitribution from samples usiing the KL 
+nearest neighbors estimator.</p>
+<p>X : ndarray, shape (n_samples, n_dimensions)
+k : int The k in k-nearest neighbors
+base : base for the logarithms</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.information_estimation.run_bootstrap">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.information_estimation.</span></span><span class="sig-name descname"><span class="pre">run_bootstrap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimation_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_bootstrap_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">90</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1234</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_median</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">upper_bound_confidence_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.information_estimation.run_bootstrap" title="Link to this definition"></a></dt>
+<dd><p>Runs a bootstrap estimation procedure on the given data using the provided estimation function.</p>
+<section id="id1">
+<h3>Parameters:<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>data<span class="classifier">ndarray, shape (n_samples, …) or a dictionary of ndarrays</span></dt><dd><p>The data to be used for the bootstrap estimation. If a dictionary is provided, each value in the dictionary
+should be an ndarray with the same number of samples.</p>
+</dd>
+<dt>estimation_fn<span class="classifier">function</span></dt><dd><p>The function to be used for estimating the desired quantity from the data. This function should take a single
+argument, which is the data to be used for the estimation.</p>
+</dd>
+<dt>num_bootstrap_samples<span class="classifier">int, optional (default=1000)</span></dt><dd><p>The number of bootstrap samples to generate.</p>
+</dd>
+<dt>confidence_interval<span class="classifier">float, optional (default=90)</span></dt><dd><p>The confidence interval to use for the estimation, expressed as a percentage.</p>
+</dd>
+<dt>seed<span class="classifier">int, optional (default=1234)</span></dt><dd><p>The random seed to use for generating the bootstrap samples.</p>
+</dd>
+<dt>return_median<span class="classifier">bool, optional (default=True)</span></dt><dd><p>Whether to return the median or mean estimate of the desired quantity across all bootstrap samples.</p>
+</dd>
+<dt>upper_bound_confidence_interval<span class="classifier">bool, optional (default=False)</span></dt><dd><p>Whether to return a confidence interval on 0-(confidence_interval) or the regulare centered one</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional (default=False)</span></dt><dd><p>Print progress bar</p>
+</dd>
+</dl>
+</section>
+<section id="id2">
+<h3>Returns:<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>mean/median<span class="classifier">float</span></dt><dd><p>The median/mean estimate of the desired quantity across all bootstrap samples.</p>
+</dd>
+<dt>conf_int<span class="classifier">list of floats</span></dt><dd><p>The lower and upper bounds of the confidence interval for the estimate, expressed as percentiles of the
+bootstrap sample distribution.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.plot_utils">
+<span id="encoding-information-plot-utils-module"></span><h2>encoding_information.plot_utils module<a class="headerlink" href="#module-encoding_information.plot_utils" title="Link to this heading"></a></h2>
+<p>Functions for helping with complicated plots</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">OverlayedHistograms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Convenience class for plotting multiple histograms on the same axes (with equal bin sizes)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.add" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.generate_bins">
+<span class="sig-name descname"><span class="pre">generate_bins</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.generate_bins" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.get_hist_counts">
+<span class="sig-name descname"><span class="pre">get_hist_counts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eigenvalues</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.get_hist_counts" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zorder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bottom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.add_multiple_colorbars">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">add_multiple_colorbars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmaps</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.add_multiple_colorbars" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_eigenvalues">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_eigenvalues</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_eigenvalues" title="Link to this definition"></a></dt>
+<dd><p>Plot the eigenvalues of a set of covariance matrices</p>
+<p>pass named arguments where the name is the label and the value is the covariance matrix</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_intensity_coord_histogram">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_intensity_coord_histogram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensities_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensities_2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_center_coords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">black_background</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_intensity_coord_histogram" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_optimization_loss_history">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_optimization_loss_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val_loss_history</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_optimization_loss_history" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-encoding_information">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-encoding_information" title="Link to this heading"></a></h2>
+<p>encoding_information package</p>
+<p>Information estimators</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="encoding_information" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="encoding_information.datasets.html" class="btn btn-neutral float-right" title="encoding_information.datasets package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Henry Pinkard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>encoding_information.models package &mdash; EncodingInformation  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="encoding_information.datasets package" href="encoding_information.datasets.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            EncodingInformation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">encoding_information</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="encoding_information.html">encoding_information package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="encoding_information.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="encoding_information.datasets.html">encoding_information.datasets package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">encoding_information.models package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.html#module-encoding_information.error_bars">encoding_information.error_bars module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.html#module-encoding_information.gpu_utils">encoding_information.gpu_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.html#module-encoding_information.image_utils">encoding_information.image_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.html#module-encoding_information.information_estimation">encoding_information.information_estimation module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.html#module-encoding_information.plot_utils">encoding_information.plot_utils module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.html#module-encoding_information">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="encoding_information.html">encoding_information package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="encoding_information.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="encoding_information.datasets.html">encoding_information.datasets package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">encoding_information.models package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-encoding_information.models.conditional_entropy_models">encoding_information.models.conditional_entropy_models module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-encoding_information.models.gaussian_process">encoding_information.models.gaussian_process module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-encoding_information.models.model_base_class">encoding_information.models.model_base_class module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-encoding_information.models.pixel_cnn">encoding_information.models.pixel_cnn module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-encoding_information.models">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.html#module-encoding_information.error_bars">encoding_information.error_bars module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.html#module-encoding_information.gpu_utils">encoding_information.gpu_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.html#module-encoding_information.image_utils">encoding_information.image_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.html#module-encoding_information.information_estimation">encoding_information.information_estimation module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.html#module-encoding_information.plot_utils">encoding_information.plot_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding_information.html#module-encoding_information">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="encoding_information.datasets.html">encoding_information.datasets package</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">encoding_information.models package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.models.conditional_entropy_models">encoding_information.models.conditional_entropy_models module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel"><code class="docutils literal notranslate"><span class="pre">AnalyticGaussianNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">AnalyticGaussianNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel"><code class="docutils literal notranslate"><span class="pre">PoissonNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">PoissonNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.models.gaussian_process">encoding_information.models.gaussian_process module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess.fit"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess.generate_samples"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.generate_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_analytic_entropy"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.compute_analytic_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.fit"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.generate_samples"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.generate_samples()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.get_cov_mat"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.get_cov_mat()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.get_mean_vec"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.get_mean_vec()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.average_diagonals_to_make_doubly_toeplitz"><code class="docutils literal notranslate"><span class="pre">average_diagonals_to_make_doubly_toeplitz()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.estimate_full_cov_mat"><code class="docutils literal notranslate"><span class="pre">estimate_full_cov_mat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.gaussian_likelihood"><code class="docutils literal notranslate"><span class="pre">gaussian_likelihood()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.generate_multivariate_gaussian_samples"><code class="docutils literal notranslate"><span class="pre">generate_multivariate_gaussian_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.generate_stationary_gaussian_process_samples"><code class="docutils literal notranslate"><span class="pre">generate_stationary_gaussian_process_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.make_positive_definite"><code class="docutils literal notranslate"><span class="pre">make_positive_definite()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.match_to_generator_data"><code class="docutils literal notranslate"><span class="pre">match_to_generator_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.nll_per_pixel_from_cov_mat"><code class="docutils literal notranslate"><span class="pre">nll_per_pixel_from_cov_mat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.plugin_estimate_stationary_cov_mat"><code class="docutils literal notranslate"><span class="pre">plugin_estimate_stationary_cov_mat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.try_to_make_doubly_toeplitz_and_positive_definite"><code class="docutils literal notranslate"><span class="pre">try_to_make_doubly_toeplitz_and_positive_definite()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.models.model_base_class">encoding_information.models.model_base_class module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementModel"><code class="docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementModel.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">MeasurementModel.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementModel.fit"><code class="docutils literal notranslate"><span class="pre">MeasurementModel.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementModel.generate_samples"><code class="docutils literal notranslate"><span class="pre">MeasurementModel.generate_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementNoiseModel"><code class="docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">MeasurementNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementType"><code class="docutils literal notranslate"><span class="pre">MeasurementType</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementType.D"><code class="docutils literal notranslate"><span class="pre">MeasurementType.D</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementType.HW"><code class="docutils literal notranslate"><span class="pre">MeasurementType.HW</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementType.HWC"><code class="docutils literal notranslate"><span class="pre">MeasurementType.HWC</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.model_base_class.make_dataset_generators"><code class="docutils literal notranslate"><span class="pre">make_dataset_generators()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.model_base_class.train_model"><code class="docutils literal notranslate"><span class="pre">train_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.models.pixel_cnn">encoding_information.models.pixel_cnn module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.pixel_cnn.GatedMaskedConv"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.condition_vector_size"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.condition_vector_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.dilation"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.id"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.name"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.parent"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.scope"><code class="docutils literal notranslate"><span class="pre">GatedMaskedConv.scope</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.c_out"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.c_out</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.dilation"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.kernel_size"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.kernel_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.mask_center"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.mask_center</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.name"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.parent"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.scope"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.scope</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.setup"><code class="docutils literal notranslate"><span class="pre">HorizontalStackConvolution.setup()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.pixel_cnn.MaskedConvolution"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.MaskedConvolution.c_out"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.c_out</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.MaskedConvolution.dilation"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.MaskedConvolution.mask"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.mask</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.MaskedConvolution.name"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.MaskedConvolution.parent"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.MaskedConvolution.scope"><code class="docutils literal notranslate"><span class="pre">MaskedConvolution.scope</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN"><code class="docutils literal notranslate"><span class="pre">PixelCNN</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">PixelCNN.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.fit"><code class="docutils literal notranslate"><span class="pre">PixelCNN.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.generate_samples"><code class="docutils literal notranslate"><span class="pre">PixelCNN.generate_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PreprocessLayer"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PreprocessLayer.mean"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.mean</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PreprocessLayer.name"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PreprocessLayer.parent"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PreprocessLayer.scope"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.scope</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PreprocessLayer.std"><code class="docutils literal notranslate"><span class="pre">PreprocessLayer.std</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.c_out"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.c_out</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.dilation"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.dilation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.kernel_size"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.kernel_size</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.mask_center"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.mask_center</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.name"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.parent"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.parent</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.scope"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.scope</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.setup"><code class="docutils literal notranslate"><span class="pre">VerticalStackConvolution.setup()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-encoding_information.models">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">EncodingInformation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">encoding_information</a></li>
+          <li class="breadcrumb-item"><a href="encoding_information.html">encoding_information package</a></li>
+      <li class="breadcrumb-item active">encoding_information.models package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/encoding_information.models.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="encoding-information-models-package">
+<h1>encoding_information.models package<a class="headerlink" href="#encoding-information-models-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-encoding_information.models.conditional_entropy_models">
+<span id="encoding-information-models-conditional-entropy-models-module"></span><h2>encoding_information.models.conditional_entropy_models module<a class="headerlink" href="#module-encoding_information.models.conditional_entropy_models" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.conditional_entropy_models.</span></span><span class="sig-name descname"><span class="pre">AnalyticGaussianNoiseModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementNoiseModel" title="encoding_information.models.model_base_class.MeasurementNoiseModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></a></p>
+<p>Analytical model for estimating the conditional entropy H(Y | X) when the noise proces
+is additive independent Gaussian noise at each pixel.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.estimate_conditional_entropy">
+<span class="sig-name descname"><span class="pre">estimate_conditional_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.estimate_conditional_entropy" title="Link to this definition"></a></dt>
+<dd><p>Compute the conditional entropy H(Y | X) for Gaussian noise.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.PoissonNoiseModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.conditional_entropy_models.</span></span><span class="sig-name descname"><span class="pre">PoissonNoiseModel</span></span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementNoiseModel" title="encoding_information.models.model_base_class.MeasurementNoiseModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></a></p>
+<p>Poisson noise model for estimating the conditional entropy H(Y | X) from empirical data.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy">
+<span class="sig-name descname"><span class="pre">estimate_conditional_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy" title="Link to this definition"></a></dt>
+<dd><p>images can be a train set or test set. Clean images are preferred.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.models.gaussian_process">
+<span id="encoding-information-models-gaussian-process-module"></span><h2>encoding_information.models.gaussian_process module<a class="headerlink" href="#module-encoding_information.models.gaussian_process" title="Link to this heading"></a></h2>
+<p>Functions for computing and sampling from Gaussian processes</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">FullGaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementModel" title="encoding_information.models.model_base_class.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess.compute_negative_log_likelihood">
+<span class="sig-name descname"><span class="pre">compute_negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.compute_negative_log_likelihood" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Compute the NLL of the images under the model</p>
+<dl class="simple">
+<dt>images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><blockquote>
+<div><p>Random seed for shuffling images (and possibly adding noise)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>average<span class="classifier">bool, optional</span></dt><dd><p>Whether to average the NLL over all images</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>log_likelihood<span class="classifier">ndarray</span></dt><dd><p>Average negative log-likelihood of all images</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.fit" title="Link to this definition"></a></dt>
+<dd><p>Fit the model to the images</p>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>train_images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>learning_rate<span class="classifier">float, optional</span></dt><dd><p>Learning rate</p>
+</dd>
+<dt>max_epochs<span class="classifier">int, optional</span></dt><dd><p>Maximum number of epochs to train for</p>
+</dd>
+<dt>steps_per_epoch<span class="classifier">int, optional</span></dt><dd><p>Number of steps per epoch</p>
+</dd>
+<dt>patience<span class="classifier">int, optional</span></dt><dd><p>Number of epochs to wait before early stopping</p>
+</dd>
+<dt>batch_size<span class="classifier">int, optional</span></dt><dd><p>Batch size</p>
+</dd>
+<dt>num_val_samples<span class="classifier">int, optional</span></dt><dd><p>Number of validation samples to use. If None, use percent_samples_for_validation</p>
+</dd>
+<dt>percent_samples_for_validation<span class="classifier">float, optional</span></dt><dd><p>Percentage of samples to use for validation</p>
+</dd>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls shuffling and adding noise to data</p>
+</dd>
+<dt>model_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls initialization of weights</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print training progress</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h3>Returns<a class="headerlink" href="#returns" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>val_loss_history<span class="classifier">list</span></dt><dd><p>List of validation losses at each epoch</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess.generate_samples">
+<span class="sig-name descname"><span class="pre">generate_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.generate_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate samples from the model</p>
+<section id="id1">
+<h3>Parameters<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>num_samples<span class="classifier">int</span></dt><dd><p>Number of samples to generate</p>
+</dd>
+<dt>sample_shape<span class="classifier">tuple, optional</span></dt><dd><p>shape of each sample. If None, the shape of the training images used</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">StationaryGaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementModel" title="encoding_information.models.model_base_class.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a></p>
+<p>Stationary 2D Gaussian process for single channel images</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_analytic_entropy">
+<span class="sig-name descname"><span class="pre">compute_analytic_entropy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_analytic_entropy" title="Link to this definition"></a></dt>
+<dd><p>Compute the differential entropy per pixel of the Gaussian process</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_negative_log_likelihood">
+<span class="sig-name descname"><span class="pre">compute_negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_negative_log_likelihood" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Compute the NLL of the images under the model</p>
+<dl class="simple">
+<dt>images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><blockquote>
+<div><p>Random seed for shuffling images (and possibly adding noise)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>average<span class="classifier">bool, optional</span></dt><dd><p>Whether to average the NLL over all images</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>log_likelihood<span class="classifier">ndarray</span></dt><dd><p>Average negative log-likelihood of all images</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent_samples_for_validation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gradient_clip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precondition_gradient</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.fit" title="Link to this definition"></a></dt>
+<dd><p>Fit the model to the images</p>
+<section id="id2">
+<h3>Parameters<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>train_images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>learning_rate<span class="classifier">float, optional</span></dt><dd><p>Learning rate</p>
+</dd>
+<dt>max_epochs<span class="classifier">int, optional</span></dt><dd><p>Maximum number of epochs to train for</p>
+</dd>
+<dt>steps_per_epoch<span class="classifier">int, optional</span></dt><dd><p>Number of steps per epoch</p>
+</dd>
+<dt>patience<span class="classifier">int, optional</span></dt><dd><p>Number of epochs to wait before early stopping</p>
+</dd>
+<dt>batch_size<span class="classifier">int, optional</span></dt><dd><p>Batch size</p>
+</dd>
+<dt>num_val_samples<span class="classifier">int, optional</span></dt><dd><p>Number of validation samples to use. If None, use percent_samples_for_validation</p>
+</dd>
+<dt>percent_samples_for_validation<span class="classifier">float, optional</span></dt><dd><p>Percentage of samples to use for validation</p>
+</dd>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls shuffling and adding noise to data</p>
+</dd>
+<dt>model_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls initialization of weights</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print training progress</p>
+</dd>
+</dl>
+</section>
+<section id="id3">
+<h3>Returns<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>val_loss_history<span class="classifier">list</span></dt><dd><p>List of validation losses at each epoch</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.generate_samples">
+<span class="sig-name descname"><span class="pre">generate_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.generate_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate samples from the model</p>
+<section id="id4">
+<h3>Parameters<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>num_samples<span class="classifier">int</span></dt><dd><p>Number of samples to generate</p>
+</dd>
+<dt>sample_shape<span class="classifier">tuple, optional</span></dt><dd><p>shape of each sample. If None, the shape of the training images used</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.get_cov_mat">
+<span class="sig-name descname"><span class="pre">get_cov_mat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.get_cov_mat" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.get_mean_vec">
+<span class="sig-name descname"><span class="pre">get_mean_vec</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.get_mean_vec" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.average_diagonals_to_make_doubly_toeplitz">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">average_diagonals_to_make_doubly_toeplitz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_mat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.average_diagonals_to_make_doubly_toeplitz" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.estimate_full_cov_mat">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">estimate_full_cov_mat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patches</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.estimate_full_cov_mat" title="Link to this definition"></a></dt>
+<dd><p>Take an NxWxH stack of patches, and compute the covariance matrix of the vectorized patches</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.gaussian_likelihood">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">gaussian_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_mat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_vec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.gaussian_likelihood" title="Link to this definition"></a></dt>
+<dd><p>Evaluate the log likelihood of a multivariate gaussian
+for a batch of NxWXH samples.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.generate_multivariate_gaussian_samples">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">generate_multivariate_gaussian_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mean_vec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cov_mat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.generate_multivariate_gaussian_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate samples from a 2D gaussian process with the given covariance matrix</p>
+<p>Args:
+cov_mat: jnp.ndarray, covariance matrix of the Gaussian distribution
+num_samples: int, number of samples to generate
+seed: int or jnp.ndarray, seed for the random number generator
+key: a jax.random.PRNGKey, if None, use the seed to generate one</p>
+<p>Returns:
+jnp.ndarray of shape (num_samples, cov_mat.shape[0]), samples from the multivariate Gaussian distribution</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.generate_stationary_gaussian_process_samples">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">generate_stationary_gaussian_process_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mean_vec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cov_mat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefer_iterative_sampling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.generate_stationary_gaussian_process_samples" title="Link to this definition"></a></dt>
+<dd><p>Given a covariance matrix of a stationary Gaussian process, generate samples from it. If the sample_size
+is less than or equal to the patch size used to generate the covariance matrix, this will be relatively
+fast. If it is larger, it will be slower and linear in the number additional pixels, since each new
+pixel is sampled conditional on the previous ones.</p>
+<p>cov_mat : The covariance matrix of a stationary Gaussian process
+num_samples : int number of samples to generate</p>
+<dl class="simple">
+<dt>sample_size<span class="classifier">int that is the one dimensional shape of a patch that the new</span></dt><dd><p>covariance matrix represents the size of the covariance matrix is the patch size squared.
+if None, use the same patch size as the covariance matrix</p>
+</dd>
+</dl>
+<p>mean : mean of the Gaussian process. If None, use zero mean
+ensure_nonnegative : bool if true, ensure that all pixel values of sampls are nonnegative
+prefer_iterative_sampling : bool if true, dont directly sample the first (patch_size, patch_size) pixels</p>
+<blockquote>
+<div><p>directly from the covariance matrix. Instead, sample them iteratively from the previous pixels.
+This is much slower</p>
+</div></blockquote>
+<p>seed : int , seed for the random number generator
+verbose : bool if true, print progress</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.make_positive_definite">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">make_positive_definite</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_mat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.make_positive_definite" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.match_to_generator_data">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">match_to_generator_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.match_to_generator_data" title="Link to this definition"></a></dt>
+<dd><p>Important: during the training process, noise is added to the pixel values to account for the 
+fact that discrete pixel values are used with a continuous density in the model. This is handled by the 
+make_dataset_generator function in the image_distribution_models module. So we call this here on a the images
+to ensure that the same noise is added to the images here as was added during training, and then convert back
+to a jax array</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.nll_per_pixel_from_cov_mat">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">nll_per_pixel_from_cov_mat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_mat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_vec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_pixels</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.nll_per_pixel_from_cov_mat" title="Link to this definition"></a></dt>
+<dd><p>Negative log likelihood of a multivariate gaussian per pixel</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.plugin_estimate_stationary_cov_mat">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">plugin_estimate_stationary_cov_mat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suppress_warning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.plugin_estimate_stationary_cov_mat" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.try_to_make_doubly_toeplitz_and_positive_definite">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">try_to_make_doubly_toeplitz_and_positive_definite</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eigvals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eig_vecs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.try_to_make_doubly_toeplitz_and_positive_definite" title="Link to this definition"></a></dt>
+<dd><p>Average along diagonals and block diagonals to make a doubly toeplitz matrix,
+then make sure it is positive definite by setting all eigenvalues below
+eigenvalue_floor to eigenvalue_floor to get rid of negative eigenvalues.</p>
+<p>This won’t neccesarily return a doubly toeplitz matrix, but it will be positive definite.</p>
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.models.model_base_class">
+<span id="encoding-information-models-model-base-class-module"></span><h2>encoding_information.models.model_base_class module<a class="headerlink" href="#module-encoding_information.models.model_base_class" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.model_base_class.</span></span><span class="sig-name descname"><span class="pre">MeasurementModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measurement_types=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">measurement_dtype=&lt;class</span> <span class="pre">'float'&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Base class for different probabilistic models of images and other types of measurements</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementModel.compute_negative_log_likelihood">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute_negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">123</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementModel.compute_negative_log_likelihood" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Compute the NLL of the images under the model</p>
+<dl class="simple">
+<dt>images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><blockquote>
+<div><p>Random seed for shuffling images (and possibly adding noise)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>average<span class="classifier">bool, optional</span></dt><dd><p>Whether to average the NLL over all images</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>log_likelihood<span class="classifier">ndarray</span></dt><dd><p>Average negative log-likelihood of all images</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementModel.fit">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent_samples_for_validation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementModel.fit" title="Link to this definition"></a></dt>
+<dd><p>Fit the model to the images</p>
+<section id="id5">
+<h3>Parameters<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>train_images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>learning_rate<span class="classifier">float, optional</span></dt><dd><p>Learning rate</p>
+</dd>
+<dt>max_epochs<span class="classifier">int, optional</span></dt><dd><p>Maximum number of epochs to train for</p>
+</dd>
+<dt>steps_per_epoch<span class="classifier">int, optional</span></dt><dd><p>Number of steps per epoch</p>
+</dd>
+<dt>patience<span class="classifier">int, optional</span></dt><dd><p>Number of epochs to wait before early stopping</p>
+</dd>
+<dt>batch_size<span class="classifier">int, optional</span></dt><dd><p>Batch size</p>
+</dd>
+<dt>num_val_samples<span class="classifier">int, optional</span></dt><dd><p>Number of validation samples to use. If None, use percent_samples_for_validation</p>
+</dd>
+<dt>percent_samples_for_validation<span class="classifier">float, optional</span></dt><dd><p>Percentage of samples to use for validation</p>
+</dd>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls shuffling and adding noise to data</p>
+</dd>
+<dt>model_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls initialization of weights</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print training progress</p>
+</dd>
+</dl>
+</section>
+<section id="id6">
+<h3>Returns<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>val_loss_history<span class="classifier">list</span></dt><dd><p>List of validation losses at each epoch</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementModel.generate_samples">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">generate_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementModel.generate_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate samples from the model</p>
+<section id="id7">
+<h3>Parameters<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>num_samples<span class="classifier">int</span></dt><dd><p>Number of samples to generate</p>
+</dd>
+<dt>sample_shape<span class="classifier">tuple, optional</span></dt><dd><p>shape of each sample. If None, the shape of the training images used</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementNoiseModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.model_base_class.</span></span><span class="sig-name descname"><span class="pre">MeasurementNoiseModel</span></span><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementNoiseModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementNoiseModel.estimate_conditional_entropy">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">estimate_conditional_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementNoiseModel.estimate_conditional_entropy" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementType">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.model_base_class.</span></span><span class="sig-name descname"><span class="pre">MeasurementType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementType" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementType.D">
+<span class="sig-name descname"><span class="pre">D</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementType.D" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementType.HW">
+<span class="sig-name descname"><span class="pre">HW</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementType.HW" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.MeasurementType.HWC">
+<span class="sig-name descname"><span class="pre">HWC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#encoding_information.models.model_base_class.MeasurementType.HWC" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.make_dataset_generators">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.model_base_class.</span></span><span class="sig-name descname"><span class="pre">make_dataset_generators</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_gaussian_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_vectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.make_dataset_generators" title="Link to this definition"></a></dt>
+<dd><p>Use tensorflow datasets to make fast data pipelines</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.models.model_base_class.train_model">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.models.model_base_class.</span></span><span class="sig-name descname"><span class="pre">train_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_epochs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_vectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_gaussian_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.model_base_class.train_model" title="Link to this definition"></a></dt>
+<dd><p>Training loop with early stopping. Returns a callable with</p>
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.models.pixel_cnn">
+<span id="encoding-information-models-pixel-cnn-module"></span><h2>encoding_information.models.pixel_cnn module<a class="headerlink" href="#module-encoding_information.models.pixel_cnn" title="Link to this heading"></a></h2>
+<p>PixelCNN in Jax/Flax. Adapted from :
+<a class="reference external" href="https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/JAX/tutorial12/Autoregressive_Image_Modeling.html">https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/JAX/tutorial12/Autoregressive_Image_Modeling.html</a></p>
+<p>Mixture density output adapted from:
+<a class="reference external" href="https://github.com/hardmaru/mdn_jax_tutorial/blob/master/mixture_density_networks_jax.ipynb">https://github.com/hardmaru/mdn_jax_tutorial/blob/master/mixture_density_networks_jax.ipynb</a></p>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.GatedMaskedConv">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">GatedMaskedConv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dilation=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_vector_size=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent=&lt;flax.linen.module._Sentinel</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.GatedMaskedConv" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.GatedMaskedConv.condition_vector_size">
+<span class="sig-name descname"><span class="pre">condition_vector_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.condition_vector_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.GatedMaskedConv.dilation">
+<span class="sig-name descname"><span class="pre">dilation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.dilation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.GatedMaskedConv.id">
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.id" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.GatedMaskedConv.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.GatedMaskedConv.parent">
+<span class="sig-name descname"><span class="pre">parent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code><span class="pre">],</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Scope</span></code><span class="pre">,</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">_Sentinel</span></code><span class="pre">],</span> <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.parent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.GatedMaskedConv.scope">
+<span class="sig-name descname"><span class="pre">scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional[Scope]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.GatedMaskedConv.scope" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">HorizontalStackConvolution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">c_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_center=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent=&lt;flax.linen.module._Sentinel</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.c_out">
+<span class="sig-name descname"><span class="pre">c_out</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.c_out" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.dilation">
+<span class="sig-name descname"><span class="pre">dilation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.dilation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.kernel_size">
+<span class="sig-name descname"><span class="pre">kernel_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.kernel_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.mask_center">
+<span class="sig-name descname"><span class="pre">mask_center</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.mask_center" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.parent">
+<span class="sig-name descname"><span class="pre">parent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code><span class="pre">],</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Scope</span></code><span class="pre">,</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">_Sentinel</span></code><span class="pre">],</span> <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.parent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.scope">
+<span class="sig-name descname"><span class="pre">scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional[Scope]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.scope" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.HorizontalStackConvolution.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.HorizontalStackConvolution.setup" title="Link to this definition"></a></dt>
+<dd><p>Initializes a Module lazily (similar to a lazy <code class="docutils literal notranslate"><span class="pre">__init__</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">setup</span></code> is called once lazily on a module instance when a module
+is bound, immediately before any other methods like <code class="docutils literal notranslate"><span class="pre">__call__</span></code> are
+invoked, or before a <code class="docutils literal notranslate"><span class="pre">setup</span></code>-defined attribute on <code class="docutils literal notranslate"><span class="pre">self</span></code> is accessed.</p>
+<p>This can happen in three cases:</p>
+<blockquote>
+<div><ol class="arabic">
+<li><p>Immediately when invoking <code class="xref py py-meth docutils literal notranslate"><span class="pre">apply()</span></code>, <code class="xref py py-meth docutils literal notranslate"><span class="pre">init()</span></code> or
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">init_and_output()</span></code>.</p></li>
+<li><p>Once the module is given a name by being assigned to an attribute of
+another module inside the other module’s <code class="docutils literal notranslate"><span class="pre">setup</span></code> method
+(see <code class="xref py py-meth docutils literal notranslate"><span class="pre">__setattr__()</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">MyModule</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="gp">... </span>  <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">submodule</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="go">...     # Accessing `submodule` attributes does not yet work here.</span>
+
+<span class="go">...     # The following line invokes `self.__setattr__`, which gives</span>
+<span class="go">...     # `submodule` the name &quot;conv1&quot;.</span>
+<span class="go">...     self.conv1 = submodule</span>
+
+<span class="go">...     # Accessing `submodule` attributes or methods is now safe and</span>
+<span class="go">...     # either causes setup() to be called once.</span>
+</pre></div>
+</div>
+</li>
+<li><p>Once a module is constructed inside a method wrapped with
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">compact()</span></code>, immediately before another method is called or
+<code class="docutils literal notranslate"><span class="pre">setup</span></code> defined attribute is accessed.</p></li>
+</ol>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.MaskedConvolution">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">MaskedConvolution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">c_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent=&lt;flax.linen.module._Sentinel</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.MaskedConvolution" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.MaskedConvolution.c_out">
+<span class="sig-name descname"><span class="pre">c_out</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.MaskedConvolution.c_out" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.MaskedConvolution.dilation">
+<span class="sig-name descname"><span class="pre">dilation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.MaskedConvolution.dilation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.MaskedConvolution.mask">
+<span class="sig-name descname"><span class="pre">mask</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.MaskedConvolution.mask" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.MaskedConvolution.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.MaskedConvolution.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.MaskedConvolution.parent">
+<span class="sig-name descname"><span class="pre">parent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code><span class="pre">],</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Scope</span></code><span class="pre">,</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">_Sentinel</span></code><span class="pre">],</span> <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.MaskedConvolution.parent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.MaskedConvolution.scope">
+<span class="sig-name descname"><span class="pre">scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional[Scope]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.MaskedConvolution.scope" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">PixelCNN</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_hidden_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_mixture_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.models.model_base_class.MeasurementModel" title="encoding_information.models.model_base_class.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a></p>
+<p>This class handles the training and evaluation of the PixelCNN model, which is implemented in Flax.
+It also wraps the model in the ProbabilisticImageModel interface for easy comparison with other models.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.compute_negative_log_likelihood">
+<span class="sig-name descname"><span class="pre">compute_negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conditioning_vecs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.compute_negative_log_likelihood" title="Link to this definition"></a></dt>
+<dd><blockquote>
+<div><p>Compute the NLL of the images under the model</p>
+<dl class="simple">
+<dt>images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><blockquote>
+<div><p>Random seed for shuffling images (and possibly adding noise)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>average<span class="classifier">bool, optional</span></dt><dd><p>Whether to average the NLL over all images</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>log_likelihood<span class="classifier">ndarray</span></dt><dd><p>Average negative log-likelihood of all images</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_vectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent_samples_for_validation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_lr_decay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_gaussian_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.fit" title="Link to this definition"></a></dt>
+<dd><p>Fit the model to the images</p>
+<section id="id8">
+<h3>Parameters<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>train_images<span class="classifier">ndarray</span></dt><dd><p>Array of images, shape (N, H, W)</p>
+</dd>
+<dt>learning_rate<span class="classifier">float, optional</span></dt><dd><p>Learning rate</p>
+</dd>
+<dt>max_epochs<span class="classifier">int, optional</span></dt><dd><p>Maximum number of epochs to train for</p>
+</dd>
+<dt>steps_per_epoch<span class="classifier">int, optional</span></dt><dd><p>Number of steps per epoch</p>
+</dd>
+<dt>patience<span class="classifier">int, optional</span></dt><dd><p>Number of epochs to wait before early stopping</p>
+</dd>
+<dt>batch_size<span class="classifier">int, optional</span></dt><dd><p>Batch size</p>
+</dd>
+<dt>num_val_samples<span class="classifier">int, optional</span></dt><dd><p>Number of validation samples to use. If None, use percent_samples_for_validation</p>
+</dd>
+<dt>percent_samples_for_validation<span class="classifier">float, optional</span></dt><dd><p>Percentage of samples to use for validation</p>
+</dd>
+<dt>data_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls shuffling and adding noise to data</p>
+</dd>
+<dt>model_seed<span class="classifier">int, optional</span></dt><dd><p>Random seed that controls initialization of weights</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print training progress</p>
+</dd>
+</dl>
+</section>
+<section id="id9">
+<h3>Returns<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>val_loss_history<span class="classifier">list</span></dt><dd><p>List of validation losses at each epoch</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.generate_samples">
+<span class="sig-name descname"><span class="pre">generate_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conditioning_vecs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.generate_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate samples from the model</p>
+<section id="id10">
+<h3>Parameters<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>num_samples<span class="classifier">int</span></dt><dd><p>Number of samples to generate</p>
+</dd>
+<dt>sample_shape<span class="classifier">tuple, optional</span></dt><dd><p>shape of each sample. If None, the shape of the training images used</p>
+</dd>
+<dt>verbose<span class="classifier">bool, optional</span></dt><dd><p>Whether to print progress</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PreprocessLayer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">PreprocessLayer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mean</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent=&lt;flax.linen.module._Sentinel</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PreprocessLayer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PreprocessLayer.mean">
+<span class="sig-name descname"><span class="pre">mean</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.PreprocessLayer.mean" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PreprocessLayer.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.PreprocessLayer.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PreprocessLayer.parent">
+<span class="sig-name descname"><span class="pre">parent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code><span class="pre">],</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Scope</span></code><span class="pre">,</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">_Sentinel</span></code><span class="pre">],</span> <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.PreprocessLayer.parent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PreprocessLayer.scope">
+<span class="sig-name descname"><span class="pre">scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional[Scope]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.PreprocessLayer.scope" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PreprocessLayer.std">
+<span class="sig-name descname"><span class="pre">std</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.PreprocessLayer.std" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">VerticalStackConvolution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">c_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_center=False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dilation=1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent=&lt;flax.linen.module._Sentinel</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name=None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.c_out">
+<span class="sig-name descname"><span class="pre">c_out</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.c_out" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.dilation">
+<span class="sig-name descname"><span class="pre">dilation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.dilation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.kernel_size">
+<span class="sig-name descname"><span class="pre">kernel_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.kernel_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.mask_center">
+<span class="sig-name descname"><span class="pre">mask_center</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.mask_center" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.parent">
+<span class="sig-name descname"><span class="pre">parent</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code><span class="pre">],</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Scope</span></code><span class="pre">,</span> <code class="xref py py-class docutils literal notranslate"><span class="pre">Type</span></code><span class="pre">[</span><code class="xref py py-class docutils literal notranslate"><span class="pre">_Sentinel</span></code><span class="pre">],</span> <code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><span class="pre">]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.parent" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.scope">
+<span class="sig-name descname"><span class="pre">scope</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Optional[Scope]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.scope" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.VerticalStackConvolution.setup">
+<span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.VerticalStackConvolution.setup" title="Link to this definition"></a></dt>
+<dd><p>Initializes a Module lazily (similar to a lazy <code class="docutils literal notranslate"><span class="pre">__init__</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">setup</span></code> is called once lazily on a module instance when a module
+is bound, immediately before any other methods like <code class="docutils literal notranslate"><span class="pre">__call__</span></code> are
+invoked, or before a <code class="docutils literal notranslate"><span class="pre">setup</span></code>-defined attribute on <code class="docutils literal notranslate"><span class="pre">self</span></code> is accessed.</p>
+<p>This can happen in three cases:</p>
+<blockquote>
+<div><ol class="arabic">
+<li><p>Immediately when invoking <code class="xref py py-meth docutils literal notranslate"><span class="pre">apply()</span></code>, <code class="xref py py-meth docutils literal notranslate"><span class="pre">init()</span></code> or
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">init_and_output()</span></code>.</p></li>
+<li><p>Once the module is given a name by being assigned to an attribute of
+another module inside the other module’s <code class="docutils literal notranslate"><span class="pre">setup</span></code> method
+(see <code class="xref py py-meth docutils literal notranslate"><span class="pre">__setattr__()</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">MyModule</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="gp">... </span>  <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">submodule</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+
+<span class="go">...     # Accessing `submodule` attributes does not yet work here.</span>
+
+<span class="go">...     # The following line invokes `self.__setattr__`, which gives</span>
+<span class="go">...     # `submodule` the name &quot;conv1&quot;.</span>
+<span class="go">...     self.conv1 = submodule</span>
+
+<span class="go">...     # Accessing `submodule` attributes or methods is now safe and</span>
+<span class="go">...     # either causes setup() to be called once.</span>
+</pre></div>
+</div>
+</li>
+<li><p>Once a module is constructed inside a method wrapped with
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">compact()</span></code>, immediately before another method is called or
+<code class="docutils literal notranslate"><span class="pre">setup</span></code> defined attribute is accessed.</p></li>
+</ol>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.models">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-encoding_information.models" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="encoding_information.datasets.html" class="btn btn-neutral float-left" title="encoding_information.datasets package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Henry Pinkard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
