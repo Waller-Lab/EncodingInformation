@@ -88,6 +88,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.plot_eigenvalues"><code class="docutils literal notranslate"><span class="pre">plot_eigenvalues()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.plot_intensity_coord_histogram"><code class="docutils literal notranslate"><span class="pre">plot_intensity_coord_histogram()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.plot_optimization_loss_history"><code class="docutils literal notranslate"><span class="pre">plot_optimization_loss_history()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.plot_samples"><code class="docutils literal notranslate"><span class="pre">plot_samples()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-encoding_information">Module contents</a></li>
@@ -135,6 +136,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_eigenvalues"><code class="docutils literal notranslate"><span class="pre">plot_eigenvalues()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_intensity_coord_histogram"><code class="docutils literal notranslate"><span class="pre">plot_intensity_coord_histogram()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_optimization_loss_history"><code class="docutils literal notranslate"><span class="pre">plot_optimization_loss_history()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_samples"><code class="docutils literal notranslate"><span class="pre">plot_samples()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#module-encoding_information">Module contents</a></li>
@@ -680,6 +682,18 @@ bootstrap sample distribution.</p>
 <dt class="sig sig-object py" id="encoding_information.plot_utils.plot_optimization_loss_history">
 <span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_optimization_loss_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val_loss_history</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_optimization_loss_history" title="Link to this definition"></a></dt>
 <dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_samples">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ground_truth</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['Samples']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contrast_cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">99</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_samples" title="Link to this definition"></a></dt>
+<dd><p>Plot ground truth data and samples from model(s)</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>samples (list of np.ndarray): list of samples from models
+ground_truth (np.ndarray): ground truth data
+model_names (list): list of names of models</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 <section id="module-encoding_information">
