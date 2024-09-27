@@ -1,3 +1,5 @@
+.. currentmodule:: encoding_information.datasets
+
 Datasets Documentation
 =======================
 
@@ -13,7 +15,7 @@ This documentation focuses on key datasets and utility functions used in the pro
 
 .. autoclass:: encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset
    :members: __init__, get_measurements, get_shape, _center_crop
-   :show-inheritance: 
+   :show-inheritance:
 
 .. autoclass:: encoding_information.datasets.mnist_dataset.MNISTDataset
    :members: __init__, get_measurements, get_shape
