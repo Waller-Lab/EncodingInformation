@@ -22,7 +22,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Image Processing Functions" href="image_utils.html" />
+    <link rel="next" title="Models Documentation" href="models.html" />
     <link rel="prev" title="Imaging System Design with Information Estimation" href="../index.html" /> 
 </head>
 
@@ -61,6 +61,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#usage-examples">Usage Examples</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="image_utils.html">Image Processing Functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plot_utils.html">Plot Utilities Module</a></li>
 </ul>
@@ -103,7 +105,7 @@ which represents the uncertainty in the estimate due to the finite size of the t
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>measurement_model</strong> (<a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel" title="encoding_information.models.model_base_class.MeasurementModel"><em>MeasurementModel</em></a>) – A probabilistic model of the measurement process p(y|x) (e.g. PixelCNN, FullGaussian, etc.).</p></li>
+<li><p><strong>measurement_model</strong> (<em>MeasurementModel</em>) – A probabilistic model of the measurement process p(y|x) (e.g. PixelCNN, FullGaussian, etc.).</p></li>
 <li><p><strong>noise_model</strong> (<em>NoiseModel</em>) – A probabilistic model of the noise process p(y|x) (e.g. GaussianNoiseModel, PoissonNoiseModel).</p></li>
 <li><p><strong>train_set</strong> (<em>ndarray</em><em>, </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>...</em><em>)</em>) – The training set of noisy measurements, with different shapes depending on data type/model.</p></li>
 <li><p><strong>test_set</strong> (<em>ndarray</em><em>, </em><em>shape</em><em> (</em><em>n_samples</em><em>, </em><em>...</em><em>)</em>) – The test set of noisy measurements, which should have the same shape as the training set.</p></li>
@@ -324,7 +326,7 @@ Otherwise, Poisson noise is assumed.</p></li>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../index.html" class="btn btn-neutral float-left" title="Imaging System Design with Information Estimation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="image_utils.html" class="btn btn-neutral float-right" title="Image Processing Functions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="models.html" class="btn btn-neutral float-right" title="Models Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

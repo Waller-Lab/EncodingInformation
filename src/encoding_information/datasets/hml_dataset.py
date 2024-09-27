@@ -1,8 +1,8 @@
 try:
     import h5py
-except ImportError as e:
-    raise ImportError("To use the HyperspectralMetalensDataset class, install the required packages: "
-                      "pip install encoding_information[dataset]") from e
+except ImportError:
+    h5py = None
+
 import numpy as np
 import os
 import glob
@@ -31,6 +31,9 @@ class HyperspectralMetalensDataset(MeasurementDatasetBase):
         center_crop : int, optional
             Number of pixels to crop from each side of the images (default is None).
         """
+        if h5py is None:
+            raise ImportError("To use the HyperspectralMetalensDataset class, install the required packages: "
+                              "pip install encoding_information[dataset]")
         self.h5_dir = h5_dir
         self.center_crop = center_crop
 

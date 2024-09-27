@@ -22,7 +22,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Image Processing Functions" href="image_utils.html" />
+    <link rel="next" title="Datasets Documentation" href="datasets.html" />
     <link rel="prev" title="Information Estimation Functions" href="information_estimation.html" /> 
 </head>
 
@@ -91,6 +91,7 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="image_utils.html">Image Processing Functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plot_utils.html">Plot Utilities Module</a></li>
 </ul>
@@ -127,7 +128,7 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.conditional_entropy_models.</span></span><span class="sig-name descname"><span class="pre">AnalyticGaussianNoiseModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementNoiseModel" title="encoding_information.models.model_base_class.MeasurementNoiseModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></a></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></p>
 <p>Analytical model for estimating the conditional entropy H(Y | X) when the noise proces
 is additive independent Gaussian noise at each pixel.</p>
 <p>Initialize the AnalyticGaussianNoiseModel.</p>
@@ -170,7 +171,7 @@ is additive independent Gaussian noise at each pixel.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.PoissonNoiseModel">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.conditional_entropy_models.</span></span><span class="sig-name descname"><span class="pre">PoissonNoiseModel</span></span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementNoiseModel" title="encoding_information.models.model_base_class.MeasurementNoiseModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></a></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></p>
 <p>Poisson noise model for estimating the conditional entropy H(Y | X) from empirical data.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy">
@@ -197,7 +198,7 @@ is additive independent Gaussian noise at each pixel.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">StationaryGaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel" title="encoding_information.models.model_base_class.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></p>
 <p>Stationary 2D Gaussian process for single-channel images.</p>
 <p>This model learns a stationary covariance matrix and uses it to generate or evaluate samples.</p>
 <p>Initialize the StationaryGaussianProcess model and estimate the covariance matrix.</p>
@@ -308,8 +309,8 @@ is additive independent Gaussian noise at each pixel.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">FullGaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel" title="encoding_information.models.model_base_class.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">FullGaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></p>
 <p>Full (non-stationary) Gaussian process for arbitrary data.</p>
 <p>This model estimates a full covariance matrix from the data and uses it to generate or evaluate samples.</p>
 <p>Initialize the Full Gaussian Process model and estimate the mean and covariance matrix from the data.</p>
@@ -320,12 +321,13 @@ is additive independent Gaussian noise at each pixel.</p>
 <li><p><strong>eigenvalue_floor</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).</p></li>
 <li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
 <li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress during computation (default is False).</p></li>
+<li><p><strong>add_uniform_noise</strong> (<em>bool</em><em>, </em><em>optional</em>) – For discrete-valued data, add uniform noise (default True). For continuous-valued data, set to False.</p></li>
 </ul>
 </dd>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.__init__" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.__init__" title="Link to this definition"></a></dt>
 <dd><p>Initialize the Full Gaussian Process model and estimate the mean and covariance matrix from the data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -334,6 +336,7 @@ is additive independent Gaussian noise at each pixel.</p>
 <li><p><strong>eigenvalue_floor</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).</p></li>
 <li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
 <li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress during computation (default is False).</p></li>
+<li><p><strong>add_uniform_noise</strong> (<em>bool</em><em>, </em><em>optional</em>) – For discrete-valued data, add uniform noise (default True). For continuous-valued data, set to False.</p></li>
 </ul>
 </dd>
 </dl>
@@ -393,7 +396,7 @@ is additive independent Gaussian noise at each pixel.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">PixelCNN</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_hidden_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_mixture_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN" title="Link to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="encoding_information.models.html#encoding_information.models.model_base_class.MeasurementModel" title="encoding_information.models.model_base_class.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></a></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></p>
 <p>The PixelCNN model for autoregressive image modeling.</p>
 <p>This class handles the training and evaluation of the PixelCNN model and wraps the Flax implementation
 in a higher-level interface that conforms to the MeasurementModel class. It provides methods for fitting
@@ -539,7 +542,7 @@ If a single int is provided, it will be treated as a square shape. Default is No
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="information_estimation.html" class="btn btn-neutral float-left" title="Information Estimation Functions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="image_utils.html" class="btn btn-neutral float-right" title="Image Processing Functions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="datasets.html" class="btn btn-neutral float-right" title="Datasets Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -7,9 +7,9 @@ from jax import random
 try:
     import dask.array as da
     import zarr
-except ImportError as e:
-    raise ImportError("To use the ColorFilterArrayDataset class, install the required packages: "
-                      "pip install encoding_information[dataset]") from e
+except ImportError:
+    da = None
+    zarr = None
 
 
 class ColorFilterArrayDataset(MeasurementDatasetBase):
@@ -39,6 +39,9 @@ class ColorFilterArrayDataset(MeasurementDatasetBase):
             Size of the tiles to split the images into. Images are divided into non-overlapping tiles of size 
             (tile_size, tile_size). Default is 128.
         """
+        if da is None or zarr is None:
+            raise ImportError("To use the ColorFilterArrayDataset class, install the required packages: "
+                              "pip install encoding_information[dataset]")
         self.zarr_path = zarr_path
         self._tile_size = tile_size
 

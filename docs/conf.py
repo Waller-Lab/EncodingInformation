@@ -37,6 +37,10 @@ master_doc = "index"
 # dont look for errors in notebook cells
 nbsphinx_allow_errors = True
 
+# make sure it can build without the package installed
+autodoc_mock_imports = ["bsccm", "dask", "h5py", "tensorflow"]
+
+
 # this is to make constructor docstrings show up
 autoclass_content = "both"
 
