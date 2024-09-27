@@ -16,7 +16,7 @@ from flax.training.train_state import TrainState
 from .model_base_class import MeasurementModel, MeasurementType, train_model, make_dataset_generators
 
 
-def match_to_generator_data(data, seed=None):
+def match_to_generator_data(data, seed=None, add_uniform_noise=True):
     """
     Important: during the training process, noise is added to the pixel values to account for the 
     fact that discrete pixel values are used with a continuous density in the model. This is handled by the 
@@ -24,7 +24,7 @@ def match_to_generator_data(data, seed=None):
     to ensure that the same noise is added to the images here as was added during training, and then convert back
     to a jax array
     """
-    _, dataset_fn = make_dataset_generators(data, batch_size=data.shape[0], num_val_samples=data.shape[0], seed=seed)
+    _, dataset_fn = make_dataset_generators(data, batch_size=data.shape[0], num_val_samples=data.shape[0], seed=seed, add_uniform_noise=add_uniform_noise)# default is to add uniform noise, exposing it
     return next(dataset_fn())
 
 def estimate_full_cov_mat(patches):
@@ -770,7 +770,7 @@ class FullGaussianProcess(MeasurementModel):
     This model estimates a full covariance matrix from the data and uses it to generate or evaluate samples.
     """
 
-    def __init__(self, data, eigenvalue_floor=1e-3, seed=None, verbose=False):
+    def __init__(self, data, eigenvalue_floor=1e-3, seed=None, verbose=False, add_uniform_noise=True):
         """
         Initialize the Full Gaussian Process model and estimate the mean and covariance matrix from the data.
 
@@ -784,14 +784,17 @@ class FullGaussianProcess(MeasurementModel):
             Random seed for reproducibility.
         verbose : bool, optional
             Whether to print progress during computation (default is False).
+        add_uniform_noise : bool, optional
+            For discrete-valued data, add uniform noise (default is True). If working with continuous-valued data, set this to False.
         """
         super().__init__(measurement_types=None, measurement_dtype=float)
         self._validate_data(data)
         self._measurement_shape = data.shape[1:]
+        self._add_uniform_noise = add_uniform_noise # exposing uniform noise flag so that if you have continuous data you can modify this
         # vectorize
         data = data.reshape(data.shape[0], -1)
 
-        data = match_to_generator_data(data, seed=seed)
+        data = match_to_generator_data(data, seed=seed, add_uniform_noise=self._add_uniform_noise) # exposing uniform noise flag for when continuous data doesn't want it to be added
         # initialize parameters
         if verbose:
             print('computing full covariance matrix')
@@ -854,7 +857,7 @@ class FullGaussianProcess(MeasurementModel):
 
         self._validate_data(data)
         data = data.reshape(data.shape[0], -1)
-        data = match_to_generator_data(data, seed=data_seed)
+        data = match_to_generator_data(data, seed=data_seed, add_uniform_noise=self._add_uniform_noise) # exposing uniform noise flag for when continuous data doesn't want it to be added
         # average nll per pixel, but averaged over data or per data point
         if average:                        
             return -gaussian_likelihood(self.cov_mat, self.mean_vec, data).mean() / np.prod(np.array(data.shape[1:]))
