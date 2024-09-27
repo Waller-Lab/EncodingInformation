@@ -7,25 +7,26 @@ from encoding_information.image_utils import add_noise
 from jax import random
 import jax.numpy as jnp
 
-class HyperspectgralMetalensDataset(MeasurementDatasetBase):
+class HyperspectralMetalensDataset(MeasurementDatasetBase):
     """
-    Dataset of grayscale measurements captured with a metalens-based camera.  See Hazineh et al. for more details:
-    
-    Args:
-        h5_dir (str): Directory containing the .h5 files.
-        mean_value (float, optional): The mean value of the dataset. If None, it will be computed.
-        center_crop (bool, optional): Whether to center crop 16 pixels from each side of the images.
-    
-    Attributes:
-        h5_dir (str): Directory containing the .h5 files.
-        patch_size (tuple): Tuple of patch height and width.
-        mean_value (float): Mean value of the dataset.
-        h5_files (list): List of .h5 file paths.
-        num_images (int): Number of images in the dataset.
-        image_shape (tuple): Shape of the images in the dataset.
-        total_patches (int): Total number of patches.
+    Dataset of grayscale measurements captured with a metalens-based camera.
+
+    This dataset consists of images captured with a hyperspectral metalens camera, offering grayscale measurements. The
+    data is loaded from .h5 files, and users can apply various preprocessing steps, including center cropping and noise 
+    addition.
     """
+    
     def __init__(self, h5_dir, center_crop=None):
+        """
+        Initialize the dataset by loading images from the specified directory.
+
+        Parameters
+        ----------
+        h5_dir : str
+            Directory containing the .h5 files.
+        center_crop : int, optional
+            Number of pixels to crop from each side of the images (default is None).
+        """
         self.h5_dir = h5_dir
         self.center_crop = center_crop
 
@@ -68,23 +69,30 @@ class HyperspectgralMetalensDataset(MeasurementDatasetBase):
     def get_measurements(self, num_measurements, mean=None, bias=0, data_seed=21, noise_seed=123456,
                          noise='Poisson'):
         """
-        Get measurements with optional noise and bias.
-        
-        Args:
-            num_measurements (int): Number of measurements to return.
-            mean (float, optional): Mean value to scale the measurements.
-            bias (float, optional): Bias to be added to the measurements.
-            data_seed (int, optional): Seed for random data selection.
-            noise_seed (int, optional): Seed for noise generation.
-            noise (str, optional): Type of noise to apply. Defaults to 'Poisson'.
-            kwargs: Additional parameters.
-        
-        Returns:
-            np.ndarray: Measurements with optional noise and bias.
-        
-        Raises:
-            ValueError: If unsupported noise type is provided or if `num_measurements`
-                        exceeds the total available patches.
+        Get a set of measurements from the dataset, with optional noise and bias.
+
+        This method retrieves random images from the dataset, applies optional mean scaling, bias, and noise (Poisson or
+        Gaussian).
+
+        Parameters
+        ----------
+        num_measurements : int
+            Number of measurements to return.
+        mean : float, optional
+            Mean value to scale the measurements. If None, no scaling is applied (default is None).
+        bias : float, optional
+            Bias to be added to the measurements (default is 0).
+        data_seed : int, optional
+            Seed for random data selection (default is 21).
+        noise_seed : int, optional
+            Seed for noise generation (default is 123456).
+        noise : str, optional
+            Type of noise to apply. Can be 'Poisson', 'Gaussian', or None (default is 'Poisson').
+
+        Returns
+        -------
+        np.ndarray
+            Measurements with optional noise and bias.
         """
 
         if data_seed is None:

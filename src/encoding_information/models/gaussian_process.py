@@ -485,12 +485,25 @@ class _StationaryGaussianProcessFlaxImpl(nn.Module):
 
 class StationaryGaussianProcess(MeasurementModel):
     """
-    Stationary 2D Gaussian process for single channel images
+    Stationary 2D Gaussian process for single-channel images.
+
+    This model learns a stationary covariance matrix and uses it to generate or evaluate samples.
     """
 
     def __init__(self, images, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """
-        Create a StationaryGaussianProcess model and initialize it to the plugin estimate of the stationary covariance matrix
+        Initialize the StationaryGaussianProcess model and estimate the covariance matrix.
+
+        Parameters
+        ----------
+        images : ndarray
+            Input images used to estimate the stationary covariance matrix.
+        eigenvalue_floor : float, optional
+            The minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).
+        seed : int, optional
+            Random seed for reproducibility.
+        verbose : bool, optional
+            Whether to print progress and additional information (default is False).
         """
         super().__init__(MeasurementType.HW, measurement_dtype=float)
         self._validate_data(images)
@@ -519,6 +532,45 @@ class StationaryGaussianProcess(MeasurementModel):
             batch_size=12, num_val_samples=None, percent_samples_for_validation=0.1,
             eigenvalue_floor=1e-3, gradient_clip=1, momentum=0.9,
             precondition_gradient=False, verbose=True):
+        """
+        Train the Stationary Gaussian Process model on the provided images.
+
+        Parameters
+        ----------
+        train_images : ndarray, optional
+            The training dataset consisting of images (default is the images provided during initialization).
+        data_seed : int, optional
+            Random seed for shuffling the data.
+        learning_rate : float, optional
+            Learning rate for optimization (default is 1e2).
+        max_epochs : int, optional
+            Maximum number of training epochs (default is 60).
+        steps_per_epoch : int, optional
+            Number of steps per epoch (default is 1).
+        patience : int, optional
+            Number of epochs to wait for early stopping (default is 15).
+        batch_size : int, optional
+            The number of images in each batch (default is 12).
+        num_val_samples : int, optional
+            Number of validation samples (default is computed automatically based on `percent_samples_for_validation`).
+        percent_samples_for_validation : float, optional
+            Fraction of samples to use for validation (default is 0.1).
+        eigenvalue_floor : float, optional
+            The minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).
+        gradient_clip : float, optional
+            Maximum value to clip the gradient to avoid large updates (default is 1).
+        momentum : float, optional
+            Momentum parameter for the optimizer (default is 0.9).
+        precondition_gradient : bool, optional
+            Whether to precondition the gradient using the Fisher Information Matrix (default is False).
+        verbose : bool, optional
+            Whether to print progress (default is True).
+
+        Returns
+        -------
+        val_loss_history : list
+            A list of validation losses for each epoch.
+        """
         
         if train_images is None:
             train_images = self.images
@@ -603,6 +655,26 @@ class StationaryGaussianProcess(MeasurementModel):
 
 
     def compute_negative_log_likelihood(self, images, data_seed=None, verbose=True, seed=None):
+        """
+        Compute the negative log-likelihood of the provided images under the learned Gaussian process.
+
+        Parameters
+        ----------
+        images : ndarray
+            Input images to evaluate.
+        data_seed : int, optional
+            Random seed for shuffling the data.
+        verbose : bool, optional
+            Whether to print progress (default is True).
+        seed : int, optional, deprecated
+            Deprecated argument for random seed, use `data_seed` instead.
+
+        Returns
+        -------
+        float
+            The negative log-likelihood of the provided images.
+        """
+
         if seed is not None:
             warnings.warn('seed argument is deprecated. Use data_seed instead')
             data_seed = seed
@@ -625,6 +697,27 @@ class StationaryGaussianProcess(MeasurementModel):
     
         
     def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
+        """
+        Generate new image samples from the learned Gaussian process.
+
+        Parameters
+        ----------
+        num_samples : int
+            The number of samples to generate.
+        sample_shape : tuple, optional
+            Shape of the samples to generate (default is the shape of the training images).
+        ensure_nonnegative : bool, optional
+            Whether to ensure all pixel values are non-negative (default is True).
+        seed : int, optional
+            Random seed for reproducibility.
+        verbose : bool, optional
+            Whether to print progress (default is True).
+
+        Returns
+        -------
+        ndarray
+            Generated image samples.
+        """
         eig_vals, eig_vecs, mean_vec = self._get_current_params()
         cov_mat = eig_vecs @ np.diag(eig_vals) @ eig_vecs.T
         samples = generate_stationary_gaussian_process_samples( 
@@ -671,10 +764,26 @@ class StationaryGaussianProcess(MeasurementModel):
 #### Full (non-stationary Gaussian Process) ######
 
 class FullGaussianProcess(MeasurementModel):
+    """
+    Full (non-stationary) Gaussian process for arbitrary data.
+
+    This model estimates a full covariance matrix from the data and uses it to generate or evaluate samples.
+    """
 
     def __init__(self, data, eigenvalue_floor=1e-3, seed=None, verbose=False):
         """
-        Estiamte mean and covariance matrix of a full Gaussian process from images
+        Initialize the Full Gaussian Process model and estimate the mean and covariance matrix from the data.
+
+        Parameters
+        ----------
+        data : ndarray
+            Input data used to estimate the Gaussian process.
+        eigenvalue_floor : float, optional
+            Minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).
+        seed : int, optional
+            Random seed for reproducibility.
+        verbose : bool, optional
+            Whether to print progress during computation (default is False).
         """
         super().__init__(measurement_types=None, measurement_dtype=float)
         self._validate_data(data)
@@ -705,10 +814,40 @@ class FullGaussianProcess(MeasurementModel):
         
 
     def fit(self, *args, **kwargs):
+        """
+        Fit method is not needed for the Full Gaussian Process since the model is already fully estimated.
+
+        Raises
+        ------
+        Warning
+            This method raises a warning because fitting is not necessary.
+        """
+
         warnings.warn('Gaussian process is already fit. No need to call fit method')
 
 
-    def compute_negative_log_likelihood(self, data, data_seed=None, verbose=True, seed=None):
+    def compute_negative_log_likelihood(self, data, data_seed=None, verbose=True, seed=None, average=True):
+        """
+        Compute the negative log-likelihood of the provided data under the Gaussian process.
+
+        Parameters
+        ----------
+        data : ndarray
+            Input data to evaluate.
+        data_seed : int, optional
+            Random seed for shuffling the data.
+        verbose : bool, optional
+            Whether to print progress (default is True).
+        seed : int, optional, deprecated
+            Deprecated argument for random seed, use `data_seed` instead.
+        average : bool, optional
+            Whether to average the negative log-likelihood over all samples (default is True).
+
+        Returns
+        -------
+        float
+            The negative log-likelihood of the provided data.
+        """
         if seed is not None:
             warnings.warn('seed argument is deprecated. Use data_seed instead')
             data_seed = seed
@@ -716,11 +855,35 @@ class FullGaussianProcess(MeasurementModel):
         self._validate_data(data)
         data = data.reshape(data.shape[0], -1)
         data = match_to_generator_data(data, seed=data_seed)
-        # average nll per pixel
-        return -gaussian_likelihood(self.cov_mat, self.mean_vec, data).mean() / np.prod(np.array(data.shape[1:]))
+        # average nll per pixel, but averaged over data or per data point
+        if average:                        
+            return -gaussian_likelihood(self.cov_mat, self.mean_vec, data).mean() / np.prod(np.array(data.shape[1:]))
+        else:
+            return -gaussian_likelihood(self.cov_mat, self.mean_vec, data) / np.prod(np.array(data.shape[1:]))
 
         
     def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
+        """
+        Generate new samples from the learned Gaussian process.
+
+        Parameters
+        ----------
+        num_samples : int
+            Number of samples to generate.
+        sample_shape : tuple, optional
+            Shape of the samples to generate (default is the shape of the training data).
+        ensure_nonnegative : bool, optional
+            Whether to ensure all values are non-negative (default is True).
+        seed : int, optional
+            Random seed for reproducibility.
+        verbose : bool, optional
+            Whether to print progress (default is True).
+
+        Returns
+        -------
+        ndarray
+            Generated samples.
+        """
         if sample_shape is not None:
             # make sure sample shape is the same as the measurement shape
             assert sample_shape == self._measurement_shape, 'sample shape must be the same as the measurement shape'

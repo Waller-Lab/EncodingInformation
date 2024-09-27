@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>encoding_information.datasets package &mdash; Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            EncodingInformation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="image_utils.html">Image Processing Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_utils.html">Plot Utilities Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">EncodingInformation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">encoding_information.datasets package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/encoding_information.datasets.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="encoding-information-datasets-package">
+<h1>encoding_information.datasets package<a class="headerlink" href="#encoding-information-datasets-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-encoding_information.datasets.bsccm_utils">
+<span id="encoding-information-datasets-bsccm-utils-module"></span><h2>encoding_information.datasets.bsccm_utils module<a class="headerlink" href="#module-encoding_information.datasets.bsccm_utils" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.BSCCMDataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">BSCCMDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.BSCCMDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase" title="encoding_information.datasets.dataset_base_class.MeasurementDatasetBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementDatasetBase</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.BSCCMDataset.get_measurements">
+<span class="sig-name descname"><span class="pre">get_measurements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Poisson'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_crop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">24</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'DPC_Left'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.BSCCMDataset.get_measurements" title="Link to this definition"></a></dt>
+<dd><p>Return a numpy array of noisy_measurements in the dataset.</p>
+<p>Datasets may have different shapes depending on the type of data they contain. e.g. if you’re requesting
+different channels. e.g. (num_images, height, width) or (num_images, vector_length, channels)
+Additional kwargs can be used to specify dataset-specific parameters. e.g. channel names, etc</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_measurements</strong> – Number of measurements to return</p></li>
+<li><p><strong>mean</strong> – Mean of the data. If provided, the data will be rescaled to have this mean. Otherwise, the mean of
+the data is dataset-dependent</p></li>
+<li><p><strong>bias</strong> – Bias to add to the data. If there is noise, then no pixel values will be lower than this value</p></li>
+<li><p><strong>data_seed</strong> – Seed for selecting random data</p></li>
+<li><p><strong>noise_seed</strong> – Seed for adding noise</p></li>
+<li><p><strong>noise</strong> – Type of noise to add. E.g. None or ‘Poisson’ or ‘Gaussian’. Not all datasets support all types of noise</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>numpy array of noisy measurements</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.BSCCMDataset.get_shape">
+<span class="sig-name descname"><span class="pre">get_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'DPC_Left'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_crop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">24</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.BSCCMDataset.get_shape" title="Link to this definition"></a></dt>
+<dd><p>Return the shape of the dataset. e.g. (num_images, height, width, channels) or (num_images, vector_length, channels)</p>
+<p>Additional kwargs can be used to specify dataset-specific parameters. e.g. channel names, etc</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.add_shot_noise_to_experimenal_data">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">add_shot_noise_to_experimenal_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">photon_fraction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.add_shot_noise_to_experimenal_data" title="Link to this definition"></a></dt>
+<dd><p>Add synthetic shot noise to an image stack by adding the additional noise
+that would be expected for the desired photon count
+This also reduces the total number of (average) photons in the image by the photon_fraction</p>
+<p>image_stack: stack of images to add noise to
+photon_fraction: fraction of photons to keep
+seed: random seed</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.compute_photon_rescale_fraction">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">compute_photon_rescale_fraction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsccm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_crop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">empty_slides</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.compute_photon_rescale_fraction" title="Link to this definition"></a></dt>
+<dd><p>Compute the fraction of photons that should be used to simulate a given contrast modality.
+This is done by taking the average photon count per pixel for each contrast modality, and
+then rescaling all contrast modalities to the lowest photon count.
+if images is not None, then no bsccm is needed</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.generate_synthetic_multi_led_images">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">generate_synthetic_multi_led_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsccm_coherent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">led_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_crop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.generate_synthetic_multi_led_images" title="Link to this definition"></a></dt>
+<dd><p>Generate synthetic images with the given led indices on, assuming that all LEDs produce the same number of photons
+on the resultant image</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.get_bsccm_image">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">get_bsccm_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsccm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.get_bsccm_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.get_bsccm_image_marker_generator">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">get_bsccm_image_marker_generator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsccm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_two_spectrum_unmixing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">123456</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">single_marker</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">synthetic_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">median_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.get_bsccm_image_marker_generator" title="Link to this definition"></a></dt>
+<dd><p>Prepare a data generator that yields (image, markers) for BSCCM data
+Also compute some reasonable limits for displaying data on log axes</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.get_display_channel_names">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">get_display_channel_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel_or_channels</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.get_display_channel_names" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.get_targets_and_display_range">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">get_targets_and_display_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsccm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_two_spectrum_unmixing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">antibodies</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('CD123',</span> <span class="pre">'CD3',</span> <span class="pre">'CD19',</span> <span class="pre">'CD56',</span> <span class="pre">'HLA-DR',</span> <span class="pre">'CD45',</span> <span class="pre">'CD14',</span> <span class="pre">'CD16')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">123456</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.get_targets_and_display_range" title="Link to this definition"></a></dt>
+<dd><p>Load prediction targets (i.e. marker levels), along with reasonable limits to display each of their histograms
+Convert raw targets to log</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.load_bsccm_images">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">load_bsccm_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_crop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">empty_slides</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convert_units_to_photons</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">median_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_correction_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.load_bsccm_images" title="Link to this definition"></a></dt>
+<dd><p>Load a stack of images from a BSCCM dataset</p>
+<p>dataset: BSCCM dataset
+channel: channel to load
+num_images: number of images to load
+edge_crop: number of pixels to crop from each edge of the image
+empty_slides: if True, then load the background image for the slide in which no cell is present
+indices: if not None, then load images with these indices. Ignore num_images
+convert_units_to_photons: if True, convert raw intensity counts to photons
+median_filter: if True, apply a median filter to the image to simulate noiseless data
+use_correction_factor: if True, divide the photon count by a correction factor to account for the fact that the</p>
+<blockquote>
+<div><p>photon count is lower than expected due to the presence of shot noise</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.load_data_from_config">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">load_data_from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_dir</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.load_data_from_config" title="Link to this definition"></a></dt>
+<dd><p>Using the data fields in the config file, open important functions and metadata for accessing BSCCM</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.load_image_with_synthetic_shot_noise">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">load_image_with_synthetic_shot_noise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsccm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">photon_fraction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.load_image_with_synthetic_shot_noise" title="Link to this definition"></a></dt>
+<dd><p>Load a BSCCM image and simulate it as if it had been collected with fewer photons,
+by adding the additional noise that would be expected for the desired photon count</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.datasets.bsccm_utils.read_images_and_sample_intensities">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.bsccm_utils.</span></span><span class="sig-name descname"><span class="pre">read_images_and_sample_intensities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsccm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x2_offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">photon_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">median_filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.bsccm_utils.read_images_and_sample_intensities" title="Link to this definition"></a></dt>
+<dd><p>Read images from a BSCCM dataset and sample intensity coordinates at two points</p>
+<p>bsccm: BSCCM dataset
+channel: channel to load
+x2_offset: offset in pixels to sample intensity coordinates (x1 is at the image center)
+median_filter: if True, apply a median filter to the image before sampling</p>
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.datasets.cfa_dataset">
+<span id="encoding-information-datasets-cfa-dataset-module"></span><h2>encoding_information.datasets.cfa_dataset module<a class="headerlink" href="#module-encoding_information.datasets.cfa_dataset" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.cfa_dataset.</span></span><span class="sig-name descname"><span class="pre">ColorFilterArrayDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zarr_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase" title="encoding_information.datasets.dataset_base_class.MeasurementDatasetBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementDatasetBase</span></code></a></p>
+<p>Dataset of natural images with with various Bayer-like filters applied.</p>
+<p>Shi’s Re-processing of Gehler’s Raw Dataset
+<a class="reference external" href="https://www.cs.sfu.ca/~colour/data/shi_gehler/">https://www.cs.sfu.ca/~colour/data/shi_gehler/</a></p>
+<p>Lilong Shi and Brian Funt, “Re-processed Version of the Gehler Color Constancy Dataset of 568 Images,”</p>
+<p>Original source:</p>
+<p>Peter Gehler and Carsten Rother and Andrew Blake and Tom Minka and Toby Sharp, “Bayesian Color Constancy Revisited,”
+Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition, 2008.
+and <a class="reference external" href="http://www.kyb.mpg.de/bs/people/pgehler/colour/index.html">http://www.kyb.mpg.de/bs/people/pgehler/colour/index.html</a>.</p>
+<p>Initialize the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>zarr_path</strong> (<em>str</em>) – Path to the Zarr store containing the dataset.</p></li>
+<li><p><strong>tile_size</strong> (<em>int</em>) – Size of the tiles to split the images into. This is done beceause the raw data is
+(568, 4, 1359, 2041), but we often want a greater number of smaller images. So we split the images into
+non-overlapping tiles of size (tile_size, tile_size).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset.get_measurements">
+<span class="sig-name descname"><span class="pre">get_measurements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_matrix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([[0,</span> <span class="pre">1],</span> <span class="pre">[1,</span> <span class="pre">2]])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Poisson'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset.get_measurements" title="Link to this definition"></a></dt>
+<dd><p>Get a set of measurements from the dataset. Applys a Bayer-like filter to the measurements (i.e. RGB + White).
+The default filter is the one used in the Bayer filter: [[0, 1], [1, 2]] i.e. [[R, G], [G, B]]. Also rescales
+the mean value of the images to the desired value and optionally adds noise</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_measurements</strong> (<em>int</em>) – Number of measurements to generate.</p></li>
+<li><p><strong>mean</strong> (<em>float</em>) – <p>Mean value to scale the images by. In this context, mean refers to the number of photons
+per pixel in the white channel. So any color filter that is applied will further reduce the number of
+photons per pixel in the color channels.</p>
+<p>This parameter defaults to a big number (2000) because we don’t actually know how many photons were collected</p>
+</p></li>
+<li><p><strong>bias</strong> (<em>float</em>) – Bias to add to the measurements.</p></li>
+<li><p><strong>filter_matrix</strong> (<em>np.ndarray</em>) – Filter matrix to apply to the measurements.</p></li>
+<li><p><strong>data_seed</strong> (<em>int</em>) – Seed for the random number generator.</p></li>
+<li><p><strong>noise_seed</strong> (<em>int</em>) – Seed for the noise generator.</p></li>
+<li><p><strong>noise</strong> (<em>str</em>) – Type of noise to add to the measurements.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Return (num_measurements x H x W x 4) array of measurements, where the channels are R G B W</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset.get_shape">
+<span class="sig-name descname"><span class="pre">get_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.cfa_dataset.ColorFilterArrayDataset.get_shape" title="Link to this definition"></a></dt>
+<dd><p>Return the shape of the dataset (using the given tile size).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Shape of the dataset.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.datasets.dataset_base_class">
+<span id="encoding-information-datasets-dataset-base-class-module"></span><h2>encoding_information.datasets.dataset_base_class module<a class="headerlink" href="#module-encoding_information.datasets.dataset_base_class" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.datasets.dataset_base_class.MeasurementDatasetBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.dataset_base_class.</span></span><span class="sig-name descname"><span class="pre">MeasurementDatasetBase</span></span><a class="headerlink" href="#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.dataset_base_class.MeasurementDatasetBase.get_measurements">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_measurements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">123456</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Poisson'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase.get_measurements" title="Link to this definition"></a></dt>
+<dd><p>Return a numpy array of noisy_measurements in the dataset.</p>
+<p>Datasets may have different shapes depending on the type of data they contain. e.g. if you’re requesting
+different channels. e.g. (num_images, height, width) or (num_images, vector_length, channels)
+Additional kwargs can be used to specify dataset-specific parameters. e.g. channel names, etc</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_measurements</strong> – Number of measurements to return</p></li>
+<li><p><strong>mean</strong> – Mean of the data. If provided, the data will be rescaled to have this mean. Otherwise, the mean of
+the data is dataset-dependent</p></li>
+<li><p><strong>bias</strong> – Bias to add to the data. If there is noise, then no pixel values will be lower than this value</p></li>
+<li><p><strong>data_seed</strong> – Seed for selecting random data</p></li>
+<li><p><strong>noise_seed</strong> – Seed for adding noise</p></li>
+<li><p><strong>noise</strong> – Type of noise to add. E.g. None or ‘Poisson’ or ‘Gaussian’. Not all datasets support all types of noise</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>numpy array of noisy measurements</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.dataset_base_class.MeasurementDatasetBase.get_shape">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase.get_shape" title="Link to this definition"></a></dt>
+<dd><p>Return the shape of the dataset. e.g. (num_images, height, width, channels) or (num_images, vector_length, channels)</p>
+<p>Additional kwargs can be used to specify dataset-specific parameters. e.g. channel names, etc</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.datasets.hml_dataset">
+<span id="encoding-information-datasets-hml-dataset-module"></span><h2>encoding_information.datasets.hml_dataset module<a class="headerlink" href="#module-encoding_information.datasets.hml_dataset" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.hml_dataset.</span></span><span class="sig-name descname"><span class="pre">HyperspectralMetalensDataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">h5_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_crop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase" title="encoding_information.datasets.dataset_base_class.MeasurementDatasetBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementDatasetBase</span></code></a></p>
+<p>Dataset of grayscale measurements captured with a metalens-based camera.  See Hazineh et al. for more details:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>h5_dir</strong> (<em>str</em>) – Directory containing the .h5 files.</p></li>
+<li><p><strong>mean_value</strong> (<em>float</em><em>, </em><em>optional</em>) – The mean value of the dataset. If None, it will be computed.</p></li>
+<li><p><strong>center_crop</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to center crop 16 pixels from each side of the images.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.h5_dir">
+<span class="sig-name descname"><span class="pre">h5_dir</span></span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.h5_dir" title="Link to this definition"></a></dt>
+<dd><p>Directory containing the .h5 files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.patch_size">
+<span class="sig-name descname"><span class="pre">patch_size</span></span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.patch_size" title="Link to this definition"></a></dt>
+<dd><p>Tuple of patch height and width.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.mean_value">
+<span class="sig-name descname"><span class="pre">mean_value</span></span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.mean_value" title="Link to this definition"></a></dt>
+<dd><p>Mean value of the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.h5_files">
+<span class="sig-name descname"><span class="pre">h5_files</span></span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.h5_files" title="Link to this definition"></a></dt>
+<dd><p>List of .h5 file paths.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.num_images">
+<span class="sig-name descname"><span class="pre">num_images</span></span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.num_images" title="Link to this definition"></a></dt>
+<dd><p>Number of images in the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.image_shape">
+<span class="sig-name descname"><span class="pre">image_shape</span></span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.image_shape" title="Link to this definition"></a></dt>
+<dd><p>Shape of the images in the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.total_patches">
+<span class="sig-name descname"><span class="pre">total_patches</span></span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.total_patches" title="Link to this definition"></a></dt>
+<dd><p>Total number of patches.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.get_measurements">
+<span class="sig-name descname"><span class="pre">get_measurements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">21</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">123456</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Poisson'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.get_measurements" title="Link to this definition"></a></dt>
+<dd><p>Get measurements with optional noise and bias.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_measurements</strong> (<em>int</em>) – Number of measurements to return.</p></li>
+<li><p><strong>mean</strong> (<em>float</em><em>, </em><em>optional</em>) – Mean value to scale the measurements.</p></li>
+<li><p><strong>bias</strong> (<em>float</em><em>, </em><em>optional</em>) – Bias to be added to the measurements.</p></li>
+<li><p><strong>data_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Seed for random data selection.</p></li>
+<li><p><strong>noise_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Seed for noise generation.</p></li>
+<li><p><strong>noise</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of noise to apply. Defaults to ‘Poisson’.</p></li>
+<li><p><strong>kwargs</strong> – Additional parameters.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Measurements with optional noise and bias.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If unsupported noise type is provided or if <cite>num_measurements</cite>
+    exceeds the total available patches.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.get_shape">
+<span class="sig-name descname"><span class="pre">get_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.hml_dataset.HyperspectralMetalensDataset.get_shape" title="Link to this definition"></a></dt>
+<dd><p>Return the shape of the dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>kwargs</strong> – Additional parameters.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Shape of the dataset.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.datasets.mnist_dataset">
+<span id="encoding-information-datasets-mnist-dataset-module"></span><h2>encoding_information.datasets.mnist_dataset module<a class="headerlink" href="#module-encoding_information.datasets.mnist_dataset" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.datasets.mnist_dataset.MNISTDataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.datasets.mnist_dataset.</span></span><span class="sig-name descname"><span class="pre">MNISTDataset</span></span><a class="headerlink" href="#encoding_information.datasets.mnist_dataset.MNISTDataset" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#encoding_information.datasets.dataset_base_class.MeasurementDatasetBase" title="encoding_information.datasets.dataset_base_class.MeasurementDatasetBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementDatasetBase</span></code></a></p>
+<p>Wrapper for regular old MNIST dataset</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.mnist_dataset.MNISTDataset.get_measurements">
+<span class="sig-name descname"><span class="pre">get_measurements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_measurements</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Poisson'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.mnist_dataset.MNISTDataset.get_measurements" title="Link to this definition"></a></dt>
+<dd><p>Return a numpy array of noisy_measurements in the dataset.</p>
+<p>Datasets may have different shapes depending on the type of data they contain. e.g. if you’re requesting
+different channels. e.g. (num_images, height, width) or (num_images, vector_length, channels)
+Additional kwargs can be used to specify dataset-specific parameters. e.g. channel names, etc</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_measurements</strong> – Number of measurements to return</p></li>
+<li><p><strong>mean</strong> – Mean of the data. If provided, the data will be rescaled to have this mean. Otherwise, the mean of
+the data is dataset-dependent</p></li>
+<li><p><strong>bias</strong> – Bias to add to the data. If there is noise, then no pixel values will be lower than this value</p></li>
+<li><p><strong>data_seed</strong> – Seed for selecting random data</p></li>
+<li><p><strong>noise_seed</strong> – Seed for adding noise</p></li>
+<li><p><strong>noise</strong> – Type of noise to add. E.g. None or ‘Poisson’ or ‘Gaussian’. Not all datasets support all types of noise</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>numpy array of noisy measurements</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.datasets.mnist_dataset.MNISTDataset.get_shape">
+<span class="sig-name descname"><span class="pre">get_shape</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.datasets.mnist_dataset.MNISTDataset.get_shape" title="Link to this definition"></a></dt>
+<dd><p>Return the shape of the dataset. e.g. (num_images, height, width, channels) or (num_images, vector_length, channels)</p>
+<p>Additional kwargs can be used to specify dataset-specific parameters. e.g. channel names, etc</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-encoding_information.datasets">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-encoding_information.datasets" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Henry Pinkard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
