@@ -58,10 +58,9 @@ class AnalyticComplexPixelGaussianNoiseModel(MeasurementNoiseModel):
         """
         self.sigma_vec = sigma_vec
 
-    def estimate_conditional_entropy(self):
+    def estimate_conditional_entropy(self, images=None):
         # input vector here if it's complex-valued items will be half the length of the vector used in the other computations. this has the number of complex-valued pixels. 
-        # D log2 2 pi e + 2 sum log_2 sigma_i
-
+        # D log2 2 pi e + 2 sum log_2 sigma_i -> instead, computing here in log space because final MI computation will convert it to log2
         # returning total conditional entropy here
         constant_term = self.sigma_vec.shape[0] * np.log(2 * np.pi * np.exp(1))
         sum_log_sigmas = 2 * np.sum(np.log(self.sigma_vec))

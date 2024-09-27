@@ -13,7 +13,7 @@ import warnings
 
 
 def estimate_information(measurement_model, noise_model, train_set, test_set, 
-                         confidence_interval=None, num_bootstraps=11):
+                         confidence_interval=None, num_bootstraps=11, scale_total_mi=False):
     """
     Estimate mutual information in bits per pixel given a probabilistic model of the measurement process p(y)
     and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
@@ -44,6 +44,10 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     full_dataset = np.concatenate([train_set, test_set])
     nll = measurement_model.compute_negative_log_likelihood(test_set)
+    # add in condition for total MI scaling (assumes noise model is the AnalyticComplexPixelGaussianNoiseModel)
+    if scale_total_mi:
+        print("scaling everything by {}".format(train_set.shape))
+        nll = nll * train_set.shape[-1]
     hy_given_x = noise_model.estimate_conditional_entropy(full_dataset)
     mutual_info = (nll - hy_given_x) / np.log(2)
     if confidence_interval is None:
