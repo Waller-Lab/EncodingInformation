@@ -21,7 +21,9 @@
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Image Processing Functions" href="image_utils.html" />
+    <link rel="prev" title="Imaging System Design with Information Estimation" href="../index.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -44,7 +46,21 @@
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Information Estimation Functions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_information"><code class="docutils literal notranslate"><span class="pre">estimate_information()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.analytic_multivariate_gaussian_entropy"><code class="docutils literal notranslate"><span class="pre">analytic_multivariate_gaussian_entropy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.nearest_neighbors_entropy_estimate"><code class="docutils literal notranslate"><span class="pre">nearest_neighbors_entropy_estimate()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">estimate_conditional_entropy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.run_bootstrap"><code class="docutils literal notranslate"><span class="pre">run_bootstrap()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_task_specific_mutual_information"><code class="docutils literal notranslate"><span class="pre">estimate_task_specific_mutual_information()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.information_estimation.estimate_mutual_information"><code class="docutils literal notranslate"><span class="pre">estimate_mutual_information()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#usage-examples">Usage Examples</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="image_utils.html">Image Processing Functions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plot_utils.html">Plot Utilities Module</a></li>
 </ul>
@@ -65,7 +81,7 @@
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
       <li class="breadcrumb-item active">Information Estimation Functions</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/source/encoding_information.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/source/information_estimation.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -306,7 +322,10 @@ Otherwise, Poisson noise is assumed.</p></li>
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="Imaging System Design with Information Estimation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="image_utils.html" class="btn btn-neutral float-right" title="Image Processing Functions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 

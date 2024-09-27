@@ -6,10 +6,19 @@ from encoding_information.image_utils import add_noise
 
 class MNISTDataset(MeasurementDatasetBase):
     """
-    Wrapper for regular old MNIST dataset
+    Wrapper class for the MNIST dataset.
+
+    This class wraps the MNIST dataset, providing an interface for retrieving measurements from the dataset, with optional
+    noise and bias applied.
     """
 
     def __init__(self):
+        """
+        Initialize the MNIST dataset by downloading it if necessary.
+
+        The dataset is loaded using TensorFlow's `keras.datasets.mnist` API. The training and test data are concatenated
+        to create a single dataset.
+        """
         # This downloads the dataset if it's not already downloaded
         (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
         # concatenate the training and test data
@@ -17,6 +26,35 @@ class MNISTDataset(MeasurementDatasetBase):
         self._label_data = np.concatenate([y_train, y_test], axis=0)
 
     def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=None):
+        """
+        Retrieve a set of measurements from the MNIST dataset with optional noise and bias.
+
+        Parameters
+        ----------
+        num_measurements : int
+            Number of measurements to return.
+        mean : float, optional
+            Mean value to scale the measurements. If None, no scaling is applied (default is None).
+        bias : float, optional
+            Bias to add to the measurements (default is 0).
+        noise : str, optional
+            Type of noise to apply. Options are 'Poisson' or None (default is 'Poisson').
+        data_seed : int, optional
+            Seed for random selection of images from the dataset (default is None).
+        noise_seed : int, optional
+            Seed for noise generation (default is None).
+
+        Returns
+        -------
+        np.ndarray
+            Array of selected measurements with optional noise and bias applied.
+        
+        Raises
+        ------
+        Exception
+            If the requested number of measurements exceeds the available dataset size, or if an unsupported noise 
+            type is provided.
+        """
         if noise not in ['Poisson', None]:
             raise Exception('Only Poisson noise is supported')
 
@@ -52,4 +90,12 @@ class MNISTDataset(MeasurementDatasetBase):
             return np.array(add_noise(images, noise_seed))
 
     def get_shape(self):
+        """
+        Return the shape of the MNIST dataset images.
+
+        Returns
+        -------
+        tuple
+            Shape of the MNIST images (height, width).
+        """
         return self._image_data.shape[1:]

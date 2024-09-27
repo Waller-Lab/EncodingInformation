@@ -12,15 +12,31 @@ class AnalyticGaussianNoiseModel(MeasurementNoiseModel):
     """
     
     def __init__(self, sigma):
-        """        
-        :param sigma: Standard deviation of the Gaussian noise
+        """
+        Initialize the AnalyticGaussianNoiseModel.
+
+        Parameters
+        ----------
+        sigma : float
+            Standard deviation of the Gaussian noise.
         """
         self.sigma = sigma
 
     def estimate_conditional_entropy(self, images=None):
         """
         Compute the conditional entropy H(Y | X) for Gaussian noise.
-        """   
+
+        Parameters
+        ----------
+        images : jax.Array, optional
+            Unused in this model. The parameter is kept for compatibility.
+
+        Returns
+        -------
+        float
+            The computed conditional entropy, given by the formula:
+            0.5 * log(2 * pi * e * sigma^2).
+        """
         if images is not None:
             warnings.warn("The images argument is not used in the Analytic Gaussian noise model.")
         # Conditional entropy H(Y | X) for Gaussian noise
@@ -33,7 +49,17 @@ class PoissonNoiseModel(MeasurementNoiseModel):
 
     def estimate_conditional_entropy(self, images):
         """
-        images can be a train set or test set. Clean images are preferred.
+        Compute the conditional entropy H(Y | X) for Poisson noise.
+
+        Parameters
+        ----------
+        images : jax.Array
+            A dataset of images, preferably clean. This is used to compute the conditional entropy.
+
+        Returns
+        -------
+        float
+            The average conditional entropy per pixel, computed using a Gaussian approximation.
         """
         # do the actual computation here
         images = images.reshape(-1, images.shape[-2] * images.shape[-1])

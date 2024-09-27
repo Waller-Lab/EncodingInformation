@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plot Utilities Module &mdash; Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Image Processing Functions" href="image_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            EncodingInformation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="image_utils.html">Image Processing Functions</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Plot Utilities Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_samples"><code class="docutils literal notranslate"><span class="pre">plot_samples()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_optimization_loss_history"><code class="docutils literal notranslate"><span class="pre">plot_optimization_loss_history()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_eigenvalues"><code class="docutils literal notranslate"><span class="pre">plot_eigenvalues()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.plot_intensity_coord_histogram"><code class="docutils literal notranslate"><span class="pre">plot_intensity_coord_histogram()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.add_multiple_colorbars"><code class="docutils literal notranslate"><span class="pre">add_multiple_colorbars()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#classes">Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.ax"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.ax</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.bins"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.bins</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.num_bins"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.num_bins</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.log"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.log</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.logx"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.logx</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.add"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.add()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.generate_bins"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.generate_bins()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.get_hist_counts"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.get_hist_counts()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.plot_utils.OverlayedHistograms.plot"><code class="docutils literal notranslate"><span class="pre">OverlayedHistograms.plot()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">EncodingInformation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Plot Utilities Module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/plot_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="plot-utilities-module">
+<h1>Plot Utilities Module<a class="headerlink" href="#plot-utilities-module" title="Link to this heading"></a></h1>
+<p>This module contains functions and classes for advanced plotting tasks, including visualization of samples, optimization history, eigenvalue plots, intensity histograms, and overlayed histograms.</p>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_samples">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ground_truth</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['Samples']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contrast_cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">99</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_samples" title="Link to this definition"></a></dt>
+<dd><p>Plot ground truth data and samples from model(s).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>samples</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – List of samples from models. Each array represents model output.</p></li>
+<li><p><strong>ground_truth</strong> (<em>np.ndarray</em>) – Ground truth data for comparison.</p></li>
+<li><p><strong>model_names</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em>) – List of names corresponding to each model.</p></li>
+<li><p><strong>contrast_cutoff</strong> (<em>int</em><em>, </em><em>optional</em>) – Percentile to determine contrast cutoff for display. Defaults to 99.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_optimization_loss_history">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_optimization_loss_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val_loss_history</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_optimization_loss_history" title="Link to this definition"></a></dt>
+<dd><p>Plot the validation loss history during an optimization process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>val_loss_history</strong> (<em>list</em><em> of </em><em>float</em>) – A list representing the history of validation loss over iterations.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_eigenvalues">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_eigenvalues</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_eigenvalues" title="Link to this definition"></a></dt>
+<dd><p>Plot the eigenvalues of a set of covariance matrices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>*args</strong> (<em>list</em><em> of </em><em>np.ndarray</em>) – Covariance matrices to plot eigenvalues from.</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict</em>) – Named arguments where the name is the label and the value is the covariance matrix.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.plot_intensity_coord_histogram">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">plot_intensity_coord_histogram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensities_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensities_2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_center_coords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">black_background</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.plot_intensity_coord_histogram" title="Link to this definition"></a></dt>
+<dd><p>Plot 2D histograms of intensity coordinates from two groups of intensities.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ax</strong> (<em>matplotlib.axes.Axes</em>) – The axis on which to plot.</p></li>
+<li><p><strong>intensities_1</strong> (<em>np.ndarray</em>) – Intensity values for the x-axis.</p></li>
+<li><p><strong>intensities_2</strong> (<em>np.ndarray</em>) – Intensity values for the y-axis.</p></li>
+<li><p><strong>max</strong> (<em>float</em>) – Maximum value for the bin edges.</p></li>
+<li><p><strong>cmap</strong> (<em>matplotlib.colors.Colormap</em><em>, </em><em>optional</em>) – Colormap for the histogram.</p></li>
+<li><p><strong>bins</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of bins for the histogram.</p></li>
+<li><p><strong>colors</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em>) – List of colors for different intensity groups.</p></li>
+<li><p><strong>color</strong> (<em>str</em><em>, </em><em>optional</em>) – Single color to use if <cite>colors</cite> is not provided.</p></li>
+<li><p><strong>plot_center_coords</strong> (<em>list</em><em> of </em><em>tuple</em><em>, </em><em>optional</em>) – List of center coordinates to plot as circles.</p></li>
+<li><p><strong>black_background</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use a black background in the plot.</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict</em>) – Additional keyword arguments passed to the plotting functions.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.add_multiple_colorbars">
+<span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">add_multiple_colorbars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmaps</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.add_multiple_colorbars" title="Link to this definition"></a></dt>
+<dd><p>Add multiple colorbars to the given axis, each corresponding to a different colormap.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ax</strong> (<em>matplotlib.axes.Axes</em>) – The axis on which the colorbars will be added.</p></li>
+<li><p><strong>cmaps</strong> (<em>list</em><em> of </em><em>matplotlib.colors.Colormap</em>) – List of colormaps to add colorbars for.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.plot_utils.</span></span><span class="sig-name descname"><span class="pre">OverlayedHistograms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for plotting multiple histograms on the same axis with equal bin sizes.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.ax">
+<span class="sig-name descname"><span class="pre">ax</span></span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.ax" title="Link to this definition"></a></dt>
+<dd><p>Axis to plot the histograms on.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib.axes.Axes</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.bins">
+<span class="sig-name descname"><span class="pre">bins</span></span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.bins" title="Link to this definition"></a></dt>
+<dd><p>Bin edges for the histograms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.num_bins">
+<span class="sig-name descname"><span class="pre">num_bins</span></span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.num_bins" title="Link to this definition"></a></dt>
+<dd><p>Number of bins for the histograms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.log">
+<span class="sig-name descname"><span class="pre">log</span></span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.log" title="Link to this definition"></a></dt>
+<dd><p>Whether to use a logarithmic scale for the y-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.logx">
+<span class="sig-name descname"><span class="pre">logx</span></span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.logx" title="Link to this definition"></a></dt>
+<dd><p>Whether to use a logarithmic scale for the x-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.add" title="Link to this definition"></a></dt>
+<dd><p>Add a set of values to the histogram.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>values</strong> (<em>np.ndarray</em>) – The values to be added to the histogram.</p></li>
+<li><p><strong>label</strong> (<em>str</em><em>, </em><em>optional</em>) – The label for the values.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.generate_bins">
+<span class="sig-name descname"><span class="pre">generate_bins</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.generate_bins" title="Link to this definition"></a></dt>
+<dd><p>Generate logarithmic or linear bin edges based on the values added.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.get_hist_counts">
+<span class="sig-name descname"><span class="pre">get_hist_counts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eigenvalues</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.get_hist_counts" title="Link to this definition"></a></dt>
+<dd><p>Get the histogram counts for a set of eigenvalues.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eigenvalues</strong> (<em>np.ndarray</em>) – Eigenvalues to compute the histogram counts for.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.plot_utils.OverlayedHistograms.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zorder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bottom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.plot_utils.OverlayedHistograms.plot" title="Link to this definition"></a></dt>
+<dd><p>Plot the histograms on the axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>zorder</strong> (<em>dict</em><em>, </em><em>optional</em>) – Order in which to plot the histograms.</p></li>
+<li><p><strong>bottom</strong> (<em>float</em><em>, </em><em>optional</em>) – Baseline value for the histogram bars.</p></li>
+<li><p><strong>**kwargs</strong> (<em>dict</em>) – Additional keyword arguments passed to the bar plot.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="image_utils.html" class="btn btn-neutral float-left" title="Image Processing Functions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Henry Pinkard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

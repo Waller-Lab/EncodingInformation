@@ -20,23 +20,27 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
     which represents the uncertainty in the estimate due to the finite size of the test set.
 
-    measurement_model : MeasurementModel 
-        A probabilistic model of the measurement process p(y|x) (e.g. PixelCNN, FullGaussian, etc). 
-        see encoding_information.models
+    Parameters
+    ----------
+    measurement_model : MeasurementModel
+        A probabilistic model of the measurement process p(y|x) (e.g. PixelCNN, FullGaussian, etc.).
     noise_model : NoiseModel
-        A probabilistic model of the noise process p(y|x) (e.g. GaussianNoiseModel, PoissonNoiseModel)
-        see encoding_information.models
+        A probabilistic model of the noise process p(y|x) (e.g. GaussianNoiseModel, PoissonNoiseModel).
     train_set : ndarray, shape (n_samples, ...)
-        The training set of noisy measurements. It can have different shapes depending on the data type/model. 
-        For single channel images, it is (n_samples, H, W), for multi-channel images (n_samples, H, W, C), for
-        vectorized measurements (n_samples, n_dimensions)
+        The training set of noisy measurements, with different shapes depending on data type/model.
     test_set : ndarray, shape (n_samples, ...)
         The test set of noisy measurements, which should have the same shape as the training set.
     confidence_interval : float, optional
-        If provided, estimate a confidence interval for the mutual information by bootstrapping the test set.
-        e.g. 0.9 for a 90% confidence interval.
+        Confidence interval for the mutual information, estimated via bootstrapping.
     num_bootstraps : int, optional
-        The number of times the test set should be resampled to estimate the confidence interval.
+        Number of times to resample the test set to estimate the confidence interval.
+
+    Returns
+    -------
+    mutual_info : float
+        The mutual information in bits per pixel.
+    (lower_bound, upper_bound) : tuple of floats, optional
+        Lower and upper bounds of the confidence interval for the mutual information (if confidence_interval is provided).
     """
     # make sure confidence interval is between 0 and 1
     if confidence_interval is not None:
@@ -79,21 +83,40 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
 
 def analytic_multivariate_gaussian_entropy(cov_matrix):
     """
-    Numerically stable computation of the analytic entropy of a multivariate gaussian
+    Compute the entropy of a multivariate Gaussian distribution in a numerically stable manner.
+
+    Parameters
+    ----------
+    cov_matrix : ndarray, shape (d, d)
+        Covariance matrix of the multivariate Gaussian distribution.
+
+    Returns
+    -------
+    entropy : float
+        The entropy of the multivariate Gaussian in bits.
     """
+
     d = cov_matrix.shape[0]
     entropy = 0.5 * d * np.log(2 * np.pi * np.e) + 0.5 * np.sum(np.log(np.linalg.eigvalsh(cov_matrix)))
     return entropy / d
  
 def nearest_neighbors_entropy_estimate(X, k=3):
     """
-    Estimate the entropy (in nats) of a dsitribution from samples usiing the KL 
-    nearest neighbors estimator. 
-    
+    Estimate the entropy (in nats) of a distribution using the k-nearest neighbors estimator.
+
+    Parameters
+    ----------
     X : ndarray, shape (n_samples, n_dimensions)
-    k : int The k in k-nearest neighbors
-    base : base for the logarithms
+        The samples from the distribution to estimate the entropy for.
+    k : int, optional
+        The number of nearest neighbors to use in the entropy estimate (default is 3).
+
+    Returns
+    -------
+    entropy : float
+        The estimated entropy in nats.
     """
+
     return _do_nearest_neighbors_entropy_estimate(X, X.shape[0], X.shape[1], k)
 
 @partial(jit, static_argnums=(1, 2, 3))
@@ -130,14 +153,21 @@ def _nearest_neighbors_distance(X, k):
 @partial(jit, static_argnums=(1,))
 def estimate_conditional_entropy(images, gaussian_noise_sigma=None):
     """
-    Compute the conditional entropy H(Y | X) in "nats" 
-    (differential entropy doesn't really have units...) per pixel,
-    where Y is a random noisy realization of a random clean image X
+    Estimate the conditional entropy H(Y | X) in nats per pixel, assuming either Gaussian or Poisson noise.
 
-    images : ndarray clean image HxW or images NxHxW
-    gaussian_noise_sigma : float, if not None, assume gaussian noise with this sigma.
-            otherwise assume poisson noise.
+    Parameters
+    ----------
+    images : ndarray
+        Clean images, shape (NxHxW) or (NxHxWxC).
+    gaussian_noise_sigma : float, optional
+        Standard deviation of the Gaussian noise. If None, Poisson noise is assumed.
+
+    Returns
+    -------
+    conditional_entropy : float
+        The estimated conditional entropy per pixel.
     """
+
     warnings.warn("This function is deprecated. Use GaussianNoiseModel or PoissonNoiseModel instead.")
     # vectorize
     images = images.reshape(-1, images.shape[-2] * images.shape[-1])
@@ -168,37 +198,35 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
                   upper_bound_confidence_interval=False,
                   verbose=False):
     """
-    Runs a bootstrap estimation procedure on the given data using the provided estimation function.
+    Run a bootstrap estimation procedure using a given estimation function on the provided data.
 
-    Parameters:
-    -----------
-    data : ndarray, shape (n_samples, ...) or a dictionary of ndarrays
-        The data to be used for the bootstrap estimation. If a dictionary is provided, each value in the dictionary
-        should be an ndarray with the same number of samples.
+    Parameters
+    ----------
+    data : ndarray or dict of ndarrays
+        The data to use for the bootstrap estimation. If a dictionary, each value must have the same number of samples.
     estimation_fn : function
-        The function to be used for estimating the desired quantity from the data. This function should take a single
-        argument, which is the data to be used for the estimation.
-    num_bootstrap_samples : int, optional (default=1000)
-        The number of bootstrap samples to generate.
-    confidence_interval : float, optional (default=90)
-        The confidence interval to use for the estimation, expressed as a percentage.
-    seed : int, optional (default=1234)
-        The random seed to use for generating the bootstrap samples.
-    return_median : bool, optional (default=True)
-        Whether to return the median or mean estimate of the desired quantity across all bootstrap samples.
-    upper_bound_confidence_interval : bool, optional (default=False)
-        Whether to return a confidence interval on 0-(confidence_interval) or the regulare centered one 
-    verbose : bool, optional (default=False)
-        Print progress bar
+        The function to use for estimating the desired quantity. It should accept the data as its input.
+    num_bootstrap_samples : int, optional
+        The number of bootstrap samples to generate (default is 200).
+    confidence_interval : float, optional
+        The confidence interval for the estimate, expressed as a percentage (default is 90%).
+    seed : int, optional
+        Random seed for generating bootstrap samples.
+    return_median : bool, optional
+        Whether to return the median (True) or mean (False) of the bootstrap estimates (default is True).
+    upper_bound_confidence_interval : bool, optional
+        If True, returns the upper-bound confidence interval (default is False).
+    verbose : bool, optional
+        If True, shows a progress bar.
 
-    Returns:
-    --------
-    mean/median : float
-        The median/mean estimate of the desired quantity across all bootstrap samples.
-    conf_int : list of floats
-        The lower and upper bounds of the confidence interval for the estimate, expressed as percentiles of the
-        bootstrap sample distribution.
+    Returns
+    -------
+    estimate : float
+        The median/mean estimate of the desired quantity across bootstrap samples.
+    confidence_interval : list of float
+        The lower and upper bounds of the confidence interval.
     """
+
     key = jax.random.PRNGKey(onp.random.randint(0, 1000000))
     N = data.shape[0] if not isinstance(data, dict) else data[list(data.keys())[0]].shape[0]
     results = []
@@ -246,28 +274,49 @@ def  estimate_task_specific_mutual_information(noisy_images, labels, test_set_fr
                                  return_entropy_model=False,
                                  verbose=False,):
     """
-    DEPRECATED: use estimate_information() instead.
+    DEPRECATED: Use estimate_information() instead.
 
-    Estimate the mutual information (in bits per pixel) between the noisy images and the labels using a PixelCNN entropy model.
+    Estimate the mutual information (in bits per pixel) between noisy images and labels using a PixelCNN entropy model.
 
-    noisy_images : ndarray NxHxW array of images or image patches
-    labels : ndarray NxK array of one-hot vectors of class labels
-    test_set_fraction : float, fraction of the noisy data to use a test set for computing the entropy upper bound
+    Parameters
+    ----------
+    noisy_images : ndarray
+        Noisy images of shape (NxHxW) or (NxHxWxC).
+    labels : ndarray
+        Labels of shape (NxK) as one-hot vectors.
+    test_set_fraction : float, optional
+        Fraction of the data to be used as the test set for computing the entropy upper bound (default is 0.2).
+    patience : int, optional
+        How many iterations to wait for validation loss to improve (used in training). If None, the default is used.
+    num_val_samples : int, optional
+        Number of validation samples to use. If None, the default is used.
+    batch_size : int, optional
+        Batch size for training the PixelCNN model. If None, the default is used.
+    max_epochs : int, optional
+        Maximum number of epochs for training. If None, the default is used.
+    learning_rate : float, optional
+        Learning rate for training. If None, the default is used.
+    steps_per_epoch : int, optional
+        Number of steps per epoch for training the PixelCNN model.
+    num_hidden_channels : int, optional
+        Number of hidden channels in the PixelCNN model.
+    num_mixture_components : int, optional
+        Number of mixture components in the PixelCNN output.
+    do_lr_decay : bool, optional
+        Whether to decay the learning rate during training (default is False).
+    return_entropy_model : bool, optional
+        If True, returns the trained PixelCNN entropy model along with the mutual information (default is False).
+    verbose : bool, optional
+        If True, prints out the estimated values during the process.
 
-    patience : int, How many iterations to wait for validation loss to improve. If None, use the default for the chosen model
-    num_val_samples : int, How many samples to use for validation. If None, use the default for the chosen model
-    batch_size : int, The batch size to use for training. If None, use the default for the chosen model
-    max_epochs : int, The maximum number of epochs to train for. If None, use the default for the chosen model
-    learning_rate : float, If None, use the default for the chosen model
-
-    steps_per_epoch : int, (if entropy_model='pixelcnn') number of steps per epoch
-    num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
-    num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
-    do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
-
-    return_entropy_model : bool, whether to return the noisy image entropy model
-    verbose : bool, whether to print out the estimated values
+    Returns
+    -------
+    mutual_info : float
+        The estimated mutual information in bits per pixel.
+    pixelcnn : PixelCNN model, optional
+        If `return_entropy_model` is True, returns the trained PixelCNN model along with the mutual information.
     """
+
     warnings.warn("This function is deprecated. Use estimate_information() instead.")
     if np.any(noisy_images < 0):   
         warnings.warn(f"{np.sum(noisy_images < 0) / noisy_images.size:.2%} of pixels are negative.")
@@ -326,49 +375,75 @@ def  estimate_mutual_information(noisy_images, clean_images=None, entropy_model=
                                  do_lr_decay=False, add_gaussian_training_noise=False, condition_vectors=None, # pixelcnn params
                                  return_entropy_model=False, verbose=False,):
     """
-    DEPRECATED: use estimate_information() instead.
+    DEPRECATED: Use estimate_information() instead.
 
-    Estimate the mutual information (in bits per pixel) of a stack of noisy images, by upper bounding the entropy of the noisy
-    images using a probabilistic model (either a stationary Gaussian process or a PixelCNN) and subtracting the conditional entropy
-    assuming Poisson distributed shot noise, or additive Gaussian noise. Uses clean_images to estimate the conditional entropy
-    if provided. Otherwise, approximates the conditional entropy from the noisy images themselves.
+    Estimate the mutual information (in bits per pixel) for a stack of noisy images using a probabilistic model (Gaussian or PixelCNN).
+    Subtracts the conditional entropy assuming Poisson or Gaussian noise. Clean images can be used to estimate the conditional entropy,
+    or it can be approximated from the noisy images themselves.
 
-    noisy_images : ndarray NxHxW array of images or image patches
-    clean_images : ndarray NxHxW array of images or image patches
-    entropy_model : str, which model to use for estimating the entropy of the noisy images. Either 'gaussian' 
-            (meaning stationary gaussian process), 'pixelcnn', or 'full_gaussian' (meaning full covariance matrix)
-    test_set_fraction : float, fraction of the noisy data to use a test set for computing the entropy upper bound
+    Parameters
+    ----------
+    noisy_images : ndarray
+        Stack of noisy images or image patches (NxHxW).
+    clean_images : ndarray, optional
+        Clean images corresponding to the noisy images. If None, the noisy images themselves are used.
+    entropy_model : str, optional
+        The model used for estimating the entropy of the noisy images. Options are:
+        - 'gaussian': Uses a stationary Gaussian process model.
+        - 'pixelcnn': Uses a PixelCNN model.
+        - 'full_gaussian': Uses a full covariance matrix for the Gaussian process.
+    test_set_fraction : float, optional
+        Fraction of the data to be used as the test set for computing the entropy upper bound (default is 0.1).
+    gaussian_noise_sigma : float, optional
+        If provided, assumes that the noisy images arise from additive Gaussian noise with this standard deviation.
+        Otherwise, Poisson noise is assumed.
+    estimate_conditional_from_model_samples : bool, optional
+        If True, estimates the conditional entropy from samples generated by a model fit to the data, rather than the data itself.
+    patience : int, optional
+        Number of iterations to wait for validation loss to improve (used for iterative optimization in the Gaussian process model).
+    num_val_samples : int, optional
+        Number of validation samples to use (default is None).
+    batch_size : int, optional
+        Batch size for training (default is None).
+    max_epochs : int, optional
+        Maximum number of epochs for training (default is None).
+    learning_rate : float, optional
+        Learning rate for training (default is None).
+    use_iterative_optimization : bool, optional
+        If True, performs iterative optimization to refine the stationary Gaussian process estimate (default is True).
+    eigenvalue_floor : float, optional
+        Sets the minimum allowed eigenvalue for the covariance matrix in the Gaussian process (default is 1e-3).
+    gradient_clip : float, optional
+        If using iterative optimization with a Gaussian model, clip the gradients to this value (default is None).
+    momentum : float, optional
+        Momentum for gradient descent in iterative optimization of the Gaussian model (default is None).
+    analytic_marginal_entropy : bool, optional
+        If True, uses the analytic entropy of the Gaussian fit for H(Y) instead of upper bounding it with the negative log likelihood.
+    steps_per_epoch : int, optional
+        Number of steps per epoch for training the PixelCNN model (if entropy_model is 'pixelcnn').
+    num_hidden_channels : int, optional
+        Number of hidden channels in the PixelCNN model (if entropy_model is 'pixelcnn').
+    num_mixture_components : int, optional
+        Number of mixture components in the PixelCNN output (if entropy_model is 'pixelcnn').
+    do_lr_decay : bool, optional
+        Whether to decay the learning rate during training for the PixelCNN model (default is False).
+    add_gaussian_training_noise : bool, optional
+        Whether to add Gaussian noise to the training data instead of uniform noise (default is False).
+    condition_vectors : ndarray, optional
+        Conditioning vectors to use for the PixelCNN model (if entropy_model is 'pixelcnn'), with shape (n_samples, d).
+    return_entropy_model : bool, optional
+        If True, returns the trained entropy model along with the mutual information (default is False).
+    verbose : bool, optional
+        If True, prints out the estimated values during the process.
 
-    gaussian_noise_sigma : float, if not None, assume noisy images arose from additive gaussian noise with this sigma.
-                                     Otherwise assume poisson noise.
-    estimate_conditional_from_model_samples : bool, whether to estimate the conditional entropy from a model fit to them
-        rather than from the the data iteself.  
-
-    patience : int, How many iterations to wait for validation loss to improve. If None, use the default for the chosen model
-    num_val_samples : int, How many samples to use for validation. If None, use the default for the chosen model
-    batch_size : int, The batch size to use for training. If None, use the default for the chosen model
-    max_epochs : int, The maximum number of epochs to train for. If None, use the default for the chosen model
-    learning_rate : float, If None, use the default for the chosen model
-
-    use_iterative_optimization : bool, (if entropy_model='gaussian') whether to use iterative optimization to refine 
-                                    the stationary Gaussian process estimate
-    eigenvalue_floor : float, (if entropy_model='gaussian') make the eigenvalues of the covariance matrix at least this large
-    gradient_clip : float, (if model='gaussian' and use_iterative_optimization=True) clip gradients to this value
-    momentum : float, (if model='gaussian' and use_iterative_optimization=True) momentum for gradient descent
-    analytic_marginal_entropy : bool, (if model='gaussian') use the analytic entropy of the Gaussian fit for H(Y) instead
-                            of upper bounding it with the negative log likelihood of the Gaussian fit
-
-    steps_per_epoch : int, (if entropy_model='pixelcnn') number of steps per epoch
-    num_hidden_channels : int, (if entropy_model='pixelcnn') number of hidden channels in the PixelCNN
-    num_mixture_components : int, (if entropy_model='pixelcnn') number of mixture components in the PixelCNN output
-    do_lr_decay : bool, (if entropy_model='pixelcnn') whether to decay the learning rate during training
-    add_gaussian_training_noise : bool, (if entropy_model='pixelcnn') whether to add gaussian noise to the training data instead of uniform noise
-    condition_vectors : ndarray, (if entropy_model='pixelcnn') array of conditioning vectors to use for the PixelCNN. should be of shape (n_samples, d),
-      where d is the dimensionality of the conditioning vector
-
-    return_entropy_model : bool, whether to return the noisy image entropy model
-    verbose : bool, whether to print out the estimated values
+    Returns
+    -------
+    mutual_info : float
+        The estimated mutual information in bits per pixel.
+    entropy_model : model, optional
+        If `return_entropy_model` is True, returns the trained entropy model along with the mutual information.
     """
+
     warnings.warn("This function is deprecated. Use estimate_information() instead.")
     clean_images_if_available = clean_images if clean_images is not None else noisy_images
     if np.any(clean_images_if_available < 0):   
