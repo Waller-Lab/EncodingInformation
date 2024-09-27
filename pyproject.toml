@@ -16,15 +16,17 @@ dependencies = [
     "jax",
     "flax",
     "tensorflow"
-
 ]
 dynamic = ["version"]
 description = "Estimating encoded information"
 readme = "README.md"
 
+# Optional dependencies
+[project.optional-dependencies]
+datasets = ["pandas", "matplotlib", "scipy", "bsccm", "dask[array]", "zarr", "h5py"]
+
 # documentation
-docs = ["sphinx"]
+docs = ["sphinx", "sphinx_rtd_theme"]
 
 [project.urls]
 Home = "https://github.com/Waller-Lab/EncodingInformation"
-

@@ -1,4 +1,8 @@
-import h5py
+try:
+    import h5py
+except ImportError as e:
+    raise ImportError("To use the HyperspectralMetalensDataset class, install the required packages: "
+                      "pip install encoding_information[dataset]") from e
 import numpy as np
 import os
 import glob
