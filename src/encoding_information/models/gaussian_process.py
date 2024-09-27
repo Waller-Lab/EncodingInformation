@@ -857,7 +857,7 @@ class FullGaussianProcess(MeasurementModel):
 
         self._validate_data(data)
         data = data.reshape(data.shape[0], -1)
-        data = match_to_generator_data(data, seed=data_seed, add_uniform_noise = self._add_uniform_noise)
+        data = match_to_generator_data(data, seed=data_seed, add_uniform_noise=self._add_uniform_noise)
         # average nll per pixel, but averaged over data or per data point
         if average:                        
             return -gaussian_likelihood(self.cov_mat, self.mean_vec, data).mean() / np.prod(np.array(data.shape[1:]))
