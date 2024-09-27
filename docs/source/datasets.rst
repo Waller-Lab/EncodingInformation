@@ -1,3 +1,4 @@
+.. currentmodule:: encoding_information.datasets
 Datasets Documentation
 =======================
 
