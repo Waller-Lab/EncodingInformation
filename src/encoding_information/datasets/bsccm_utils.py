@@ -1,16 +1,21 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+
 import numpy as onp
 import jax.numpy as np
 import jax
 from pathlib import Path
-import matplotlib.gridspec as gridspec
+try:
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import scipy.ndimage as ndimage
+    from bsccm import BSCCM
+except ImportError as e:
+    raise ImportError("To use the BSCCMDataset class, install the required packages: "
+                      "pip install encoding_information[dataset]") from e
+
 import os
 import shutil
 import warnings
-from bsccm import BSCCM
 from tqdm import tqdm
-from scipy import ndimage
 from encoding_information.image_utils import add_noise
 from encoding_information.datasets.dataset_base_class import MeasurementDatasetBase
 

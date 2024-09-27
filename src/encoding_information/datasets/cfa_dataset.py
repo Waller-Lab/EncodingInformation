@@ -1,20 +1,16 @@
-import dask.array as da
 import numpy as np
-import os
-import sys
 from encoding_information.datasets.dataset_base_class import MeasurementDatasetBase
-from abc import ABC, abstractmethod
-import zarr
 import jax.numpy as jnp
 test = jnp.array([1,2,3])
-import torch
-from torch.utils.data import Dataset, DataLoader
-from numcodecs import Blosc
-import glob
 from encoding_information.image_utils import add_noise
-from tqdm import tqdm
-from jax import jit
 from jax import random
+try:
+    import dask.array as da
+    import zarr
+except ImportError as e:
+    raise ImportError("To use the ColorFilterArrayDataset class, install the required packages: "
+                      "pip install encoding_information[dataset]") from e
+
 
 class ColorFilterArrayDataset(MeasurementDatasetBase):
     """
