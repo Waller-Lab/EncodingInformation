@@ -12,12 +12,18 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 def plot_samples(samples, ground_truth, model_names=['Samples'], contrast_cutoff=99):
     """
-    Plot ground truth data and samples from model(s)
-
-    Args:
-        samples (list of np.ndarray): list of samples from models
-        ground_truth (np.ndarray): ground truth data
-        model_names (list): list of names of models
+    Plot ground truth data and samples from model(s).
+    
+    Parameters
+    ----------
+    samples : list of np.ndarray
+        List of samples from models. Each array represents model output.
+    ground_truth : np.ndarray
+        Ground truth data for comparison.
+    model_names : list of str, optional
+        List of names corresponding to each model.
+    contrast_cutoff : int, optional
+        Percentile to determine contrast cutoff for display. Defaults to 99.
     """
 
     vmin, vmax = np.percentile(ground_truth.flatten()[:5000], 100 - contrast_cutoff), np.percentile(ground_truth.flatten()[:5000], contrast_cutoff)
@@ -42,6 +48,14 @@ def plot_samples(samples, ground_truth, model_names=['Samples'], contrast_cutoff
         ax.text(-0.1, 0.5, name,  transform=ax.transAxes, rotation=90, va='center', ha='center')
 
 def plot_optimization_loss_history(val_loss_history):
+    """
+    Plot the validation loss history during an optimization process.
+    
+    Parameters
+    ----------
+    val_loss_history : list of float
+        A list representing the history of validation loss over iterations.
+    """
 
     fig, axs = plt.subplots(1, 1, figsize=(4, 4))
     
@@ -71,9 +85,14 @@ def plot_optimization_loss_history(val_loss_history):
     
 def plot_eigenvalues(*args, **kwargs):
     """
-    Plot the eigenvalues of a set of covariance matrices
-
-    pass named arguments where the name is the label and the value is the covariance matrix
+    Plot the eigenvalues of a set of covariance matrices.
+    
+    Parameters
+    ----------
+    *args : list of np.ndarray
+        Covariance matrices to plot eigenvalues from.
+    **kwargs : dict
+        Named arguments where the name is the label and the value is the covariance matrix.
     """
     fig, axs = plt.subplots(1, 1, figsize=(4, 4))
     
@@ -93,6 +112,32 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
                                    bins=50, colors=None, color=None,
                                    plot_center_coords=None, black_background=False, **kwargs):
     """
+    Plot 2D histograms of intensity coordinates from two groups of intensities.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axis on which to plot.
+    intensities_1 : np.ndarray
+        Intensity values for the x-axis.
+    intensities_2 : np.ndarray
+        Intensity values for the y-axis.
+    max : float
+        Maximum value for the bin edges.
+    cmap : matplotlib.colors.Colormap, optional
+        Colormap for the histogram.
+    bins : int, optional
+        Number of bins for the histogram.
+    colors : list of str, optional
+        List of colors for different intensity groups.
+    color : str, optional
+        Single color to use if `colors` is not provided.
+    plot_center_coords : list of tuple, optional
+        List of center coordinates to plot as circles.
+    black_background : bool, optional
+        Whether to use a black background in the plot.
+    **kwargs : dict
+        Additional keyword arguments passed to the plotting functions.
     """
     # make sure they are N groups x num samples
     intensities_1 = np.array(intensities_1)
@@ -180,6 +225,16 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
     add_multiple_colorbars( ax, cmaps)
 
 def add_multiple_colorbars(ax, cmaps):
+    """
+    Add multiple colorbars to the given axis, each corresponding to a different colormap.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axis on which the colorbars will be added.
+    cmaps : list of matplotlib.colors.Colormap
+        List of colormaps to add colorbars for.
+    """
     # Add colorbars for each of the three objects
     # get fig from ax
     fig = ax.get_figure()
@@ -204,7 +259,20 @@ def add_multiple_colorbars(ax, cmaps):
 
 class OverlayedHistograms:
     """
-    Convenience class for plotting multiple histograms on the same axes (with equal bin sizes)
+    Class for plotting multiple histograms on the same axis with equal bin sizes.
+    
+    Attributes
+    ----------
+    ax : matplotlib.axes.Axes
+        Axis to plot the histograms on.
+    bins : np.ndarray or None
+        Bin edges for the histograms.
+    num_bins : int
+        Number of bins for the histograms.
+    log : bool
+        Whether to use a logarithmic scale for the y-axis.
+    logx : bool
+        Whether to use a logarithmic scale for the x-axis.
     """
     def __init__(self, ax=None, bins=None, num_bins=50, log=True, logx=True):
         self.ax = ax
@@ -216,16 +284,37 @@ class OverlayedHistograms:
         self.logx = logx
 
     def add(self, values, label=None):
+        """
+        Add a set of values to the histogram.
+
+        Parameters
+        ----------
+        values : np.ndarray
+            The values to be added to the histogram.
+        label : str, optional
+            The label for the values.
+        """
         self.all_values.append(values)
         self.labels.append(label)
     
     def get_hist_counts(self, eigenvalues):
+        """
+        Get the histogram counts for a set of eigenvalues.
+
+        Parameters
+        ----------
+        eigenvalues : np.ndarray
+            Eigenvalues to compute the histogram counts for.
+        """
         if self.bins is None:
             self.generate_bins()
         counts, _ = np.histogram(eigenvalues, bins=self.bins)
         return counts
     
     def generate_bins(self):
+        """
+        Generate logarithmic or linear bin edges based on the values added.
+        """
         min_value = np.array([np.min(e) for e in self.all_values]).min()
         max_value = np.array([np.max(e) for e in self.all_values]).max()
         if self.logx:
@@ -236,6 +325,18 @@ class OverlayedHistograms:
         
 
     def plot(self, zorder=None, bottom=.5, **kwargs):
+        """
+        Plot the histograms on the axis.
+        
+        Parameters
+        ----------
+        zorder : dict, optional
+            Order in which to plot the histograms.
+        bottom : float, optional
+            Baseline value for the histogram bars.
+        **kwargs : dict
+            Additional keyword arguments passed to the bar plot.
+        """
         if self.bins is None or isinstance(self.bins, int):
             self.generate_bins()
         for eigenvalues, label in zip(self.all_values, self.labels):

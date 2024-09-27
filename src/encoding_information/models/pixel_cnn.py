@@ -30,6 +30,16 @@ from .model_base_class import MeasurementModel, MeasurementType, \
 
 
 class PreprocessLayer(nn.Module):
+    """
+    A layer that normalizes the input images using the provided mean and standard deviation.
+
+    Attributes
+    ----------
+    mean : np.ndarray
+        The mean to subtract from the input images.
+    std : np.ndarray
+        The standard deviation to divide the input images by.
+    """
     mean: np.ndarray
     std: np.ndarray
 
@@ -37,6 +47,21 @@ class PreprocessLayer(nn.Module):
         return (x - self.mean) / (self.std + 1e-5)
 
 class MaskedConvolution(nn.Module):
+    """
+    A convolutional layer with a mask to ensure autoregressive behavior.
+    
+    This layer ensures that during the convolution, the current pixel does not 
+    have access to any future pixels (either to the right or below in the image).
+
+    Attributes
+    ----------
+    c_out : int
+        The number of output channels.
+    mask : np.ndarray
+        The mask to apply to the convolution, determining which pixels are visible.
+    dilation : int, optional
+        The dilation factor for the convolution (default is 1).
+    """
     c_out : int
     mask : np.ndarray
     dilation : int = 1
@@ -60,6 +85,23 @@ class MaskedConvolution(nn.Module):
     
 
 class VerticalStackConvolution(nn.Module):
+    """
+    A vertical convolutional layer that processes the pixels above the current pixel in an image.
+
+    This layer creates a vertical stack by masking the convolution kernel, ensuring that the pixels
+    below the current pixel are not visible during the convolution.
+
+    Attributes
+    ----------
+    c_out : int
+        The number of output channels.
+    kernel_size : int
+        The size of the convolution kernel.
+    mask_center : bool, optional
+        Whether to mask out the center pixel in the kernel (default is False).
+    dilation : int, optional
+        The dilation factor for the convolution (default is 1).
+    """
     c_out : int
     kernel_size : int
     mask_center : bool = False
@@ -83,6 +125,23 @@ class VerticalStackConvolution(nn.Module):
 
 
 class HorizontalStackConvolution(nn.Module):
+    """
+    A horizontal convolutional layer that processes the pixels to the left of the current pixel in an image.
+
+    This layer creates a horizontal stack by masking the convolution kernel, ensuring that the pixels
+    to the right of the current pixel are not visible during the convolution.
+
+    Attributes
+    ----------
+    c_out : int
+        The number of output channels.
+    kernel_size : int
+        The size of the convolution kernel.
+    mask_center : bool, optional
+        Whether to mask out the center pixel in the kernel (default is False).
+    dilation : int, optional
+        The dilation factor for the convolution (default is 1).
+    """
     c_out : int
     kernel_size : int
     mask_center : bool = False
@@ -106,6 +165,22 @@ class HorizontalStackConvolution(nn.Module):
 
 
 class GatedMaskedConv(nn.Module):
+    """
+    A gated masked convolution layer used in PixelCNN. This layer uses gated activation functions
+    to improve gradient flow during training.
+
+    It combines information from a vertical stack and a horizontal stack, each being passed through
+    masked convolutions, and optionally conditioned on an external vector (such as class labels).
+
+    Attributes
+    ----------
+    dilation : int, optional
+        The dilation factor for the convolutions (default is 1).
+    id : int, optional
+        The layer ID, used for parameter naming.
+    condition_vector_size : int, optional
+        The size of the condition vector for conditional PixelCNN.
+    """
     dilation : int = 1
     id: int = None
     condition_vector_size : int = None
@@ -162,6 +237,35 @@ class GatedMaskedConv(nn.Module):
     
 
 class _PixelCNNFlaxImpl(nn.Module):
+    """
+    The core implementation of the PixelCNN model in Flax.
+
+    This module defines the structure of the PixelCNN, including the vertical and horizontal
+    masked convolutions, gated activation functions, and a mixture density output layer.
+
+    Attributes
+    ----------
+    data_shape : tuple
+        The shape of the input data (height, width, channels).
+    num_hidden_channels : int, optional
+        The number of hidden channels in the model (default is 64).
+    num_mixture_components : int, optional
+        The number of components in the mixture density output (default is 40).
+    train_data_mean : float
+        The mean of the training data used for normalization.
+    train_data_std : float
+        The standard deviation of the training data used for normalization.
+    train_data_min : float
+        The minimum value of the training data.
+    train_data_max : float
+        The maximum value of the training data.
+    sigma_min : float, optional
+        The minimum standard deviation for the mixture density output (default is 1).
+    condition_vector_size : int, optional
+        The size of the condition vector for conditional PixelCNN.
+    use_positional_embedding : bool, optional
+        Whether to use learned positional embeddings for each pixel (default is False).
+    """
     data_shape : tuple
     num_hidden_channels : int = 64
     num_mixture_components : int = 40
@@ -247,10 +351,27 @@ class _PixelCNNFlaxImpl(nn.Module):
 
     def forward_pass(self, x, condition_vectors=None):
         """
-        Forward image through model and return parameters of mixture density 
-        Inputs:
-            x - Image BxHxWx1 (multiple channels not supported yet)
-            condition_vector - vector of size condition_vector_size to condition on
+        Forward pass of the PixelCNN model.
+
+        The image is passed through the vertical and horizontal masked convolutions, followed by
+        gated convolutions, and finally a mixture density output layer. The model outputs the parameters
+        of the mixture density for each pixel (mean, standard deviation, and mixture logits).
+
+        Parameters
+        ----------
+        x : ndarray
+            The input image, with shape (batch_size, height, width, channels).
+        condition_vectors : ndarray, optional
+            A vector to condition the image generation process (e.g., class labels).
+
+        Returns
+        -------
+        mu : ndarray
+            The mean of the Gaussian components for each pixel.
+        sigma : ndarray
+            The standard deviation of the Gaussian components for each pixel.
+        mix_logit : ndarray
+            The logits for the mixture components.
         """
         # check shape
         if x.ndim != 4:
@@ -289,12 +410,34 @@ class _PixelCNNFlaxImpl(nn.Module):
 
 class PixelCNN(MeasurementModel):
     """
-    This class handles the training and evaluation of the PixelCNN model, which is implemented in Flax.
-    It also wraps the model in the ProbabilisticImageModel interface for easy comparison with other models.
+    The PixelCNN model for autoregressive image modeling.
 
+    This class handles the training and evaluation of the PixelCNN model and wraps the Flax implementation
+    in a higher-level interface that conforms to the MeasurementModel class. It provides methods for fitting
+    the model to data, computing the negative log-likelihood of images, and generating new images.
+
+    Attributes
+    ----------
+    num_hidden_channels : int
+        The number of hidden channels in the model.
+    num_mixture_components : int
+        The number of components in the mixture density output.
     """
 
     def __init__(self, num_hidden_channels=64, num_mixture_components=40):
+        """
+        Initialize the PixelCNN model with image shape, number of hidden channels, and mixture components.
+
+        Parameters
+        ----------
+        image_shape : tuple of int
+            Shape of the input image (height, width).
+        num_hidden_channels : int
+            Number of hidden channels in the convolutional layers.
+        num_mixture_components : int
+            Number of mixture components for the output layer.
+        """
+
         super().__init__([MeasurementType.HW, MeasurementType.HWC], measurement_dtype=float)
         self.num_hidden_channels = num_hidden_channels
         self.num_mixture_components = num_mixture_components
@@ -305,6 +448,49 @@ class PixelCNN(MeasurementModel):
             add_gaussian_noise=False, add_uniform_noise=True, model_seed=None, data_seed=None, use_positional_embedding=False,
             # deprecated
             seed=None,):
+        """
+        Train the PixelCNN model on a dataset of images.
+
+        Parameters
+        ----------
+        train_images : ndarray
+            The input dataset, with shape (N, H, W, C).
+        condition_vectors : ndarray, optional
+            Vectors to condition the image generation process (e.g., class labels).
+        learning_rate : float, optional
+            The learning rate for optimization (default is 1e-2).
+        max_epochs : int, optional
+            The maximum number of training epochs (default is 200).
+        steps_per_epoch : int, optional
+            The number of steps per epoch (default is 100).
+        patience : int, optional
+            The number of epochs to wait before early stopping (default is 40).
+        sigma_min : float, optional
+            The minimum standard deviation for the mixture density output (default is 1).
+        batch_size : int, optional
+            The batch size for training (default is 64).
+        num_val_samples : int, optional
+            The number of validation samples. If None, a percentage is used (default is None).
+        percent_samples_for_validation : float, optional
+            The percentage of samples to use for validation (default is 0.1).
+        do_lr_decay : bool, optional
+            Whether to apply learning rate decay during training (default is False).
+        verbose : bool, optional
+            Whether to print progress during training (default is True).
+        add_gaussian_noise : bool, optional
+            Whether to add Gaussian noise to the training images (default is False).
+        add_uniform_noise : bool, optional
+            Whether to add uniform noise to the training images (default is True).
+        model_seed : int, optional
+            Seed for model initialization.
+        data_seed : int, optional
+            Seed for data shuffling.
+
+        Returns
+        -------
+        val_loss_history : list
+            A list of validation loss values for each epoch.
+        """
         if seed is not None:
             warnings.warn("seed argument is deprecated. Use model_seed and data_seed instead")
             model_seed = seed
@@ -408,6 +594,29 @@ class PixelCNN(MeasurementModel):
 
 
     def compute_negative_log_likelihood(self, data, conditioning_vecs=None,  data_seed=None, average=True, verbose=True, seed=None):
+        """
+        Compute the negative log-likelihood (NLL) of images under the trained PixelCNN model.
+
+        Parameters
+        ----------
+        data : ndarray
+            The input images for which to compute the NLL.
+        conditioning_vecs : ndarray, optional
+            Vectors to condition the image generation process (e.g., class labels).
+        data_seed : int, optional
+            Seed for data shuffling.
+        average : bool, optional
+            If True, return the average NLL over all images (default is True).
+        verbose : bool, optional
+            Whether to print progress (default is True).
+        seed : int, optional
+            Deprecated. Use data_seed instead.
+
+        Returns
+        -------
+        nll : float
+            The negative log-likelihood of the input images.
+        """
         # See superclass for docstring
         if seed is not None:
             warnings.warn("seed argument is deprecated. Use data_seed instead")
@@ -440,6 +649,31 @@ class PixelCNN(MeasurementModel):
 
 
     def generate_samples(self, num_samples, conditioning_vecs=None, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
+        """
+        Generate new images from the trained PixelCNN model by sampling pixel by pixel.
+
+        Parameters
+        ----------
+        num_samples : int
+            Number of images to generate.
+        conditioning_vecs : jax.Array, optional
+            Optional conditioning vectors. If provided, the shape should match 
+            (num_samples, condition_vector_size). Default is None.
+        sample_shape : tuple of int or int, optional
+            Shape of the images to generate. If None, the model's image_shape is used.
+            If a single int is provided, it will be treated as a square shape. Default is None.
+        ensure_nonnegative : bool, optional
+            If True, ensure that the generated pixel values are non-negative. Default is True.
+        seed : int, optional
+            Random seed for reproducibility. Default is 123 if not provided.
+        verbose : bool, optional
+            If True, display progress during the generation process. Default is True.
+
+        Returns
+        -------
+        jax.Array
+            Generated images with the specified shape.
+        """
         if seed is None:
             seed = 123
         key = jax.random.PRNGKey(seed)

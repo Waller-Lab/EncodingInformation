@@ -4,7 +4,8 @@ Imaging System Design with Information Estimation
    :maxdepth: 2
    :caption: Contents:
 
-   source/modules
-   source/encoding_information
-   source/encoding_information.datasets
-   source/encoding_information.models
+   source/information_estimation
+   source/models
+   source/datasets
+   source/image_utils
+   source/plot_utils

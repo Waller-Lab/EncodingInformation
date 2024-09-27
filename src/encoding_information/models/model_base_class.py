@@ -15,20 +15,71 @@ from jax import jit
 
 
 class MeasurementNoiseModel(ABC):
+    """
+    Abstract base class for noise models applied to measurement data.
+
+    Methods
+    -------
+    estimate_conditional_entropy(*args)
+        Abstract method for estimating conditional entropy, which must be implemented by derived classes.
+    """
 
     @abstractmethod
     def estimate_conditional_entropy(self, *args):
+        """
+        Estimate the conditional entropy for a given noise model.
+
+        This is an abstract method that must be implemented by subclasses.
+
+        Parameters
+        ----------
+        *args : tuple
+            Additional arguments needed for estimating conditional entropy.
+
+        Returns
+        -------
+        float
+            The estimated conditional entropy.
+        """
         pass
 
 
 class MeasurementType(Enum):
+    """
+    Enum class to define different types of measurements.
+    
+    Attributes
+    ----------
+    HW : Enum
+        Single-channel image measurement (Height, Width).
+    HWC : Enum
+        Multi-channel image measurement (Height, Width, Channels).
+    D : Enum
+        Vectorized data measurement.
+    """
+
+
     HW = auto() # single channel image 
     HWC = auto() # multi-channel image
     D = auto() # vectorized data
 
 class MeasurementModel(ABC):
     """
-    Base class for different probabilistic models of images and other types of measurements
+    Base class for probabilistic models of images and other measurement data.
+
+    Parameters
+    ----------
+    measurement_types : Union[MeasurementType, List[MeasurementType]], optional
+        The type(s) of measurements supported by this model. If None, all types are supported.
+    measurement_dtype : type, optional
+        The data type of the measurements, either float or complex.
+
+    Attributes
+    ----------
+    measurement_types : list
+        A list of supported measurement types.
+    measurement_dtype : type
+        The data type of the measurements.
     """
     
     def __init__(self, measurement_types: Union[MeasurementType, List[MeasurementType]] = None, measurement_dtype: type = float) -> None:
@@ -55,17 +106,17 @@ class MeasurementModel(ABC):
 
     def _validate_data(self, data: Union[List, np.ndarray, onp.ndarray]):
         """
-        Validate that the input data matches the expected type and dtype. This should operate on a batch of data.
+        Validate the input data, ensuring it matches the expected type and dtype.
 
         Parameters
         ----------
         data : Union[List, np.ndarray, onp.ndarray]
-            Input data to validate
+            Input data to validate.
 
         Raises
         ------
         ValueError
-            If the data shape or dtype doesn't match the expected type
+            If the data does not match the expected type or dtype.
         """
         if isinstance(data, list):
             data = np.array(data)
@@ -98,37 +149,37 @@ class MeasurementModel(ABC):
             batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,
             data_seed=None, model_seed=None, verbose=True):
         """
-        Fit the model to the images
+        Train the model on the provided images.
 
         Parameters
         ----------
         train_images : ndarray
-            Array of images, shape (N, H, W)
+            The training dataset consisting of images, with shape (N, H, W).
         learning_rate : float, optional
-            Learning rate
+            The learning rate for optimization (default is 1e-2).
         max_epochs : int, optional
-            Maximum number of epochs to train for
+            Maximum number of training epochs (default is 200).
         steps_per_epoch : int, optional
-            Number of steps per epoch
+            Number of steps per epoch (default is 100).
         patience : int, optional
-            Number of epochs to wait before early stopping
+            Number of epochs to wait for improvement before early stopping (default is 10).
         batch_size : int, optional
-            Batch size
+            The number of images in each batch (default is 64).
         num_val_samples : int, optional
-            Number of validation samples to use. If None, use percent_samples_for_validation
+            Number of validation samples to use, or None to compute automatically.
         percent_samples_for_validation : float, optional
-            Percentage of samples to use for validation
+            Fraction of samples to use for validation (default is 0.1).
         data_seed : int, optional
-            Random seed that controls shuffling and adding noise to data
+            Random seed for data shuffling.
         model_seed : int, optional
-            Random seed that controls initialization of weights
+            Random seed for model initialization.
         verbose : bool, optional
-            Whether to print training progress
+            Whether to print training progress (default is True).
 
         Returns
         -------
         val_loss_history : list
-            List of validation losses at each epoch
+            A list of validation losses at each epoch.
         """
         pass
     
@@ -143,7 +194,7 @@ class MeasurementModel(ABC):
             Array of images, shape (N, H, W)
         verbose : bool, optional
             Whether to print progress
-       data_seed : int, optional
+        data_seed : int, optional
             Random seed for shuffling images (and possibly adding noise)
         average : bool, optional
             Whether to average the NLL over all images
@@ -158,23 +209,43 @@ class MeasurementModel(ABC):
     @abstractmethod
     def generate_samples(self, num_samples, sample_shape=None, verbose=True):
         """
-        Generate samples from the model
+        Generate samples from the model.
 
         Parameters
         ----------
         num_samples : int
-            Number of samples to generate
+            The number of samples to generate.
         sample_shape : tuple, optional
-            shape of each sample. If None, the shape of the training images used
+            The shape of each sample. If None, the model will use the training image shape.
         verbose : bool, optional
-            Whether to print progress
+            Whether to print progress (default is True).
+
+        Returns
+        -------
+        samples : ndarray
+            Generated samples from the model.
         """
         pass
 
 def _add_gaussian_noise_fn(images, condition_vectors=None):
     """
-    Add gaussian noise to images
+    Add Gaussian noise to images.
+
+    Parameters
+    ----------
+    images : ndarray
+        The input images, shape (N, H, W).
+    condition_vectors : ndarray, optional
+        Conditioning vectors associated with the images.
+
+    Returns
+    -------
+    noisy_images : ndarray
+        The images with added Gaussian noise.
+    condition_vectors : ndarray, optional
+        If provided, returns the conditioning vectors.
     """
+
     noisy_images = images + tf.random.normal(shape=tf.shape(images), mean=0, stddev=1)
     if condition_vectors is not None:
         return noisy_images, condition_vectors
@@ -183,8 +254,23 @@ def _add_gaussian_noise_fn(images, condition_vectors=None):
 
 def _add_uniform_noise_fn(images, condition_vectors=None):
     """
-    Add uniform noise to images
+    Add uniform noise to images.
+
+    Parameters
+    ----------
+    images : ndarray
+        The input images, shape (N, H, W).
+    condition_vectors : ndarray, optional
+        Conditioning vectors associated with the images.
+
+    Returns
+    -------
+    noisy_images : ndarray
+        The images with added uniform noise.
+    condition_vectors : ndarray, optional
+        If provided, returns the conditioning vectors.
     """
+
     noisy_images = images + tf.random.uniform(shape=tf.shape(images), minval=0, maxval=1)
     if condition_vectors is not None:
         return noisy_images, condition_vectors
@@ -194,8 +280,33 @@ def _add_uniform_noise_fn(images, condition_vectors=None):
 def make_dataset_generators(data, batch_size, num_val_samples, add_uniform_noise=True, 
                             add_gaussian_noise=False, condition_vectors=None, seed=None):
     """
-    Use tensorflow datasets to make fast data pipelines
+    Create TensorFlow dataset generators for training and validation data.
+
+    Parameters
+    ----------
+    data : ndarray
+        The input data, shape (N, H, W).
+    batch_size : int
+        The number of samples per batch.
+    num_val_samples : int
+        Number of validation samples.
+    add_uniform_noise : bool, optional
+        Whether to add uniform noise to the data (default is True).
+    add_gaussian_noise : bool, optional
+        Whether to add Gaussian noise to the data (default is False).
+    condition_vectors : ndarray, optional
+        Conditioning vectors associated with the images.
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    train_ds : tf.data.Dataset
+        TensorFlow dataset iterator for training data.
+    val_ds : callable
+        A function that returns a TensorFlow dataset iterator for validation data.
     """
+
     if seed is not None:
         tf.random.set_seed(seed)
 
@@ -247,11 +358,27 @@ def make_dataset_generators(data, batch_size, num_val_samples, add_uniform_noise
 
 def _evaluate_nll(data_iterator, state, eval_step=None, batch_size=16, return_average=True, verbose=False):
     """
-    Compute negative log likelihood over many batches
+    Compute the negative log-likelihood (NLL) over batches of data.
 
-    batch_size only comes into play if data_iterator is a numpy array
+    Parameters
+    ----------
+    data_iterator : Iterator or ndarray
+        An iterator or array of input data batches.
+    state : flax.linen.Module
+        The current state of the model.
+    eval_step : callable, optional
+        The evaluation step to compute the NLL for a batch. Defaults to a compiled JAX function.
+    batch_size : int, optional
+        The number of samples per batch (default is 16).
+    return_average : bool, optional
+        Whether to return the average NLL over all data (default is True).
+    verbose : bool, optional
+        Whether to print progress (default is False).
 
-    if return_average is False, its up to the user to ensure that the batch size of the data_iterator is 1
+    Returns
+    -------
+    nll : float or ndarray
+        If return_average is True, returns the average NLL. Otherwise, returns the NLL for each batch.
     """
 
     if eval_step is None: # default eval step
@@ -284,13 +411,49 @@ def _evaluate_nll(data_iterator, state, eval_step=None, batch_size=16, return_av
         return np.array(nlls)
 
 
-def train_model(train_images, state, batch_size, num_val_samples,
-                 steps_per_epoch, num_epochs, patience, train_step, condition_vectors=None,
-                 add_gaussian_noise=False, add_uniform_noise=True, seed=None,
-                  verbose=True):
+def train_model(train_images, state, batch_size, num_val_samples, steps_per_epoch, num_epochs, patience,
+                train_step, condition_vectors=None, add_gaussian_noise=False, add_uniform_noise=True, seed=None,
+                verbose=True):
     """
-    Training loop with early stopping. Returns a callable with 
-    """
+    Train the model with early stopping based on validation performance.
+
+    Parameters
+    ----------
+    train_images : ndarray
+        The training dataset consisting of images, with shape (N, H, W).
+    state : flax.linen.Module
+        The model state.
+    batch_size : int
+        The number of samples per batch.
+    num_val_samples : int
+        The number of validation samples.
+    steps_per_epoch : int
+        Number of steps per epoch.
+    num_epochs : int
+        Maximum number of epochs for training.
+    patience : int
+        Number of epochs to wait before early stopping.
+    train_step : callable
+        The function to perform a single training step.
+    condition_vectors : ndarray, optional
+        Conditioning vectors associated with the images.
+    add_gaussian_noise : bool, optional
+        Whether to add Gaussian noise to the training data (default is False).
+    add_uniform_noise : bool, optional
+        Whether to add uniform noise to the training data (default is True).
+    seed : int, optional
+        Random seed for reproducibility.
+    verbose : bool, optional
+        Whether to print training progress (default is True).
+
+    Returns
+    -------
+    best_params : flax.linen.Module.params
+        The model parameters that achieved the best validation performance.
+    val_loss_history : list
+        A list of validation losses for each epoch.
+    """ 
+
     if num_val_samples >= train_images.shape[0]:
         num_val_samples = int(train_images.shape[0] * 0.1)
         warnings.warn(f'Number of validation samples must be less than the number of training samples. Using {num_val_samples} validation samples instead.')
