@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Models Documentation &mdash; Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Datasets Documentation" href="datasets.html" />
+    <link rel="prev" title="Information Estimation Functions" href="information_estimation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            EncodingInformation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="information_estimation.html">Information Estimation Functions</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Models Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#conditional-entropy-models">Conditional Entropy Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel"><code class="docutils literal notranslate"><span class="pre">AnalyticGaussianNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.__init__"><code class="docutils literal notranslate"><span class="pre">AnalyticGaussianNoiseModel.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">AnalyticGaussianNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel"><code class="docutils literal notranslate"><span class="pre">PoissonNoiseModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy"><code class="docutils literal notranslate"><span class="pre">PoissonNoiseModel.estimate_conditional_entropy()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#gaussian-process-models">Gaussian Process Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.__init__"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.fit"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.generate_samples"><code class="docutils literal notranslate"><span class="pre">StationaryGaussianProcess.generate_samples()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess.__init__"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.gaussian_process.FullGaussianProcess.generate_samples"><code class="docutils literal notranslate"><span class="pre">FullGaussianProcess.generate_samples()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pixel-cnn-model">Pixel CNN Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN"><code class="docutils literal notranslate"><span class="pre">PixelCNN</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.num_hidden_channels"><code class="docutils literal notranslate"><span class="pre">PixelCNN.num_hidden_channels</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.num_mixture_components"><code class="docutils literal notranslate"><span class="pre">PixelCNN.num_mixture_components</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.__init__"><code class="docutils literal notranslate"><span class="pre">PixelCNN.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.compute_negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">PixelCNN.compute_negative_log_likelihood()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.fit"><code class="docutils literal notranslate"><span class="pre">PixelCNN.fit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#encoding_information.models.pixel_cnn.PixelCNN.generate_samples"><code class="docutils literal notranslate"><span class="pre">PixelCNN.generate_samples()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_utils.html">Image Processing Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_utils.html">Plot Utilities Module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">EncodingInformation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Models Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/models.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="models-documentation">
+<h1>Models Documentation<a class="headerlink" href="#models-documentation" title="Link to this heading"></a></h1>
+<p>This documentation provides an overview of key models, focusing on essential input parameters and high-level functionality.</p>
+<section id="conditional-entropy-models">
+<h2>Conditional Entropy Models<a class="headerlink" href="#conditional-entropy-models" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.conditional_entropy_models.</span></span><span class="sig-name descname"><span class="pre">AnalyticGaussianNoiseModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></p>
+<p>Analytical model for estimating the conditional entropy H(Y | X) when the noise proces
+is additive independent Gaussian noise at each pixel.</p>
+<p>Initialize the AnalyticGaussianNoiseModel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sigma</strong> (<em>float</em>) – Standard deviation of the Gaussian noise.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the AnalyticGaussianNoiseModel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sigma</strong> (<em>float</em>) – Standard deviation of the Gaussian noise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.estimate_conditional_entropy">
+<span class="sig-name descname"><span class="pre">estimate_conditional_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.AnalyticGaussianNoiseModel.estimate_conditional_entropy" title="Link to this definition"></a></dt>
+<dd><p>Compute the conditional entropy H(Y | X) for Gaussian noise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>images</strong> (<em>jax.Array</em><em>, </em><em>optional</em>) – Unused in this model. The parameter is kept for compatibility.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The computed conditional entropy, given by the formula:
+0.5 * log(2 * pi * e * sigma^2).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.PoissonNoiseModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.conditional_entropy_models.</span></span><span class="sig-name descname"><span class="pre">PoissonNoiseModel</span></span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementNoiseModel</span></code></p>
+<p>Poisson noise model for estimating the conditional entropy H(Y | X) from empirical data.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy">
+<span class="sig-name descname"><span class="pre">estimate_conditional_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.conditional_entropy_models.PoissonNoiseModel.estimate_conditional_entropy" title="Link to this definition"></a></dt>
+<dd><p>Compute the conditional entropy H(Y | X) for Poisson noise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>images</strong> (<em>jax.Array</em>) – A dataset of images, preferably clean. This is used to compute the conditional entropy.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The average conditional entropy per pixel, computed using a Gaussian approximation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="gaussian-process-models">
+<h2>Gaussian Process Models<a class="headerlink" href="#gaussian-process-models" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">StationaryGaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></p>
+<p>Stationary 2D Gaussian process for single-channel images.</p>
+<p>This model learns a stationary covariance matrix and uses it to generate or evaluate samples.</p>
+<p>Initialize the StationaryGaussianProcess model and estimate the covariance matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>ndarray</em>) – Input images used to estimate the stationary covariance matrix.</p></li>
+<li><p><strong>eigenvalue_floor</strong> (<em>float</em><em>, </em><em>optional</em>) – The minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress and additional information (default is False).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the StationaryGaussianProcess model and estimate the covariance matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>ndarray</em>) – Input images used to estimate the stationary covariance matrix.</p></li>
+<li><p><strong>eigenvalue_floor</strong> (<em>float</em><em>, </em><em>optional</em>) – The minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress and additional information (default is False).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_negative_log_likelihood">
+<span class="sig-name descname"><span class="pre">compute_negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.compute_negative_log_likelihood" title="Link to this definition"></a></dt>
+<dd><p>Compute the negative log-likelihood of the provided images under the learned Gaussian process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>images</strong> (<em>ndarray</em>) – Input images to evaluate.</p></li>
+<li><p><strong>data_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for shuffling the data.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress (default is True).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>deprecated</em>) – Deprecated argument for random seed, use <cite>data_seed</cite> instead.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The negative log-likelihood of the provided images.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent_samples_for_validation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gradient_clip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precondition_gradient</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.fit" title="Link to this definition"></a></dt>
+<dd><p>Train the Stationary Gaussian Process model on the provided images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_images</strong> (<em>ndarray</em><em>, </em><em>optional</em>) – The training dataset consisting of images (default is the images provided during initialization).</p></li>
+<li><p><strong>data_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for shuffling the data.</p></li>
+<li><p><strong>learning_rate</strong> (<em>float</em><em>, </em><em>optional</em>) – Learning rate for optimization (default is 1e2).</p></li>
+<li><p><strong>max_epochs</strong> (<em>int</em><em>, </em><em>optional</em>) – Maximum number of training epochs (default is 60).</p></li>
+<li><p><strong>steps_per_epoch</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of steps per epoch (default is 1).</p></li>
+<li><p><strong>patience</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of epochs to wait for early stopping (default is 15).</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of images in each batch (default is 12).</p></li>
+<li><p><strong>num_val_samples</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of validation samples (default is computed automatically based on <cite>percent_samples_for_validation</cite>).</p></li>
+<li><p><strong>percent_samples_for_validation</strong> (<em>float</em><em>, </em><em>optional</em>) – Fraction of samples to use for validation (default is 0.1).</p></li>
+<li><p><strong>eigenvalue_floor</strong> (<em>float</em><em>, </em><em>optional</em>) – The minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).</p></li>
+<li><p><strong>gradient_clip</strong> (<em>float</em><em>, </em><em>optional</em>) – Maximum value to clip the gradient to avoid large updates (default is 1).</p></li>
+<li><p><strong>momentum</strong> (<em>float</em><em>, </em><em>optional</em>) – Momentum parameter for the optimizer (default is 0.9).</p></li>
+<li><p><strong>precondition_gradient</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to precondition the gradient using the Fisher Information Matrix (default is False).</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress (default is True).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>val_loss_history</strong> – A list of validation losses for each epoch.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.StationaryGaussianProcess.generate_samples">
+<span class="sig-name descname"><span class="pre">generate_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.StationaryGaussianProcess.generate_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate new image samples from the learned Gaussian process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> (<em>int</em>) – The number of samples to generate.</p></li>
+<li><p><strong>sample_shape</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Shape of the samples to generate (default is the shape of the training images).</p></li>
+<li><p><strong>ensure_nonnegative</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to ensure all pixel values are non-negative (default is True).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress (default is True).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Generated image samples.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.gaussian_process.</span></span><span class="sig-name descname"><span class="pre">FullGaussianProcess</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></p>
+<p>Full (non-stationary) Gaussian process for arbitrary data.</p>
+<p>This model estimates a full covariance matrix from the data and uses it to generate or evaluate samples.</p>
+<p>Initialize the Full Gaussian Process model and estimate the mean and covariance matrix from the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>ndarray</em>) – Input data used to estimate the Gaussian process.</p></li>
+<li><p><strong>eigenvalue_floor</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress during computation (default is False).</p></li>
+<li><p><strong>add_uniform_noise</strong> (<em>bool</em><em>, </em><em>optional</em>) – For discrete-valued data, add uniform noise (default True). For continuous-valued data, set to False.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eigenvalue_floor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the Full Gaussian Process model and estimate the mean and covariance matrix from the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>ndarray</em>) – Input data used to estimate the Gaussian process.</p></li>
+<li><p><strong>eigenvalue_floor</strong> (<em>float</em><em>, </em><em>optional</em>) – Minimum eigenvalue to ensure the covariance matrix is positive definite (default is 1e-3).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress during computation (default is False).</p></li>
+<li><p><strong>add_uniform_noise</strong> (<em>bool</em><em>, </em><em>optional</em>) – For discrete-valued data, add uniform noise (default True). For continuous-valued data, set to False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess.compute_negative_log_likelihood">
+<span class="sig-name descname"><span class="pre">compute_negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.compute_negative_log_likelihood" title="Link to this definition"></a></dt>
+<dd><p>Compute the negative log-likelihood of the provided data under the Gaussian process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>ndarray</em>) – Input data to evaluate.</p></li>
+<li><p><strong>data_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for shuffling the data.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress (default is True).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em><em>, </em><em>deprecated</em>) – Deprecated argument for random seed, use <cite>data_seed</cite> instead.</p></li>
+<li><p><strong>average</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to average the negative log-likelihood over all samples (default is True).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The negative log-likelihood of the provided data.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.gaussian_process.FullGaussianProcess.generate_samples">
+<span class="sig-name descname"><span class="pre">generate_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.gaussian_process.FullGaussianProcess.generate_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate new samples from the learned Gaussian process.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> (<em>int</em>) – Number of samples to generate.</p></li>
+<li><p><strong>sample_shape</strong> (<em>tuple</em><em>, </em><em>optional</em>) – Shape of the samples to generate (default is the shape of the training data).</p></li>
+<li><p><strong>ensure_nonnegative</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to ensure all values are non-negative (default is True).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress (default is True).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Generated samples.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="pixel-cnn-model">
+<h2>Pixel CNN Model<a class="headerlink" href="#pixel-cnn-model" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">encoding_information.models.pixel_cnn.</span></span><span class="sig-name descname"><span class="pre">PixelCNN</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_hidden_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_mixture_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasurementModel</span></code></p>
+<p>The PixelCNN model for autoregressive image modeling.</p>
+<p>This class handles the training and evaluation of the PixelCNN model and wraps the Flax implementation
+in a higher-level interface that conforms to the MeasurementModel class. It provides methods for fitting
+the model to data, computing the negative log-likelihood of images, and generating new images.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.num_hidden_channels">
+<span class="sig-name descname"><span class="pre">num_hidden_channels</span></span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.num_hidden_channels" title="Link to this definition"></a></dt>
+<dd><p>The number of hidden channels in the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.num_mixture_components">
+<span class="sig-name descname"><span class="pre">num_mixture_components</span></span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.num_mixture_components" title="Link to this definition"></a></dt>
+<dd><p>The number of components in the mixture density output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Initialize the PixelCNN model with image shape, number of hidden channels, and mixture components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_shape</strong> (<em>tuple</em><em> of </em><em>int</em>) – Shape of the input image (height, width).</p></li>
+<li><p><strong>num_hidden_channels</strong> (<em>int</em>) – Number of hidden channels in the convolutional layers.</p></li>
+<li><p><strong>num_mixture_components</strong> (<em>int</em>) – Number of mixture components for the output layer.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_hidden_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_mixture_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the PixelCNN model with image shape, number of hidden channels, and mixture components.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_shape</strong> (<em>tuple</em><em> of </em><em>int</em>) – Shape of the input image (height, width).</p></li>
+<li><p><strong>num_hidden_channels</strong> (<em>int</em>) – Number of hidden channels in the convolutional layers.</p></li>
+<li><p><strong>num_mixture_components</strong> (<em>int</em>) – Number of mixture components for the output layer.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.compute_negative_log_likelihood">
+<span class="sig-name descname"><span class="pre">compute_negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conditioning_vecs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.compute_negative_log_likelihood" title="Link to this definition"></a></dt>
+<dd><p>Compute the negative log-likelihood (NLL) of images under the trained PixelCNN model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>ndarray</em>) – The input images for which to compute the NLL.</p></li>
+<li><p><strong>conditioning_vecs</strong> (<em>ndarray</em><em>, </em><em>optional</em>) – Vectors to condition the image generation process (e.g., class labels).</p></li>
+<li><p><strong>data_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Seed for data shuffling.</p></li>
+<li><p><strong>average</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, return the average NLL over all images (default is True).</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress (default is True).</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Deprecated. Use data_seed instead.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>nll</strong> – The negative log-likelihood of the input images.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_images</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_vectors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_epochs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">steps_per_epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_val_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">percent_samples_for_validation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_lr_decay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_gaussian_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_uniform_noise</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_positional_embedding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.fit" title="Link to this definition"></a></dt>
+<dd><p>Train the PixelCNN model on a dataset of images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_images</strong> (<em>ndarray</em>) – The input dataset, with shape (N, H, W, C).</p></li>
+<li><p><strong>condition_vectors</strong> (<em>ndarray</em><em>, </em><em>optional</em>) – Vectors to condition the image generation process (e.g., class labels).</p></li>
+<li><p><strong>learning_rate</strong> (<em>float</em><em>, </em><em>optional</em>) – The learning rate for optimization (default is 1e-2).</p></li>
+<li><p><strong>max_epochs</strong> (<em>int</em><em>, </em><em>optional</em>) – The maximum number of training epochs (default is 200).</p></li>
+<li><p><strong>steps_per_epoch</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of steps per epoch (default is 100).</p></li>
+<li><p><strong>patience</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of epochs to wait before early stopping (default is 40).</p></li>
+<li><p><strong>sigma_min</strong> (<em>float</em><em>, </em><em>optional</em>) – The minimum standard deviation for the mixture density output (default is 1).</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em><em>, </em><em>optional</em>) – The batch size for training (default is 64).</p></li>
+<li><p><strong>num_val_samples</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of validation samples. If None, a percentage is used (default is None).</p></li>
+<li><p><strong>percent_samples_for_validation</strong> (<em>float</em><em>, </em><em>optional</em>) – The percentage of samples to use for validation (default is 0.1).</p></li>
+<li><p><strong>do_lr_decay</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to apply learning rate decay during training (default is False).</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to print progress during training (default is True).</p></li>
+<li><p><strong>add_gaussian_noise</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to add Gaussian noise to the training images (default is False).</p></li>
+<li><p><strong>add_uniform_noise</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to add uniform noise to the training images (default is True).</p></li>
+<li><p><strong>model_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Seed for model initialization.</p></li>
+<li><p><strong>data_seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Seed for data shuffling.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>val_loss_history</strong> – A list of validation loss values for each epoch.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="encoding_information.models.pixel_cnn.PixelCNN.generate_samples">
+<span class="sig-name descname"><span class="pre">generate_samples</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conditioning_vecs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensure_nonnegative</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#encoding_information.models.pixel_cnn.PixelCNN.generate_samples" title="Link to this definition"></a></dt>
+<dd><p>Generate new images from the trained PixelCNN model by sampling pixel by pixel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> (<em>int</em>) – Number of images to generate.</p></li>
+<li><p><strong>conditioning_vecs</strong> (<em>jax.Array</em><em>, </em><em>optional</em>) – Optional conditioning vectors. If provided, the shape should match
+(num_samples, condition_vector_size). Default is None.</p></li>
+<li><p><strong>sample_shape</strong> (<em>tuple</em><em> of </em><em>int</em><em> or </em><em>int</em><em>, </em><em>optional</em>) – Shape of the images to generate. If None, the model’s image_shape is used.
+If a single int is provided, it will be treated as a square shape. Default is None.</p></li>
+<li><p><strong>ensure_nonnegative</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, ensure that the generated pixel values are non-negative. Default is True.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em>, </em><em>optional</em>) – Random seed for reproducibility. Default is 123 if not provided.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, display progress during the generation process. Default is True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Generated images with the specified shape.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jax.Array</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="information_estimation.html" class="btn btn-neutral float-left" title="Information Estimation Functions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="datasets.html" class="btn btn-neutral float-right" title="Datasets Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Henry Pinkard.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

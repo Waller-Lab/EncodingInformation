@@ -1,48 +1,47 @@
-import dask.array as da
 import numpy as np
-import os
-import sys
 from encoding_information.datasets.dataset_base_class import MeasurementDatasetBase
-from abc import ABC, abstractmethod
-import zarr
 import jax.numpy as jnp
 test = jnp.array([1,2,3])
-import torch
-from torch.utils.data import Dataset, DataLoader
-from numcodecs import Blosc
-import glob
 from encoding_information.image_utils import add_noise
-from tqdm import tqdm
-from jax import jit
 from jax import random
+try:
+    import dask.array as da
+    import zarr
+except ImportError:
+    da = None
+    zarr = None
+
 
 class ColorFilterArrayDataset(MeasurementDatasetBase):
     """
-    Dataset of natural images with with various Bayer-like filters applied.
+    Dataset of natural images with various Bayer-like filters applied.
 
-    Shi's Re-processing of Gehler's Raw Dataset
-    https://www.cs.sfu.ca/~colour/data/shi_gehler/
+    This dataset is based on Shi's re-processing of Gehler's Raw Dataset, which consists of 568 images. The Bayer-like 
+    filters simulate a color filter array, such as the one used in digital cameras.
 
-    Lilong Shi and Brian Funt, "Re-processed Version of the Gehler Color Constancy Dataset of 568 Images,"
-
-    Original source:
-
-    Peter Gehler and Carsten Rother and Andrew Blake and Tom Minka and Toby Sharp, "Bayesian Color Constancy Revisited,"
-    Proceedings of the IEEE Computer Society Conference on Computer Vision and Pattern Recognition, 2008.
-    and http://www.kyb.mpg.de/bs/people/pgehler/colour/index.html.
+    References:
+    -----------
+    Lilong Shi and Brian Funt, "Re-processed Version of the Gehler Color Constancy Dataset of 568 Images."
     
+    Peter Gehler, Carsten Rother, Andrew Blake, Tom Minka, and Toby Sharp, "Bayesian Color Constancy Revisited," 
+    Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2008.
     """
 
     def __init__(self, zarr_path, tile_size=128):
         """
-        Initialize the dataset.
+        Initialize the dataset and split the images into non-overlapping tiles.
 
-        Args:
-            zarr_path (str): Path to the Zarr store containing the dataset.
-            tile_size (int): Size of the tiles to split the images into. This is done beceause the raw data is 
-                (568, 4, 1359, 2041), but we often want a greater number of smaller images. So we split the images into
-                non-overlapping tiles of size (tile_size, tile_size).
+        Parameters
+        ----------
+        zarr_path : str
+            Path to the Zarr store containing the dataset.
+        tile_size : int
+            Size of the tiles to split the images into. Images are divided into non-overlapping tiles of size 
+            (tile_size, tile_size). Default is 128.
         """
+        if da is None or zarr is None:
+            raise ImportError("To use the ColorFilterArrayDataset class, install the required packages: "
+                              "pip install encoding_information[dataset]")
         self.zarr_path = zarr_path
         self._tile_size = tile_size
 
@@ -69,28 +68,34 @@ class ColorFilterArrayDataset(MeasurementDatasetBase):
                        
                          noise='Poisson',):
         """
-        Get a set of measurements from the dataset. Applys a Bayer-like filter to the measurements (i.e. RGB + White).
-        The default filter is the one used in the Bayer filter: [[0, 1], [1, 2]] i.e. [[R, G], [G, B]]. Also rescales
-        the mean value of the images to the desired value and optionally adds noise
+        Get a set of measurements from the dataset by applying a Bayer-like filter.
 
-        Args:
-            num_measurements (int): Number of measurements to generate.
-            mean (float): Mean value to scale the images by. In this context, mean refers to the number of photons 
-                per pixel in the white channel. So any color filter that is applied will further reduce the number of
-                photons per pixel in the color channels.
+        The default filter matrix simulates the pattern used in Bayer filters for RGB+White channels. The images are 
+        rescaled to match a desired mean photon count and can be further corrupted by noise (Poisson or Gaussian).
 
-                This parameter defaults to a big number (2000) because we don't actually know how many photons were collected
-                
-            bias (float): Bias to add to the measurements.
-            filter_matrix (np.ndarray): Filter matrix to apply to the measurements.
-            data_seed (int): Seed for the random number generator.
-            noise_seed (int): Seed for the noise generator.
-            noise (str): Type of noise to add to the measurements.
+        Parameters
+        ----------
+        num_measurements : int
+            Number of measurements to generate.
+        mean : float, optional
+            Mean value to scale the images by, corresponding to the number of photons per pixel in the white channel.
+            Default is 2000.
+        bias : float, optional
+            Bias to add to the measurements. Default is 0.
+        filter_matrix : ndarray, optional
+            Filter matrix to apply to the measurements. Default is [[0, 1], [1, 2]] (Bayer pattern).
+        data_seed : int, optional
+            Random seed for selecting tiles from the dataset.
+        noise_seed : int, optional
+            Random seed for noise generation.
+        noise : str, optional
+            Type of noise to add to the measurements. Options are 'Poisson' (default), 'Gaussian', or None.
 
-        Return (num_measurements x H x W x 4) array of measurements, where the channels are R G B W
-
+        Returns
+        -------
+        filtered_tiles : ndarray
+            Array of measurements with shape (num_measurements, H, W, 4), where the channels correspond to R, G, B, W.
         """
-
 
         # select random tiles
         if data_seed is None:
@@ -146,10 +151,17 @@ class ColorFilterArrayDataset(MeasurementDatasetBase):
 
     def get_shape(self, tile_size=128):
         """
-        Return the shape of the dataset (using the given tile size).
+        Return the shape of the dataset based on the given tile size.
 
-        Returns:
-            tuple: Shape of the dataset.
+        Parameters
+        ----------
+        tile_size : int, optional
+            Size of the tiles in the dataset. Default is 128.
+
+        Returns
+        -------
+        tuple
+            Shape of the dataset (number of tiles, tile height, tile width).
         """
         return (self._tiles.shape[0], tile_size, tile_size)
 

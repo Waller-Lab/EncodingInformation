@@ -1,27 +1,69 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+
 import numpy as onp
 import jax.numpy as np
 import jax
 from pathlib import Path
-import matplotlib.gridspec as gridspec
+try:
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import scipy.ndimage as ndimage
+    from bsccm import BSCCM
+except ImportError:
+    pandas = None
+    matplotlib = None
+    scipy = None
+    BSCCM = None
+
 import os
 import shutil
 import warnings
-from bsccm import BSCCM
 from tqdm import tqdm
-from scipy import ndimage
 from encoding_information.image_utils import add_noise
 from encoding_information.datasets.dataset_base_class import MeasurementDatasetBase
 
 
 class BSCCMDataset(MeasurementDatasetBase):
+    """
+    Dataset class for BSCCM (Brightfield, Scattering, and Contrast Modulation) microscopy data.
+    
+    This class provides methods to load BSCCM data, process it, and apply noise models.
+    
+    Attributes
+    ----------
+    _bsccm : BSCCM
+        BSCCM object to interface with the dataset.
+    """
 
     def __init__(self, path):
+        """
+        Initialize the BSCCM dataset.
+
+        Parameters
+        ----------
+        path : str
+            Path to the BSCCM dataset.
+        """
+        if BSCCM is None:
+            raise ImportError('To use the BSCCMDataset class, install the required packages: pip install encoding_information[dataset]')
         # load the dataset. This just opens the index file but does not pull anything into memory
         self._bsccm = BSCCM(path, cache_index=True)
 
     def get_shape(self, channels= 'DPC_Left', edge_crop=24):
+        """
+        Return the shape of the dataset images for specified channels.
+
+        Parameters
+        ----------
+        channels : str or list of str, optional
+            Channels to include in the shape. Default is 'DPC_Left'.
+        edge_crop : int, optional
+            Number of pixels to crop from the edges of the images (default is 24).
+
+        Returns
+        -------
+        tuple
+            Shape of the dataset images.
+        """
         if isinstance(channels, str):
             channels = [channels]
         images = load_bsccm_images(self._bsccm, channels[0], num_images=1, edge_crop=edge_crop, convert_units_to_photons=True)
@@ -31,6 +73,40 @@ class BSCCMDataset(MeasurementDatasetBase):
 
     def get_measurements(self, num_measurements, mean=None, bias=0, noise='Poisson', data_seed=None, noise_seed=None,
                           edge_crop=24, channels='DPC_Left'):
+        """
+        Get a set of measurements from the dataset, with optional noise and bias.
+
+        Parameters
+        ----------
+        num_measurements : int
+            Number of measurements to retrieve.
+        mean : float, optional
+            Mean value to scale the images by.
+        bias : float, optional
+            Bias to add to the images (default is 0).
+        noise : str, optional
+            Type of noise to apply ('Poisson' supported) (default is 'Poisson').
+        data_seed : int, optional
+            Seed for random selection of images (default is None).
+        noise_seed : int, optional
+            Seed for generating noise (default is None).
+        edge_crop : int, optional
+            Number of pixels to crop from the edges (default is 24).
+        channels : str or list of str, optional
+            Channels to retrieve (default is 'DPC_Left').
+
+        Returns
+        -------
+        np.ndarray
+            Array of measurements with optional noise and bias.
+        
+        Raises
+        ------
+        NotImplementedError
+            If unsupported noise type is provided.
+        Exception
+            If the requested number of measurements exceeds available data or if a rescale fraction is invalid.
+        """
         if noise != 'Poisson':
             raise NotImplementedError('Only Poisson noise is supported')
         indices = self._bsccm.get_indices(batch=0)
