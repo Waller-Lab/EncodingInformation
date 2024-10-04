@@ -17,7 +17,10 @@ from encoding_information.plot_utils import add_multiple_colorbars
 
 
 def imshow_with_border(ax, image, color, border_width=10, vmin=None, vmax=None, border_shift=0):
-    height, width = image.shape
+    if len(image.shape) == 2:
+        height, width = image.shape
+    else:
+        height, width, _ = image.shape
     ax.imshow(image, cmap='inferno', vmin=vmin, vmax=vmax, interpolation=None)
     ax.axis('off')
 
