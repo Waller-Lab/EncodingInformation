@@ -34,6 +34,9 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
         Confidence interval for the mutual information, estimated via bootstrapping.
     num_bootstraps : int, optional
         Number of times to resample the test set to estimate the confidence interval.
+    scale_total_mi : bool, optional
+        If True, scales the per-pixel negative log likelihood to total negative log likelihood. 
+        Requires AnalyticComplexPixelGaussianNoiseModel.
 
     Returns
     -------
