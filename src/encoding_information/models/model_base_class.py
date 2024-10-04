@@ -347,7 +347,6 @@ def make_dataset_generators(data, batch_size, num_val_samples, add_uniform_noise
         val_ds = val_ds.map(_add_gaussian_noise_fn)
 
     if add_uniform_noise:
-        print("adding uniform noise")
         train_ds = train_ds.map(_add_uniform_noise_fn)
         val_ds = val_ds.map(_add_uniform_noise_fn)
 
