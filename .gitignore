@@ -57,3 +57,4 @@ __pycache__/
 .vscode/
 #OS files
 .DS_Store
+/docs/_build/doctrees/environment.pickle

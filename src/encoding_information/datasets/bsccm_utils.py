@@ -8,9 +8,11 @@ try:
     import matplotlib.pyplot as plt
     import scipy.ndimage as ndimage
     from bsccm import BSCCM
-except ImportError as e:
-    raise ImportError("To use the BSCCMDataset class, install the required packages: "
-                      "pip install encoding_information[dataset]") from e
+except ImportError:
+    pandas = None
+    matplotlib = None
+    scipy = None
+    BSCCM = None
 
 import os
 import shutil
@@ -41,6 +43,8 @@ class BSCCMDataset(MeasurementDatasetBase):
         path : str
             Path to the BSCCM dataset.
         """
+        if BSCCM is None:
+            raise ImportError('To use the BSCCMDataset class, install the required packages: pip install encoding_information[dataset]')
         # load the dataset. This just opens the index file but does not pull anything into memory
         self._bsccm = BSCCM(path, cache_index=True)
 
