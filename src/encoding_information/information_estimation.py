@@ -49,9 +49,9 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     full_dataset = np.concatenate([train_set, test_set])
     nll = measurement_model.compute_negative_log_likelihood(test_set)
-    # add in condition for total MI scaling (assumes noise model is the AnalyticComplexPixelGaussianNoiseModel)
+    # add in condition for total MI scaling (assumes noise model is the AnalyticComplexPixelGaussianNoiseModel but doesn't check)
     if scale_total_mi:
-        print("scaling everything by {}".format(train_set.shape))
+        print("scaling everything by {} for total NLL".format(train_set.shape[-1]))
         nll = nll * train_set.shape[-1]
     hy_given_x = noise_model.estimate_conditional_entropy(full_dataset)
     mutual_info = (nll - hy_given_x) / np.log(2)
@@ -60,6 +60,8 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     # calculate this way for confidence intervals so it is faster
     nll = measurement_model.compute_negative_log_likelihood(test_set, average=False)
+    if scale_total_mi: 
+        nll = nll * train_set.shape[-1]
 
     # estimate confidence interval by bootstrapping data
     nlls = []
