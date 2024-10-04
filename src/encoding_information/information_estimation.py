@@ -49,8 +49,8 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     full_dataset = np.concatenate([train_set, test_set])
     nll = measurement_model.compute_negative_log_likelihood(test_set)
-    # add in condition for total MI scaling (assumes noise model is the AnalyticComplexPixelGaussianNoiseModel but doesn't check)
     if scale_total_mi:
+        assert noise_model.__class__.__name__ == 'AnalyticComplexPixelGaussianNoiseModel', "Only compatible with AnalyticComplexPixelGaussianNoiseModel for now."
         print("scaling everything by {} for total NLL".format(train_set.shape[-1]))
         nll = nll * train_set.shape[-1]
     hy_given_x = noise_model.estimate_conditional_entropy(full_dataset)
