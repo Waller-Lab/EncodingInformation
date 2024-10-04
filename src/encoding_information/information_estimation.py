@@ -14,7 +14,7 @@ import warnings
 
 
 def estimate_information(measurement_model, noise_model, train_set, test_set, 
-                         confidence_interval=None, num_bootstraps=100):
+                         confidence_interval=None, num_bootstraps=100, scale_total_mi=False):
     """
     Estimate mutual information in bits per pixel given a probabilistic model of the measurement process p(y)
     and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
@@ -34,6 +34,9 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
         Confidence interval for the mutual information, estimated via bootstrapping.
     num_bootstraps : int, optional
         Number of times to resample the test set to estimate the confidence interval.
+    scale_total_mi : bool, optional
+        If True, scales the per-pixel negative log likelihood to total negative log likelihood. 
+        Requires AnalyticComplexPixelGaussianNoiseModel.
 
     Returns
     -------
@@ -49,6 +52,10 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     full_dataset = np.concatenate([train_set, test_set])
     nll = measurement_model.compute_negative_log_likelihood(test_set)
+    if scale_total_mi:
+        assert noise_model.__class__.__name__ == 'AnalyticComplexPixelGaussianNoiseModel', "Only compatible with AnalyticComplexPixelGaussianNoiseModel for now."
+        print("scaling everything by {} for total NLL".format(train_set.shape[-1]))
+        nll = nll * train_set.shape[-1]
     hy_given_x = noise_model.estimate_conditional_entropy(full_dataset)
     mutual_info = (nll - hy_given_x) / np.log(2)
     if confidence_interval is None:
@@ -56,6 +63,8 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     # calculate this way for confidence intervals so it is faster
     nll = measurement_model.compute_negative_log_likelihood(test_set, average=False)
+    if scale_total_mi: 
+        nll = nll * train_set.shape[-1]
 
     # estimate confidence interval by bootstrapping data
     nlls = []
