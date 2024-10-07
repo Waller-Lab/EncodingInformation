@@ -63,10 +63,8 @@ class ColorFilterArrayDataset(MeasurementDatasetBase):
         self._tiles = reshaped.transpose(0, 2, 4, 3, 5, 1).reshape(M, tile_size, tile_size, C)
 
 
-    def get_measurements(self, num_measurements, mean=2000, bias=0, filter_matrix= np.array([[0, 1], [1, 2]]),
-                         data_seed=None, noise_seed=None,
-                       
-                         noise='Poisson',):
+    def get_measurements(self, num_measurements=None, mean=2000, bias=0, filter_matrix= np.array([[0, 1], [1, 2]]),
+                         data_seed=None, noise_seed=None, noise='Poisson', tile_indices=None):
         """
         Get a set of measurements from the dataset by applying a Bayer-like filter.
 
@@ -90,20 +88,24 @@ class ColorFilterArrayDataset(MeasurementDatasetBase):
             Random seed for noise generation.
         noise : str, optional
             Type of noise to add to the measurements. Options are 'Poisson' (default), 'Gaussian', or None.
+        tile_indices : list, optional
+
 
         Returns
         -------
         filtered_tiles : ndarray
             Array of measurements with shape (num_measurements, H, W, 4), where the channels correspond to R, G, B, W.
         """
-
+        if num_measurements is None and tile_indices is None:
+            raise ValueError('Must provide the number of measurements')
         # select random tiles
         if data_seed is None:
             data_seed = np.random.randint(100000)
         key = random.PRNGKey(data_seed)
-        indices = random.choice(key, self._tiles.shape[0], shape=(num_measurements,), replace=False)
+        if tile_indices is None:
+            tile_indices = random.choice(key, self._tiles.shape[0], shape=(num_measurements,), replace=False).tolist()
         # Select number of tiles equal to the number of measurements we need and convert to a jax array
-        tiles = jnp.array(self._tiles[indices.tolist()]) 
+        tiles = jnp.array(self._tiles[tile_indices]) 
 
         ## Apply the filter to all tiles 
         filter_matrix = jnp.array(filter_matrix)
