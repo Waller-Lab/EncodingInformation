@@ -2,7 +2,7 @@ config_file_version: '2.4'
 data:
   batch: 0
   channels:
-  - Brightfield
+  - LED119
   data_dir: /home/hpinkard_waller/data/
   dataset_name: BSCCM
   shuffle_seed: 12345
@@ -26,7 +26,7 @@ hyperparameters:
   num_mixture_components: 19
   optimizer: ADAM
   overshoot_epochs: 20
-  seed: 8
+  seed: 3
   single_marker_early_stopping: false
   single_marker_training: false
   steps_per_epoch: 4000
@@ -34,7 +34,7 @@ hyperparameters:
   validation_fraction: 0.05
 metadata:
   experiment_name: Synthetic_Noise_v10_
-  replicate: 8
+  replicate: 3
 options:
   hog_memory: false
   immortal: false
@@ -42,7 +42,7 @@ options:
 saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/
 train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
 training:
-  attempt_number: 1
-  elapsed: 0
+  attempt_number: 2
+  elapsed: 130533.80264568329
   start_date: '2023-12-13'
-  tensorboard_dir: /home/hpinkard_waller/models/template/tensorboard/
+  tensorboard_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/Synthetic_Noise_v10_LED119_450photons_replicate_3/tensorboard/
