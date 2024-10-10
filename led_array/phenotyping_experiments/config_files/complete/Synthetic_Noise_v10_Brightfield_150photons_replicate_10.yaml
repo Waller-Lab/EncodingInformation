@@ -9,7 +9,7 @@ data:
   synthetic_noise:
     edge_crop: 24
     median_filter: false
-    photons_per_pixel: 450
+    photons_per_pixel: 150
     seed: 4556
     use_correction_factor: true
   use_two_spectrum_unmixing: true
@@ -42,7 +42,7 @@ options:
 saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/
 train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
 training:
-  attempt_number: 1
-  elapsed: 0
+  attempt_number: 2
+  elapsed: 56245.67498064041
   start_date: '2023-12-13'
-  tensorboard_dir: /home/hpinkard_waller/models/template/tensorboard/
+  tensorboard_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/Synthetic_Noise_v10_Brightfield_150photons_replicate_10/tensorboard/
