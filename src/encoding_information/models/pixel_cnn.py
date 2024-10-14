@@ -442,6 +442,7 @@ class PixelCNN(MeasurementModel):
         self.num_hidden_channels = num_hidden_channels
         self.num_mixture_components = num_mixture_components
         self._flax_model = None
+        self._fitted = False
 
     def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=40, 
             sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  do_lr_decay=False, verbose=True,
@@ -589,7 +590,9 @@ class PixelCNN(MeasurementModel):
                                                     verbose=verbose)
         self._state = self._state.replace(params=best_params)
         self.val_loss_history = val_loss_history
+        self._fitted = True
         return val_loss_history
+
 
 
 
@@ -617,6 +620,8 @@ class PixelCNN(MeasurementModel):
         nll : float
             The negative log-likelihood of the input images.
         """
+        if not self._fitted:
+            raise ValueError('must call fit() before computing likelihood')
         # See superclass for docstring
         if seed is not None:
             warnings.warn("seed argument is deprecated. Use data_seed instead")

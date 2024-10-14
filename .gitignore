@@ -23,9 +23,14 @@ analysis/autofocus/checkpoints/*
 analysis/autofocus/log/*
 analysis/autofocus/exported_model/*
 
-   
+
+# cookie monster
 experiments/config_files/training
 experiments/config_files/pending
+
+led_array/phenotyping_experiments/config_files/pending
+led_array/phenotyping_experiments/config_files/training
+
 
 imager_experiments/archive_code/*
 

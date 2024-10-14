@@ -14,7 +14,8 @@ import warnings
 
 
 def estimate_information(measurement_model, noise_model, train_set, test_set, 
-                         confidence_interval=None, num_bootstraps=100, scale_total_mi=False):
+                         confidence_interval=None, num_bootstraps=100,
+                         scale_total_mi=False, clean_data=None):
     """
     Estimate mutual information in bits per pixel given a probabilistic model of the measurement process p(y)
     and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
@@ -22,8 +23,9 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
 
     Parameters
     ----------
-    measurement_model : MeasurementModel
+    measurement_model : MeasurementModel or List[MeasurementModel]
         A probabilistic model of the measurement process p(y|x) (e.g. PixelCNN, FullGaussian, etc.).
+        If a list, then the model with the lowest NLL (i.e. the best model) is used.
     noise_model : NoiseModel
         A probabilistic model of the noise process p(y|x) (e.g. GaussianNoiseModel, PoissonNoiseModel).
     train_set : ndarray, shape (n_samples, ...)
@@ -37,6 +39,8 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     scale_total_mi : bool, optional
         If True, scales the per-pixel negative log likelihood to total negative log likelihood. 
         Requires AnalyticComplexPixelGaussianNoiseModel.
+    clean_data : ndarray, shape (n_samples, ...)
+        Clean data corresponding to the noisy measurements, which may give more accurate estimates of the conditional entropy depending on the noise model.
 
     Returns
     -------
@@ -48,10 +52,22 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     # make sure confidence interval is between 0 and 1
     if confidence_interval is not None:
         if confidence_interval <= 0 or confidence_interval >= 1:
-            raise ValueError("Confidence interval must be between 0 and 1")
+            if confidence_interval >= 90 and confidence_interval <= 100:
+                warnings.warn("Confidence interval should be between 0 and 1. Dividing by 100 to convert to percentage.")
+                confidence_interval /= 100
+            else:
+                raise ValueError("Confidence interval must be between 0 and 1")
     
-    full_dataset = np.concatenate([train_set, test_set])
-    nll = measurement_model.compute_negative_log_likelihood(test_set)
+    full_dataset = np.concatenate([train_set, test_set]) if clean_data is None else clean_data
+
+    if isinstance(measurement_model, list):
+        nlls = np.array([m.compute_negative_log_likelihood(test_set) for m in measurement_model])
+        best_model_index = np.argmin(nlls)
+        measurement_model = measurement_model[best_model_index]
+    else:
+        nll = measurement_model.compute_negative_log_likelihood(test_set)
+    
+    
     if scale_total_mi:
         assert noise_model.__class__.__name__ == 'AnalyticComplexPixelGaussianNoiseModel', "Only compatible with AnalyticComplexPixelGaussianNoiseModel for now."
         print("scaling everything by {} for total NLL".format(train_set.shape[-1]))
@@ -63,6 +79,7 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     # calculate this way for confidence intervals so it is faster
     nll = measurement_model.compute_negative_log_likelihood(test_set, average=False)
+
     if scale_total_mi: 
         nll = nll * train_set.shape[-1]
 
@@ -89,6 +106,7 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     lower_bound = np.percentile(mutual_infos, 50*(1-confidence_interval))
     upper_bound = np.percentile(mutual_infos, 50*(1+confidence_interval))
     return mutual_info, lower_bound, upper_bound
+
 
 def analytic_multivariate_gaussian_entropy(cov_matrix):
     """
@@ -235,6 +253,8 @@ def run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_int
     confidence_interval : list of float
         The lower and upper bounds of the confidence interval.
     """
+    if upper_bound_confidence_interval:
+        warnings.warn("upper_bound_confidence_intervals actually don't make sense and should be avoided")
 
     key = jax.random.PRNGKey(onp.random.randint(0, 1000000))
     N = data.shape[0] if not isinstance(data, dict) else data[list(data.keys())[0]].shape[0]
