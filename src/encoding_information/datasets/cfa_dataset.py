@@ -134,6 +134,7 @@ class ColorFilterArrayDataset(MeasurementDatasetBase):
             rescale_mean = mean - bias
             rescale_fraction = rescale_mean / photons_per_pixel
             filtered_tiles = filtered_tiles * rescale_fraction
+            self.rescale_fraction = rescale_fraction
         if bias is not None:
             filtered_tiles += bias
 

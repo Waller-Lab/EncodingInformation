@@ -13,7 +13,9 @@ import imageio
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.signal import resample
 
-from encoding_information.information_estimation import estimate_mutual_information
+from encoding_information.information_estimation import estimate_mutual_information, estimate_information
+from encoding_information.models import PixelCNN, AnalyticGaussianNoiseModel, StationaryGaussianProcess
+
 
 NUM_NYQUIST_SAMPLES = 8
 UPSAMPLED_SIGNAL_LENGTH = 512
@@ -513,7 +515,7 @@ def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, initial_kernel=None,
                                  learning_rate=1e-2, learning_rate_decay=0.999, verbose=True,
                                  estimate_with_pixel_cnn=True,
                                  loss_improvement_patience=2000, max_epochs=5000, num_nyquist_samples=NUM_NYQUIST_SAMPLES, 
-                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH):
+                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, test_fraction=0.1, confidence=0.95):
   if estimate_with_pixel_cnn:
       # make sure num_nyquist_samples is a perfect square and upsampled_signal_length is a multiple of it
         if not np.sqrt(num_nyquist_samples) % 1 == 0:
@@ -534,37 +536,39 @@ def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, initial_kernel=None,
                           loss_improvement_patience=loss_improvement_patience, max_epochs=max_epochs,
                           key=jax.random.PRNGKey(onp.random.randint(100000)))
   test_objects = objects_fn()   
+   
+  scale_factor = 100000 # because these signals are 0-1 but pixel cnn is designed for photon counts
 
-  if not estimate_with_pixel_cnn:
-    optimized_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples,
-                                                                    )(optimized_params, jax.random.PRNGKey(0))
-    initial_mi = -make_convolutional_forward_model_with_mi_loss(test_objects, noise_sigma=noise_sigma, num_nyquist_samples=num_nyquist_samples, 
-                                                                )(initial_params, jax.random.PRNGKey(0))
-  else:   
-    scale_factor = 100000 # because these signals are 0-1 but pixel cnn is designed for photon counts
-    # output_signals = conv_forward_model(initial_params, test_objects,
-    #                                             integrate_output_signals=True, 
-    #                                             num_nyquist_samples=num_nyquist_samples,
-    #                                             upsampled_signal_length=upsampled_signal_length)
-    # noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
-    # fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
-    # if verbose:
-    #     print('computing initial mi')
-    # initial_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
-    initial_mi = None
+  initial_mi = None
 
-    output_signals = conv_forward_model(optimized_params, test_objects,
-                                                integrate_output_signals=True, 
-                                                num_nyquist_samples=num_nyquist_samples,
-                                                upsampled_signal_length=upsampled_signal_length)
-    noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
-    fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
-    if verbose:
-        print('computing optimized mi')
-    optimized_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
+  output_signals = conv_forward_model(optimized_params, test_objects,
+                                            integrate_output_signals=True, 
+                                            num_nyquist_samples=num_nyquist_samples,
+                                            upsampled_signal_length=upsampled_signal_length)
+  noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
+  fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
+  if verbose:
+     print('computing optimized mi')
+
+
+  # optimized_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
+  train_fake_images = fake_images[:int(fake_images.shape[0] * (1 - test_fraction))]
+  test_fake_images = fake_images[int(fake_images.shape[0] * (1 - test_fraction)):]
+
+  if estimate_with_pixel_cnn:
+    model = PixelCNN()
+    model.fit(train_fake_images, verbose=False)
+  else:
+    model = StationaryGaussianProcess(train_fake_images)
+    model.fit(train_fake_images)
+
+  noise_model = AnalyticGaussianNoiseModel(noise_sigma*scale_factor)
+
+  info, lower, upper = estimate_information(
+        model, noise_model, train_fake_images, test_fake_images, confidence_interval=confidence)
+
                                                         
-
-  return initial_kernel, initial_params, optimized_params, objects, initial_mi, optimized_mi
+  return initial_kernel, initial_params, optimized_params, objects, initial_mi, info, lower, upper
 
 
 
