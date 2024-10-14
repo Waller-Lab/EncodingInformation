@@ -9,7 +9,7 @@ data:
   synthetic_noise:
     edge_crop: 24
     median_filter: false
-    photons_per_pixel: 450
+    photons_per_pixel: 50
     seed: 4556
     use_correction_factor: true
   use_two_spectrum_unmixing: true
@@ -26,7 +26,7 @@ hyperparameters:
   num_mixture_components: 19
   optimizer: ADAM
   overshoot_epochs: 20
-  seed: 11
+  seed: 4
   single_marker_early_stopping: false
   single_marker_training: false
   steps_per_epoch: 4000
@@ -34,7 +34,7 @@ hyperparameters:
   validation_fraction: 0.05
 metadata:
   experiment_name: Synthetic_Noise_v10_
-  replicate: 11
+  replicate: 4
 options:
   hog_memory: false
   immortal: false
@@ -43,6 +43,6 @@ saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/
 train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
 training:
   attempt_number: 2
-  elapsed: 68908.76706600189
+  elapsed: 43583.76504254341
   start_date: '2023-12-13'
-  tensorboard_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/Synthetic_Noise_v10_Brightfield_450photons_replicate_10/tensorboard/
+  tensorboard_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/Synthetic_Noise_v10_Brightfield_50photons_replicate_4/tensorboard/
