@@ -1,0 +1,33 @@
+# Model parameters
+mask_size: 8
+num_channels: 4
+mean_photons: 1000
+P: 8
+F: 24
+K: 128
+model_key: 1
+gamma: 0.00001
+
+# Optimization parameters
+lr: 0.00001
+mask_lr: 0.0
+b1: 0.9
+b2: 0.999
+
+# Data parameters
+data_key: 1
+n_batch: 128
+val_size: 0.1
+total_patches: 100000
+data_mean_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/train/avg_white_channel.npy'
+data_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/zarr_directories'
+
+# Training parameters
+num_steps: 100000
+save_freq: 5000
+disp_freq: 200
+val_freq: 1000
+# Model configuration
+e2e: false
+model_name: 'lcfa_1000_photons_replicate_1'
+mask_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/filters/lcfa.npy'
