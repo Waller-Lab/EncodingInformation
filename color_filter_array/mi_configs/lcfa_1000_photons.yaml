@@ -1,0 +1,23 @@
+dataset:
+  zarr_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/zarr_directories'
+  data_mean_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/train/avg_white_channel.npy'
+  mean_photons: 1000
+  total_patches: 100000
+  val_size: 0.1
+  data_key: 1
+  model_key: 3
+  patch_size: 24
+  batch_size: 128
+  model_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/models/lcfa_1000_photons_replicate_3/step_0095000.eqx'
+
+training:
+  epochs: 200
+  N_models: 40
+  num_bootstrap_samples: 100
+
+seeds:
+  data_seed: 0
+
+output:
+  results_dir: "/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/mi_results"
+  save_name: 'lcfa_1000_photons_replicate_3.npz'
