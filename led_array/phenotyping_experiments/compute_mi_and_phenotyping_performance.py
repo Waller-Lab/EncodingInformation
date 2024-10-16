@@ -36,6 +36,10 @@ import yaml
 from led_array.tf_util import prepare_test_dataset
 import tensorflow.keras as tfk
 
+from encoding_information.models import PixelCNN, FullGaussianProcess, StationaryGaussianProcess 
+from encoding_information.models import PoissonNoiseModel
+from encoding_information import estimate_information
+
 
 def get_marker_index(target_row):
     return np.flatnonzero(np.logical_not(np.isnan(target_row)))[0]
@@ -56,13 +60,13 @@ def compute_nlls(model, test_dataset, max_num, markers):
     return np.array(negative_log_likelihoods), np.array(marker_indices)
 
 
-def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=10000):
+def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=10000, test_set_fraction=0.1, confidence=0.9):
     saving_name = f'{model_name}_{patch_size}patch_mi_estimates'
 
-        # check if already cached
-    if os.path.exists(f'{saving_dir}/analysis/{saving_name}.npz'):
-        print(f'Loading cached results for {model_name} MI estimates')
-        return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
+    # # check if already cached
+    # if os.path.exists(f'{saving_dir}/analysis/{saving_name}.npz'):
+    #     print(f'Loading cached results for {model_name} MI estimates')
+    #     return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
 
     median_filter = config['data']['synthetic_noise']['median_filter']
 
@@ -77,7 +81,7 @@ def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=100
     if rescale_fraction > 1:
         raise Exception('Rescale fraction must be less than 1')
 
-    patches = extract_patches(images, patch_size=patch_size, num_patches=num_patches)
+    patches = extract_patches(images, patch_size=patch_size, num_patches=num_patches, strategy='random')
 
     if median_filter:
         # assume noiseless
@@ -86,26 +90,46 @@ def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=100
     else:
         noisy_patches = add_shot_noise_to_experimenal_data(patches, rescale_fraction)
     
-    mi_pixel_cnn = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None, 
-                    entropy_model='pixel_cnn', verbose=True, max_epochs=500, patience=100)
-    mi_gp = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None,
-                     entropy_model='gaussian', verbose=True)
+    
+    pixel_cnn = PixelCNN()
+    # stationary_gp = StationaryGaussianProcess(noisy_patches)
+
+    pixel_cnn.fit(noisy_patches, verbose=False, max_epochs=500, patience=100)
+    # stationary_gp.fit(noisy_patches, verbose=False)
+
+
+    noise_model = PoissonNoiseModel()
+
+    train_patches = noisy_patches[:int(len(noisy_patches) * (1 - test_set_fraction))]
+    test_patches = noisy_patches[int(len(noisy_patches) * (1 - test_set_fraction)):]
+    
+
+    pixel_cnn_info, pixel_cnn_lower_bound, pixel_cnn_upper_bound = estimate_information(pixel_cnn, noise_model, train_patches, test_patches, confidence_interval=confidence)
+    # full_gp_info, full_gp_lower_bound, full_gp_upper_bound = estimate_information(stationary_gp, noise_model, train_patches, test_patches, confidence_interval=confidence)
+
+
+    # mi_pixel_cnn = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None, 
+    #                 entropy_model='pixel_cnn', verbose=True, max_epochs=500, patience=100)
+    # mi_gp = estimate_mutual_information(noisy_patches, clean_images=clean_patches if median_filter else None,
+    #                  entropy_model='gaussian', verbose=True)
 
     # save the cached results (both nlls and marker indices in a single file)
     # create save directory if it doesn't exist
     if not os.path.exists(f'{saving_dir}/analysis'):
         os.makedirs(f'{saving_dir}/analysis')
-    np.savez(f'{saving_dir}/analysis/{saving_name}', mi_pixel_cnn=mi_pixel_cnn, mi_gp=mi_gp)
+    np.savez(f'{saving_dir}/analysis/{saving_name}', mi_pixel_cnn=pixel_cnn_info, 
+             pixel_cnn_lower_bound=pixel_cnn_lower_bound, pixel_cnn_upper_bound=pixel_cnn_upper_bound)
+            #  mi_gp=full_gp_info, full_gp_lower_bound=full_gp_lower_bound, full_gp_upper_bound=full_gp_upper_bound)
     return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
     
 
 def test_set_phenotyping_nll(model_name, config):
     saving_name = f'{model_name}_phenotyping_nll'
 
-    # check if already cached
-    if os.path.exists(f'{saving_dir}/analysis/{saving_name}.npz'):
-        print(f'Loading cached results for {model_name} phenotyping nlls')
-        return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
+    # # check if already cached
+    # if os.path.exists(f'{saving_dir}/analysis/{saving_name}.npz'):
+    #     print(f'Loading cached results for {model_name} phenotyping nlls')
+    #     return np.load(f'{saving_dir}/analysis/{saving_name}.npz')
     
     markers, image_target_generator, dataset_size, display_range, indices = get_bsccm_image_marker_generator(bsccm, **config['data'])
     test_dataset, test_dataset_size = prepare_test_dataset(config['hyperparameters']['test_fraction'], image_target_generator, dataset_size)

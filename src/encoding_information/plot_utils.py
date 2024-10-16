@@ -110,7 +110,7 @@ def plot_eigenvalues(*args, **kwargs):
 
 def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=None, 
                                    bins=50, colors=None, color=None,
-                                   plot_center_coords=None, black_background=False, **kwargs):
+                                   plot_center_coords=None, black_background=False, show_colorbar=True, **kwargs):
     """
     Plot 2D histograms of intensity coordinates from two groups of intensities.
     
@@ -222,7 +222,8 @@ def plot_intensity_coord_histogram(ax, intensities_1, intensities_2, max,  cmap=
         ax.set(xlabel='Photons at x1', ylabel='Photons at x2')
         clear_spines(ax)
 
-    add_multiple_colorbars( ax, cmaps)
+    if show_colorbar:
+        add_multiple_colorbars( ax, cmaps)
 
 def add_multiple_colorbars(ax, cmaps):
     """
