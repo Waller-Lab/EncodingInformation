@@ -457,6 +457,9 @@ def train_model(train_images, state, batch_size, num_val_samples, steps_per_epoc
     if num_val_samples >= train_images.shape[0]:
         num_val_samples = int(train_images.shape[0] * 0.1)
         warnings.warn(f'Number of validation samples must be less than the number of training samples. Using {num_val_samples} validation samples instead.')
+    if num_val_samples < 1:
+        warnings.warn('Number of validation samples must be at least 1. Using 1 validation sample instead.')
+        num_val_samples = 1
     train_ds_iterator, val_loader_maker_fn = make_dataset_generators(train_images,
                      batch_size=batch_size, num_val_samples=num_val_samples, condition_vectors=condition_vectors,
                      add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise, seed=seed
