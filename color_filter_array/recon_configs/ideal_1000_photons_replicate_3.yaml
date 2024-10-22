@@ -5,7 +5,7 @@ mean_photons: 1000
 P: 8
 F: 24
 K: 128
-model_key: 1 
+model_key: 3 
 gamma: 0.00001
 
 # Optimization parameters
@@ -29,5 +29,5 @@ disp_freq: 200
 val_freq: 1000
 # Model configuration
 e2e: false
-model_name: 'random_filter_1000_photons_replicate_1_grad_clip'
-mask_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/filters/random_filter.npy'
+model_name: 'ideal_1000_photons_replicate_3'
+mask_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/filters/ideal_1000_photons.npy'

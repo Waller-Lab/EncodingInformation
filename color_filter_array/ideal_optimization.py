@@ -64,10 +64,10 @@ def main(config_path, gpu_idx):
         h_params = yaml.safe_load(file)
 
     # Initialize the model
-    key = jax.random.PRNGKey(h_params['key'])
+    model_key = jax.random.PRNGKey(h_params['model_key'])
     sensor_shape = (h_params['mask_size'], h_params['mask_size'], h_params['num_channels'])
     gamma = h_params['gamma']
-    model = SensorLayer(sensor_shape, replicates=3, key=key)
+    model = SensorLayer(sensor_shape, replicates=3, key=model_key)
 
 
     # Initialize the optimizer
@@ -78,31 +78,43 @@ def main(config_path, gpu_idx):
     batch_size = h_params['n_batch']
     patch_size = (h_params['mask_size']*3, 3*h_params['mask_size'])
     data_path = h_params['data_path']
+    data_key = jax.random.PRNGKey(h_params['data_key'])
 
     # Create train and test loaders
-    train_loader, test_loader, train_indices, test_indices = split_train_test_predetermined(
-        data_path, 
-        batch_size, 
-        patch_size, 
-        key, 
-        num_patches_per_image=300,  # Adjust as needed
-        train_split=(1-h_params['val_size']),
+    # Create train and test loaders separately
+    train_loader, train_indices = create_patch_loader(
+        zarr_path=os.path.join(data_path, 'train'), 
+        batch_size=batch_size, 
+        patch_size=patch_size, 
+        key=data_key, 
+        total_patches=h_params['total_patches'],
+        num_workers=24
+    )
+    test_loader, test_indices = create_patch_loader(
+        zarr_path=os.path.join(data_path, 'val'), 
+        batch_size=batch_size, 
+        patch_size=patch_size, 
+        key=data_key, 
+        total_patches=int(h_params['total_patches'] * h_params['val_size']),
         num_workers=24
     )
 
     # Iterate through the train loader to get the mean of the last channel over the entire dataset
-    train_loader_iter = iter(train_loader)
-    cum_mean = 0
-    count = 0
-    for images, _ in tqdm(train_loader_iter):
-        cum_mean += jnp.mean(images[:,:,:,3])
-        count += 1
-    mean_last_channel = cum_mean / count
+    if h_params['data_mean_path'] is None:
+        train_loader_iter = iter(train_loader)
+        cum_mean = 0
+        count = 0
+        for images, _ in tqdm(train_loader_iter):
+            cum_mean += jnp.mean(images[:,:,:,3])
+            count += 1
+        mean_last_channel = cum_mean / count
+    else:
+        mean_last_channel = np.load(h_params['data_mean_path'])
     scale_factor = h_params['mean_photons'] / mean_last_channel
     h_params['scale_factor'] = scale_factor
 
     @eqx.filter_value_and_grad
-    def loss(model, images, alpha):
+    def loss(model, images, alpha, noise_key):
         measurements = jax.vmap(model)(images, alpha)
         # flatten the measurements
         measurements = measurements.reshape(measurements.shape[0], -1)
@@ -110,8 +122,8 @@ def main(config_path, gpu_idx):
         return -MI
 
     @eqx.filter_jit
-    def step_model(model, optimizer, opt_state, images, alpha):
-        value, grads = loss(model, images, alpha)
+    def step_model(model, optimizer, opt_state, images, alpha, noise_key):
+        value, grads = loss(model, images, alpha, noise_key)
         updates, opt_state = optimizer.update(grads, opt_state, model)
         updates = jax.tree.map(lambda x: jnp.nan_to_num(x), updates)
         model = eqx.apply_updates(model, updates)
@@ -145,7 +157,7 @@ def main(config_path, gpu_idx):
         noise_key = jax.random.PRNGKey(0)
 
         # Initialize wandb
-        wandb.init(project='reconstruction_only', config=h_params, name=name)
+        wandb.init(project='MI_CFA', config=h_params, name=name)
         wandb_log = {}
 
         train_loader_iter = iter(train_loader)
@@ -161,15 +173,14 @@ def main(config_path, gpu_idx):
                 images, targets = next(train_loader_iter)
             if images.shape[0] != batch_size:
                 continue
-            
-            # scale the images and add noise
-            images = images*scale_factor
-            
+        
 
+            images = images*scale_factor
             alpha = 1 + (gamma * step) ** 2
             # make alpha an array of size n_batch
             alpha = jnp.full((images.shape[0], 1), alpha)
-            model, opt_state, loss = step_model(model, optimizer, opt_state, images, alpha)
+
+            model, opt_state, loss = step_model(model, optimizer, opt_state, images, alpha, noise_key)
             wandb_log['loss'] = loss
 
             if (step % disp_freq) == 0:

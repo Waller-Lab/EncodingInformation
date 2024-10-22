@@ -211,7 +211,7 @@ class PredeterminedPatchLoader:
         self.current_idx += self.batch_size
 
         patches = list(self.executor.map(self._load_patch, batch_indices))
-        images = jnp.array(patches) / 3.0
+        images = jnp.array(patches) 
 
         h, w = images.shape[1], images.shape[2]
         targets = images[:, h // 3:2 * h // 3, w // 3:2 * w // 3, :3]

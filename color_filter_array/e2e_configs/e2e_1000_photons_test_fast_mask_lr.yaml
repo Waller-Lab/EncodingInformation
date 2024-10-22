@@ -6,11 +6,11 @@ P: 8
 F: 24
 K: 128
 model_key: 1
-gamma: 0.0001
+gamma: 0.001
 
 # Optimization parameters
 lr: 0.00001
-mask_lr: 0.0003
+mask_lr: 0.001
 b1: 0.9
 b2: 0.999
 
@@ -30,5 +30,5 @@ val_freq: 1000
 
 # Model configuration
 e2e: true
-model_name: 'e2e_1000_photons_replicate_1'
+model_name: 'e2e_1000_photons_test_fast_mask_lr'
 mask_path: null

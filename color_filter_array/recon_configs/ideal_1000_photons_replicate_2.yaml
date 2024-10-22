@@ -5,12 +5,12 @@ mean_photons: 1000
 P: 8
 F: 24
 K: 128
-model_key: 2
-gamma: 0.0001
+model_key: 2 
+gamma: 0.00001
 
 # Optimization parameters
 lr: 0.00001
-mask_lr: 0.0003
+mask_lr: 0.0
 b1: 0.9
 b2: 0.999
 
@@ -27,8 +27,7 @@ num_steps: 100000
 save_freq: 5000
 disp_freq: 200
 val_freq: 1000
-
 # Model configuration
-e2e: true
-model_name: 'e2e_1000_photons_replicate_2'
-mask_path: null
+e2e: false
+model_name: 'ideal_1000_photons_replicate_2'
+mask_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/filters/ideal_1000_photons.npy'

@@ -6,7 +6,7 @@ P: 8
 F: 24
 K: 128
 model_key: 2 
-gamma: 0.00001
+gamma: 1000
 
 # Optimization parameters
 lr: 0.00001
