@@ -41,6 +41,7 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
         Requires AnalyticComplexPixelGaussianNoiseModel.
     clean_data : ndarray, shape (n_samples, ...)
         Clean data corresponding to the noisy measurements, which may give more accurate estimates of the conditional entropy depending on the noise model.
+        Conventionally this would have the same number of samples as the train_set + test_set combined.
 
     Returns
     -------
