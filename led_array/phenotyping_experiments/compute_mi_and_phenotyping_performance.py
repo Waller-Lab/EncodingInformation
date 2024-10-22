@@ -60,7 +60,7 @@ def compute_nlls(model, test_dataset, max_num, markers):
     return np.array(negative_log_likelihoods), np.array(marker_indices)
 
 
-def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=10000, test_set_fraction=0.1, confidence=0.9):
+def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=10000, test_set_fraction=0.1, confidence=0.95):
     saving_name = f'{model_name}_{patch_size}patch_mi_estimates'
 
     # # check if already cached
@@ -94,7 +94,7 @@ def estimate_mi(model_name, config, patch_size, num_images=5000, num_patches=100
     pixel_cnn = PixelCNN()
     # stationary_gp = StationaryGaussianProcess(noisy_patches)
 
-    pixel_cnn.fit(noisy_patches, verbose=False, max_epochs=500, patience=100)
+    pixel_cnn.fit(noisy_patches, verbose=False, max_epochs=1000, patience=300)
     # stationary_gp.fit(noisy_patches, verbose=False)
 
 

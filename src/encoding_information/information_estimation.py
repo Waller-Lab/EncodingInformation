@@ -62,8 +62,9 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
 
     if isinstance(measurement_model, list):
         nlls = np.array([m.compute_negative_log_likelihood(test_set) for m in measurement_model])
-        best_model_index = np.argmin(nlls)
+        best_model_index = np.nanargmin(nlls)
         measurement_model = measurement_model[best_model_index]
+        nll = nlls[best_model_index]
     else:
         nll = measurement_model.compute_negative_log_likelihood(test_set)
     

@@ -33,8 +33,11 @@ led_array/phenotyping_experiments/config_files/training
 
 
 imager_experiments/archive_code/*
-
-
+color_filter_array/legacy/*
+color_filter_array/wandb/*
+color_filter_array/data/*
+color_filter_array/four_channel_images.zarr/*
+color_filter_array/models/*
 *.cache
 *.cached
 *.cached_old

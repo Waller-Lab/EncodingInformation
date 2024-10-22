@@ -154,7 +154,6 @@ def run_calculations(config_file):
 
         # Save after each iteration
         np.savez(os.path.join(results_dir, f"{save_name}"), **results)
-        print(f'Results for model {i} saved to {os.path.join(results_dir, f"{save_name}_model_{i}")}')
 
 
 if __name__ == '__main__':

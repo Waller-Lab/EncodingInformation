@@ -39,6 +39,12 @@ def main(config_path, gpu_idx):
         mask = np.load(h_params['mask_path'])
         model = eqx.tree_at(lambda m: m.sensor_layer, model, replace=model.sensor_layer.update_w(mask))
 
+    try:
+        # deserialize the model
+        model = eqx.tree_deserialise_leaves(h_params['model_path'], model)
+    except:
+        pass
+
     # Initialize the optimizers
     def param_labels(listed_model):
         model = listed_model[0]
@@ -109,8 +115,6 @@ def main(config_path, gpu_idx):
                     ):
             # Compute the gradients with respect to params (static parts are not differentiated)
             loss_val, grads = loss(model, images, targets, alpha)
-            # Clip gradients
-            grads = jax.tree_util.tree_map(lambda g: jnp.clip(g, -.1, .1), grads)
             # Update parameters
             updates, new_opt_state = optimizer.update([grads], opt_state, [model])
             updates = jax.tree_util.tree_map(lambda x: jnp.nan_to_num(x), updates)
@@ -208,19 +212,22 @@ def main(config_path, gpu_idx):
             # clip the images
             images = images.clip(0, 1)
 
-            alpha = 1 + (gamma * step) ** 2
             # make alpha an array of size n_batch
-            alpha = jnp.full((images.shape[0], 1), alpha)
+            if h_params['e2e'] == True:
+                alpha_val = 1 + (gamma * step) ** 2
+                alpha = jnp.full((images.shape[0], 1), alpha_val)
+            else:
+                alpha_val = 10000
+                alpha = jnp.full((images.shape[0], 1), alpha_val)
             model, opt_state, loss = step_model(model, optimizer, opt_state, images, targets, alpha)
             wandb_log['loss'] = loss
 
             if (step % disp_freq) == 0:
-                alpha = 1 + (gamma * step) ** 2
-                alpha = jnp.full((disp_images.shape[0], 1), alpha)
+                alpha = jnp.full((disp_images.shape[0], 1), alpha_val)
                 recons = jax.vmap(model)(disp_images, alpha)
                 recons = (3*recons)**(1/2.2)
                 recons = recons.clip(0, 1)
-
+    
                 fig, axs = plt.subplots(5, 5, figsize=(15, 15))
                 for i in range(25):
                     ax = axs[i // 5, i % 5]
@@ -235,6 +242,15 @@ def main(config_path, gpu_idx):
                 cax = ax.imshow(model.sensor_layer.w.argmax(axis=-1), cmap=cmap)
                 ax.axis("off")
                 wandb_log["sensor"] = wandb.Image(fig)
+                plt.close()
+
+                # display how binary the sensor is
+                fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+                cax = ax.imshow(jnp.max(jax.nn.softmax(model.sensor_layer.w * alpha_val, axis=-1), axis=-1))
+                ax.axis("off")
+                cbar = fig.colorbar(cax, ax=ax)
+                cax.set_clim(0, 1) 
+                wandb_log["sensor_binary"] = wandb.Image(fig)
                 plt.close()
                 
             if (step % val_freq) == 0:
@@ -251,8 +267,7 @@ def main(config_path, gpu_idx):
                     val_images = val_images / scale_factor
                     # clip the images
                     val_images = val_images.clip(0, 1)
-                    alpha = 1 + (gamma * step) ** 2
-                    alpha = jnp.full((val_images.shape[0], 1), alpha)
+                    alpha = jnp.full((val_images.shape[0], 1), alpha_val)
                     recons = jax.vmap(model)(val_images, alpha)
                     val_loss += jnp.mean((recons - val_targets) ** 2)
                 val_loss /= val_count

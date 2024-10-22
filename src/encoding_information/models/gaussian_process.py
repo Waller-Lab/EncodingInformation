@@ -909,6 +909,6 @@ class FullGaussianProcess(MeasurementModel):
         Compute the differential entropy per pixel of the Gaussian process
         """
         D = self.cov_mat.shape[0]
-        sum_log_evs = np.sum(np.log(np.linalg.eigvals(self.cov_mat)))
+        sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(self.cov_mat)))
         gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
         return gaussian_entropy
