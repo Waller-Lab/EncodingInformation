@@ -430,8 +430,6 @@ class PixelCNN(MeasurementModel):
 
         Parameters
         ----------
-        image_shape : tuple of int
-            Shape of the input image (height, width).
         num_hidden_channels : int
             Number of hidden channels in the convolutional layers.
         num_mixture_components : int
