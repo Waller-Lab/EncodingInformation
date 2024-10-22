@@ -90,7 +90,7 @@ def generate_multivariate_gaussian_samples(mean_vec, cov_mat, num_samples, seed=
     return samples
 
 
-def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False, verbose=False):  
+def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=False, verbose=False, average=True):  
     """
     Compute the log likelihood per pixel of a set of samples from a stationary process
 
@@ -99,6 +99,7 @@ def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=
     :param mean: float mean of the process
     :param prefer_iterative: if True, compute likelihood iteratively, otherwise compute directly if possible
     :param verbose: if True, print progress
+    :param average: if True, return average log likelihood, otherwise return per example
 
     :return: average log_likelihood per pixel
     """
@@ -195,6 +196,8 @@ def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=
             if not prefer_iterative and i < patch_size and j < patch_size :
                 # already did this
                 pass
+
+            # TODO: not sure this still works when the average parameter is set to False
             elif i == 0 and j == 0:
                 # top left pixel is not conditioned on anything
                 variance = cov_mat[0, 0]
@@ -221,7 +224,10 @@ def _compute_stationary_log_likelihood(samples, cov_mat, mean, prefer_iterative=
                 log_likelihoods.append(np.array(batch_likelihoods).flatten())
 
     # return average log likelihood per pixel
-    return np.mean(np.array(log_likelihoods)) / cov_mat.shape[0]
+    log_likelihoods = np.array(log_likelihoods) / cov_mat.shape[0]
+    if average:
+        return np.mean(log_likelihoods)
+    return log_likelihoods.flatten()
 
 
 def generate_stationary_gaussian_process_samples(mean_vec, cov_mat, num_samples, sample_size=None,
@@ -654,7 +660,7 @@ class StationaryGaussianProcess(MeasurementModel):
         return val_loss_history
 
 
-    def compute_negative_log_likelihood(self, images, data_seed=None, verbose=True, seed=None):
+    def compute_negative_log_likelihood(self, images, data_seed=None, verbose=True, seed=None, average=True):
         """
         Compute the negative log-likelihood of the provided images under the learned Gaussian process.
 
@@ -668,6 +674,8 @@ class StationaryGaussianProcess(MeasurementModel):
             Whether to print progress (default is True).
         seed : int, optional, deprecated
             Deprecated argument for random seed, use `data_seed` instead.
+        average : bool
+            If true, return the average NLL, if false return per-example 
 
         Returns
         -------
@@ -692,8 +700,8 @@ class StationaryGaussianProcess(MeasurementModel):
             
         images = match_to_generator_data(images, seed=data_seed)
 
-        lls = _compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose)
-        return -lls.mean()
+        lls = _compute_stationary_log_likelihood(images, cov_mat, mean_vec, verbose=verbose, average=average)
+        return -lls
     
         
     def generate_samples(self, num_samples, sample_shape=None, ensure_nonnegative=True, seed=None, verbose=True):
@@ -895,3 +903,12 @@ class FullGaussianProcess(MeasurementModel):
         samples = samples.reshape(num_samples, *self._measurement_shape)
         return samples
 
+
+    def compute_analytic_entropy(self):
+        """
+        Compute the differential entropy per pixel of the Gaussian process
+        """
+        D = self.cov_mat.shape[0]
+        sum_log_evs = np.sum(np.log(np.linalg.eigvalsh(self.cov_mat)))
+        gaussian_entropy = 0.5 *(sum_log_evs + D * np.log(2* np.pi * np.e)) / D
+        return gaussian_entropy
