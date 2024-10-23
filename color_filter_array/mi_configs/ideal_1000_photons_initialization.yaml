@@ -8,7 +8,7 @@ dataset:
   model_key: 3
   patch_size: 24
   batch_size: 128
-  model_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/models/lcfa_1000_photons_replicate_3/step_0095000.eqx'
+  model_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/models/ideal_1000_photons_initialization/step_0000000.eqx'
 
 training:
   epochs: 50
@@ -20,4 +20,4 @@ seeds:
 
 output:
   results_dir: "/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/mi_results"
-  save_name: 'lcfa_1000_photons_replicate_3.npz'
+  save_name: 'ideal_1000_photons_initialization.npz'

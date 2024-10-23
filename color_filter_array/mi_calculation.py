@@ -86,7 +86,7 @@ def run_calculations(config_file):
 
     # Prepare test set sizes only once
     test_set_sizes = np.linspace(10, test_set.shape[0], 20).astype(int)
-
+    
     # Loop through model training and save after each iteration
     for i in tqdm(range(N_models)):
         model_seed = i
@@ -94,7 +94,7 @@ def run_calculations(config_file):
         
 
         # Train model
-        model.fit(train_set, model_seed=model_seed, data_seed=data_seed, max_epochs=epochs, verbose=False)
+        model.fit(train_set, model_seed=model_seed, data_seed=data_seed, max_epochs=epochs, steps_per_epoch=1000, verbose=False, learning_rate=1e-3, patience=5)
         models.append(model)
 
         # Compute NLL and store it
@@ -153,7 +153,7 @@ def run_calculations(config_file):
         }
 
         # Save after each iteration
-        np.savez(os.path.join(results_dir, f"{save_name}"), **results)
+        np.savez(os.path.join(results_dir, f"tuned_model_{save_name}"), **results)
 
 
 if __name__ == '__main__':

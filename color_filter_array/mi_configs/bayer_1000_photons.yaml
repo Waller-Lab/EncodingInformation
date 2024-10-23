@@ -12,8 +12,8 @@ dataset:
 
 
 training:
-  epochs: 200
-  N_models: 40
+  epochs: 50
+  N_models: 10
   num_bootstrap_samples: 100
 
 seeds:
