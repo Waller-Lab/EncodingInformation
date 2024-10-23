@@ -135,7 +135,7 @@ class BSCCMDataset(MeasurementDatasetBase):
             if rescale_fraction > 1:
                 raise Exception('Cannot rescale to more photons than the data has because the data is already noisy')
         
-            images =  add_shot_noise_to_experimenal_data(images, rescale_fraction, seed=noise_seed)
+            images =  add_shot_noise_to_experimental_data(images, rescale_fraction, seed=noise_seed)
 
         #rescale bias
         if bias is not None:
@@ -284,7 +284,7 @@ def get_bsccm_image_marker_generator(bsccm, channels,
                 # this is assumed to be noiseless, so add full noise here
                 return add_noise(image * rescale_fraction, seed=index + noise_seed)
             else:
-                return add_shot_noise_to_experimenal_data(image, rescale_fraction, seed=index + noise_seed)
+                return add_shot_noise_to_experimental_data(image, rescale_fraction, seed=index + noise_seed)
         else:
             return image
 
@@ -349,7 +349,7 @@ def generate_synthetic_multi_led_images(bsccm_coherent, led_indices, edge_crop=0
     # equalize noise between images and then add them together
     synthetic_images = np.zeros_like(single_led_images[led_indices[0]])
     for led_index in led_indices:
-         synthetic_images += add_shot_noise_to_experimenal_data(single_led_images[led_index], photon_fractions[led_index])
+         synthetic_images += add_shot_noise_to_experimental_data(single_led_images[led_index], photon_fractions[led_index])
     
     return synthetic_images
 
@@ -470,6 +470,14 @@ def read_images_and_sample_intensities(bsccm, channel, x2_offset, N_images, phot
     return x1, x2
 
 def add_shot_noise_to_experimenal_data(image_stack, photon_fraction, seed=None):
+    """
+    Deprecated, this one misspells experimental.
+    """
+    warnings.warn("This function is deprecated. Use add_shot_noise_to_experimental_data instead.")
+    return add_shot_noise_to_experimental_data(image_stack, photon_fraction, seed)
+
+
+def add_shot_noise_to_experimental_data(image_stack, photon_fraction, seed=None):
     """
     Add synthetic shot noise to an image stack by adding the additional noise 
     that would be expected for the desired photon count
