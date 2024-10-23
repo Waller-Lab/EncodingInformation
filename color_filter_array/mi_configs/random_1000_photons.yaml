@@ -11,8 +11,8 @@ dataset:
   model_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/models/random_filter_1000_photons_replicate_1/step_0095000.eqx'
 
 training:
-  epochs: 200
-  N_models: 40
+  epochs: 50
+  N_models: 10
   num_bootstrap_samples: 100
 
 seeds:
