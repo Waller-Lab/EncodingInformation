@@ -15,7 +15,7 @@ from scipy.signal import resample
 
 from encoding_information.information_estimation import estimate_mutual_information, estimate_information
 from encoding_information.models import PixelCNN, AnalyticGaussianNoiseModel, StationaryGaussianProcess
-
+from encoding_information.image_utils import extract_patches
 
 NUM_NYQUIST_SAMPLES = 8
 UPSAMPLED_SIGNAL_LENGTH = 512
@@ -512,10 +512,11 @@ def conv_forward_model(parameters, objects, align_center=False, integrate_output
 
 
 def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, initial_kernel=None,
-                                 learning_rate=1e-2, learning_rate_decay=0.999, verbose=True,
-                                 estimate_with_pixel_cnn=True,
+                                 learning_rate=1e-2, learning_rate_decay=0.999, verbose=False,
+                                 estimate_with_pixel_cnn=False,
                                  loss_improvement_patience=2000, max_epochs=5000, num_nyquist_samples=NUM_NYQUIST_SAMPLES, 
-                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, test_fraction=0.1, confidence=0.95):
+                                 upsampled_signal_length=UPSAMPLED_SIGNAL_LENGTH, test_fraction=0.1, confidence=0.95,
+                                 integrate_output_signals=True, num_mi_models=1):
   if estimate_with_pixel_cnn:
       # make sure num_nyquist_samples is a perfect square and upsampled_signal_length is a multiple of it
         if not np.sqrt(num_nyquist_samples) % 1 == 0:
@@ -542,30 +543,38 @@ def optimize_PSF_and_estimate_mi(objects_fn, noise_sigma, initial_kernel=None,
   initial_mi = None
 
   output_signals = conv_forward_model(optimized_params, test_objects,
-                                            integrate_output_signals=True, 
+                                            integrate_output_signals=integrate_output_signals, 
                                             num_nyquist_samples=num_nyquist_samples,
                                             upsampled_signal_length=upsampled_signal_length)
+
   noisy_output_signals = output_signals + jax.random.normal(jax.random.PRNGKey(onp.random.randint(10000)), output_signals.shape) * noise_sigma
-  fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(num_nyquist_samples)), int(np.sqrt(num_nyquist_samples))) * scale_factor
-  if verbose:
-     print('computing optimized mi')
 
-
-  # optimized_mi = estimate_mutual_information(fake_images, gaussian_noise_sigma=noise_sigma * scale_factor, verbose=False)
-  train_fake_images = fake_images[:int(fake_images.shape[0] * (1 - test_fraction))]
-  test_fake_images = fake_images[int(fake_images.shape[0] * (1 - test_fraction)):]
+  fake_images = noisy_output_signals.reshape(-1, int(np.sqrt(noisy_output_signals.shape[1])), int(np.sqrt(noisy_output_signals.shape[1]))) * scale_factor
 
   if estimate_with_pixel_cnn:
-    model = PixelCNN()
-    model.fit(train_fake_images, verbose=False)
-  else:
-    model = StationaryGaussianProcess(train_fake_images)
-    model.fit(train_fake_images)
+    patches = extract_patches(fake_images, num_patches=2000, patch_size=60, strategy='cropped', crop_location=(0, 0))
+    train_fake_images = patches[:int(patches.shape[0] * (1 - test_fraction))]
+    test_fake_images = patches[int(patches.shape[0] * (1 - test_fraction)):]
 
-  noise_model = AnalyticGaussianNoiseModel(noise_sigma*scale_factor)
+    models = []
+    for i in range(num_mi_models):
+        model = PixelCNN()
+        model.fit(train_fake_images, verbose=False)
+        models.append(model)
+  else:
+    train_fake_images = fake_images[:int(fake_images.shape[0] * (1 - test_fraction))]
+    test_fake_images = fake_images[int(fake_images.shape[0] * (1 - test_fraction)):]
+
+    models = []
+    for i in range(num_mi_models):
+        model = StationaryGaussianProcess(train_fake_images)
+        model.fit(train_fake_images)
+        models.append(model)
+
+  noise_model = AnalyticGaussianNoiseModel(noise_sigma)
 
   info, lower, upper = estimate_information(
-        model, noise_model, train_fake_images, test_fake_images, confidence_interval=confidence)
+        models, noise_model, train_fake_images, test_fake_images, confidence_interval=confidence)
 
                                                         
   return initial_kernel, initial_params, optimized_params, objects, initial_mi, info, lower, upper
