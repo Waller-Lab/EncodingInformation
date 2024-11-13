@@ -3,7 +3,9 @@
 [![PyPI](https://img.shields.io/pypi/v/encoding_information.svg)](https://pypi.org/project/encoding-information)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/encoding_information.svg)](https://pypistats.org/packages/encoding_information)
    
+## Installtion guide
 
+https://github.com/Waller-Lab/EncodingInformation/blob/main/Installation_guide.md
 
 
 
