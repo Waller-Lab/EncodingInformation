@@ -7,6 +7,9 @@
 
 https://github.com/Waller-Lab/EncodingInformation/blob/main/Installation_guide.md
 
+## Documentation
+
+https://encodinginformation.readthedocs.io/en/latest/
 
 
 ## Contributing
