@@ -6,7 +6,7 @@
 
 Code and experiments from the paper [Information-driven design of imaging systems](https://waller-lab.github.io/EncodingInformationWebsite/). For detailed usage, see the [documentation](https://readthedocs.org/projects/encodinginformation/badge/?version=latest).
 
-## Installtion guide
+## Installation guide
 
 `pip install encoding_information`
 
