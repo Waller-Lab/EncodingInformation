@@ -5,23 +5,6 @@ Information Estimation Functions
 
 This module contains functions for estimating entropy and mutual information between variables using various probabilistic models.
 
-Functions
----------
-
-.. autofunction:: estimate_information
-
-.. autofunction:: analytic_multivariate_gaussian_entropy
-
-.. autofunction:: nearest_neighbors_entropy_estimate
-
-.. autofunction:: estimate_conditional_entropy
-
-.. autofunction:: run_bootstrap
-
-.. autofunction:: estimate_task_specific_mutual_information
-
-.. autofunction:: estimate_mutual_information
-
 Usage Examples
 --------------
 
@@ -52,3 +35,22 @@ Usage Examples
        return np.mean(data_sample)
 
    median, conf_int = run_bootstrap(data, estimation_fn, num_bootstrap_samples=200, confidence_interval=90)
+
+
+Functions
+---------
+
+.. autofunction:: estimate_information
+
+.. autofunction:: analytic_multivariate_gaussian_entropy
+
+.. autofunction:: nearest_neighbors_entropy_estimate
+
+.. autofunction:: estimate_conditional_entropy
+
+.. autofunction:: run_bootstrap
+
+.. autofunction:: estimate_task_specific_mutual_information
+
+.. autofunction:: estimate_mutual_information
+
