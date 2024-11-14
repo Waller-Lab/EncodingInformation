@@ -9,7 +9,7 @@ This module contains functions for processing images, including extracting patch
 Usage Examples
 --------------
 
-#### Extracting Patches
+Extracting Patches
 
 .. code-block:: python
 
@@ -19,7 +19,7 @@ Usage Examples
    data = np.random.rand(100, 64, 64)  # Example dataset of 100 images, each 64x64
    patches = extract_patches(data, num_patches=500, patch_size=16, strategy='random')
 
-#### Adding Noise to Images
+Adding Noise to Images
 
 .. code-block:: python
 
@@ -29,7 +29,7 @@ Usage Examples
    images = np.random.rand(100, 64, 64)  # Example dataset of 100 images, each 64x64
    noisy_images = add_noise(images, gaussian_sigma=0.1)
 
-#### Normalizing an Image Stack
+Normalizing an Image Stack
 
 .. code-block:: python
 
