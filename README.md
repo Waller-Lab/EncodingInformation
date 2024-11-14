@@ -4,7 +4,7 @@
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/encoding_information.svg)](https://pypistats.org/packages/encoding_information)
 
 
-Code and experiments from our paper [Information-driven design of imaging systems](https://waller-lab.github.io/EncodingInformationWebsite/). For detailed usage, see the [documentation](https://readthedocs.org/projects/encodinginformation/badge/?version=latest).
+Code and experiments from the paper [Information-driven design of imaging systems](https://waller-lab.github.io/EncodingInformationWebsite/). For detailed usage, see the [documentation](https://readthedocs.org/projects/encodinginformation/badge/?version=latest).
 
 ## Installtion guide
 
