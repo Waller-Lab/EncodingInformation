@@ -8,7 +8,7 @@ This module contains functions for estimating entropy and mutual information bet
 Usage Examples
 --------------
 
-#### Estimating Mutual Information
+Estimating Mutual Information
 
 .. code-block:: python
 
@@ -23,7 +23,7 @@ Usage Examples
 
    mutual_info = estimate_information(measurement_model, noise_model, train_set, test_set)
 
-#### Running Bootstrapped Estimations
+Running Bootstrapped Estimations
 
 .. code-block:: python
 
