@@ -5,18 +5,6 @@ Image Processing Functions
 
 This module contains functions for processing images, including extracting patches, adding synthetic noise, and normalizing image stacks.
 
-Functions
----------
-
-.. autofunction:: _extract_random_patches
-   :noindex:
-
-.. autofunction:: extract_patches
-
-.. autofunction:: add_noise
-
-.. autofunction:: normalize_image_stack
-
 
 Usage Examples
 --------------
@@ -50,4 +38,18 @@ Usage Examples
 
    stack = np.random.rand(100, 64, 64)  # Example image stack
    normalized_stack = normalize_image_stack(stack)
+
+
+
+Functions
+---------
+
+.. autofunction:: _extract_random_patches
+   :noindex:
+
+.. autofunction:: extract_patches
+
+.. autofunction:: add_noise
+
+.. autofunction:: normalize_image_stack
 
