@@ -40,7 +40,7 @@ from cleanplots import *
 from jax.scipy.special import logsumexp
 import numpy as np
 
-from leyla_fns import *
+from EncodingInformation.lensless_imager.lensless_helpers import *
 
 # %%
 from encoding_information.image_utils import add_noise, extract_patches
