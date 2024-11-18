@@ -579,3 +579,34 @@ def momentum_testing_model(train_data, train_labels, test_data, test_labels, val
     history = model.fit(train_data, train_labels, validation_data=(val_data, val_labels), epochs=max_epochs, batch_size=32, callbacks=[early_stop]) #validation data is not test data
     test_loss, test_acc = model.evaluate(test_data, test_labels)
     return history, model, test_loss, test_acc
+
+
+# bootstrapping function 
+def compute_bootstraps(mses, psnrs, ssims, test_set_length, num_bootstraps=100): 
+    bootstrap_mses = []
+    bootstrap_psnrs = []
+    bootstrap_ssims = []
+    for bootstrap_idx in tqdm(range(num_bootstraps), desc='Bootstrapping to compute confidence interval'):
+        # select indices for sampling
+        bootstrap_indices = np.random.choice(test_set_length, test_set_length, replace=True) 
+        # take the metric values at those indices
+        bootstrap_selected_mses = mses[bootstrap_indices]
+        bootstrap_selected_psnrs = psnrs[bootstrap_indices]
+        bootstrap_selected_ssims = ssims[bootstrap_indices]
+        # accumulate the mean of the selected metric values
+        bootstrap_mses.append(np.mean(bootstrap_selected_mses))
+        bootstrap_psnrs.append(np.mean(bootstrap_selected_psnrs))
+        bootstrap_ssims.append(np.mean(bootstrap_selected_ssims))
+    bootstrap_mses = np.array(bootstrap_mses)
+    bootstrap_psnrs = np.array(bootstrap_psnrs)
+    bootstrap_ssims = np.array(bootstrap_ssims)
+    return bootstrap_mses, bootstrap_psnrs, bootstrap_ssims
+
+def compute_confidence_interval(list_of_items, confidence_interval=0.95):
+    # use this one, final version
+    assert confidence_interval > 0 and confidence_interval < 1
+    mean_value = np.mean(list_of_items)
+    lower_bound = np.percentile(list_of_items, 50 * (1 - confidence_interval))
+    upper_bound = np.percentile(list_of_items, 50 * (1 + confidence_interval))
+    return mean_value, lower_bound, upper_bound
+

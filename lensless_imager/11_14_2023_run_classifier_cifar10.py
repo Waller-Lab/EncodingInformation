@@ -33,7 +33,7 @@ import jax.numpy as np
 from jax.scipy.special import logsumexp
 import numpy as onp
 
-from leyla_fns import *
+from lensless_helpers import *
 from encoding_information.image_utils import add_noise
 
 # %%
