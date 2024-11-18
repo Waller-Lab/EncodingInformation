@@ -1,16 +1,17 @@
 import pytest
 
 import numpy as np
+from encoding_information.datasets import BSCCMDataset, MNISTDataset, LenslessDataset
 
-from encoding_information.datasets import BSCCMDataset, MNISTDataset
-
-@pytest.fixture(params=[BSCCMDataset, MNISTDataset])
+@pytest.fixture(params=[BSCCMDataset, MNISTDataset, LenslessDataset])
 def dataset(request):
     print(request.param, type(request.param))
     if request.param == BSCCMDataset:
         return BSCCMDataset('/home/hpinkard_waller/data/BSCCM/')
     if request.param == MNISTDataset:
         return MNISTDataset()
+    if request.param == LenslessDataset:
+        return LenslessDataset()
 
 def test_mean(dataset):
     mean = 100
