@@ -4,3 +4,5 @@ sphinx-rtd-theme
 sphinx-togglebutton
 sphinx_autodoc_typehints
 nbsphinx
+sphinxcontrib.googleanalytics
+

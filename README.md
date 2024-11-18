@@ -2,47 +2,64 @@
 [![License](https://img.shields.io/pypi/l/encoding_information.svg)](https://github.com/EncodingInformation/EncodingInformation/raw/master/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/encoding_information.svg)](https://pypi.org/project/encoding-information)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/encoding_information.svg)](https://pypistats.org/packages/encoding_information)
+
+
+Code and experiments from the paper [Information-driven design of imaging systems](https://waller-lab.github.io/EncodingInformationWebsite/). For detailed usage, see the [documentation](https://readthedocs.org/projects/encodinginformation/badge/?version=latest).
+
+## Installation guide
+
+`pip install encoding_information`
+
+There may be more setup required to get the correct versions of Jax/Flax, see:
+
+https://github.com/Waller-Lab/EncodingInformation/blob/main/Installation_guide.md
+
+
+## Quick Start
+
+```python
+from encoding_information.models import PixelCNN, PoissonNoiseModel
+from encoding_information import estimate_information, extract_patches
+
+# Load measurement data (N x H x W numpy array of images) 
+measurements = load_measurements()  
+
+# Split into training/test sets and extract patches
+# Breaking large images into patches increases computational efficiency
+# Test set is used to evaluate information estimates
+patches = extract_patches(measurements[:-200], patch_size=16)
+test_patches = extract_patches(measurements[-200:], patch_size=16) 
+
+# Initialize and fit model to training data
+model = PixelCNN()  # Also supports FullGaussianProcess, StationaryGaussianProcess
+noise_model = PoissonNoiseModel()
+model.fit(patches)
+
+# Estimate information content with confidence bounds
+# Error bars are calculated based on test set size
+info, lower_bound, upper_bound = estimate_information(
+   model, 
+   noise_model,
+   patches,
+   test_patches,
+   confidence_interval=0.95
+)
+
+print(f"Information: {info:.2f} ± {(upper_bound-lower_bound)/2:.2f} bits/pixel")
+```
+
+We provide three models with different tradeoffs:
+
+- **PixelCNN**: Most accurate estimates but slowest
+- **FullGaussianProcess**: Fastest
+- **StationaryGaussianProcess**: Intermediate speed; Best performance on limited data
+
+For highest accuracy, train multiple models and select the one giving the lowest information estimate, as each provides an upper bound on the true information content.
    
-   
 
-# Mutual Information Estimation Installation Guide
+## Documentation
 
-The minimal installation requires jax and tensorflow. Installing jax after other deep learning packages seems to work best due to difficulties with CUDA and CuDNN installations.
-
-Installation varies according to system specifications. This is an incomplete guide, providing directions for our system, running Ubuntu 20.04.6 x86_64, CUDA 12.3, CUDNN >=8.9.
-
-
-## Python 3.10 instructions
-
-1. Use conda for environment management
-
-`conda create -n infotheory python=3.10`
-
-2. Install pytorch if needed, including CUDA version (here, 12.1). Conda installation works better than pip.
-
-`conda install pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia`
-
-3. Install tensorflow, this seems to work more reliably than just `pip install tensorflow` (python 3.10 version).
-
-`pip install https://storage.googleapis.com/tensorflow/versions/2.16.1/tensorflow-2.16.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`
-
-
-4. Install jax. Manually installing jaxlib and then jax used to work but does not anymore. This installed jax 0.4.29.
-
-`pip install -U "jax[cuda12]"`
-
-This installs a fairly new version of jax, which doesn't support the outdated ml-dtypes version (0.3.2) that tensorflow needs, instead using the newest ml-dtypes version (0.4.0). Tensorflow runs with "Out of Range" warnings, but seems to work fine within the estimation framework. Downgrading ml-dtypes to work with tensorflow is incompatible with jax. In the future, tensorflow dependencies will be removed. It may be possible to downgrade the jax version but attempts to do so resulted in failed installs with no CuDNN found.
-
-5. Install flax
-
-`pip install flax`
-
-
-## Python 3.11 instructions
-Same as python 3.10, seems to work fine but hasn't been rigorously tested. Instead of the tensorflow command used above, find the one for the relevant python version from https://www.tensorflow.org/install/pip. 
-
-`pip install https://storage.googleapis.com/tensorflow/versions/2.16.1/tensorflow-2.16.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`
-
+https://encodinginformation.readthedocs.io/en/latest/
 
 
 ## Contributing
