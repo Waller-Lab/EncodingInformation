@@ -25,7 +25,7 @@ import optax
 
 
 from .model_base_class import MeasurementModel, MeasurementType, \
-            train_model, _evaluate_nll, make_dataset_generators
+            train_model, _evaluate_nll, make_dataset_generators, make_dataset_generators_jax
 
 
 
@@ -482,6 +482,7 @@ class MultiChannelPixelCNN(MeasurementModel):
     def fit(self, train_images, condition_vectors=None, learning_rate=1e-2, max_epochs=200, steps_per_epoch=100,  patience=40, 
             sigma_min=1, batch_size=64, num_val_samples=None, percent_samples_for_validation=0.1,  do_lr_decay=False, verbose=True,
             add_gaussian_noise=False, add_uniform_noise=True, model_seed=None, data_seed=None, use_positional_embedding=False,
+            use_tfds=True,
             # deprecated
             seed=None,):
         """
@@ -557,10 +558,18 @@ class MultiChannelPixelCNN(MeasurementModel):
 
         # Use the make dataset generators function because training data may be modified here during training
         # (i.e. adding small amounts of noise to account for discrete data and continuous model)
-        _, dataset_fn = make_dataset_generators(train_images, batch_size=400, num_val_samples=train_images.shape[0],
+        if(use_tfds):
+            gen_func = make_dataset_generators
+        else:
+            gen_func = make_dataset_generators_jax
+
+        _, dataset_fn = gen_func(train_images, batch_size=4, num_val_samples=num_val_samples,
                                                 add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise, 
                                                 seed=data_seed)
-        example_images = dataset_fn().next() # TODO can make this batch size bigger if needed just to get the settings for the values in the following model initialization, currently at 400
+        if(use_tfds):
+            example_images = dataset_fn().next() # TODO can make this batch size bigger if needed just to get the settings for the values in the following model initialization, currently at 400
+        else:
+            example_images = next(dataset_fn())
 
         if self._flax_model is None:
             self.add_gaussian_noise = add_gaussian_noise
@@ -631,7 +640,7 @@ class MultiChannelPixelCNN(MeasurementModel):
 
 
 
-    def compute_negative_log_likelihood(self, data, conditioning_vecs=None,  data_seed=None, average=True, verbose=True, seed=None):
+    def compute_negative_log_likelihood(self, data, conditioning_vecs=None,  data_seed=None, average=True, verbose=True, seed=None, use_tfds=False):
         """
         Compute the negative log-likelihood (NLL) of images under the trained PixelCNN model.
 
@@ -674,7 +683,11 @@ class MultiChannelPixelCNN(MeasurementModel):
 
         # get test data generator. Here all data is "validation", because the data passed into this should already be
         # (in the typical case) a test set
-        _, dataset_fn = make_dataset_generators(data, batch_size=32 if average else 1, num_val_samples=data.shape[0], 
+        if(use_tfds):
+            gen_func = make_dataset_generators
+        else:
+            gen_func = make_dataset_generators_jax
+        _, dataset_fn = gen_func(data, batch_size=32 if average else 1, num_val_samples=data.shape[0], 
                                                 add_gaussian_noise=self.add_gaussian_noise, add_uniform_noise=self.add_uniform_noise,
                                                 condition_vectors=conditioning_vecs, seed=data_seed)
         @jax.jit
