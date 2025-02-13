@@ -184,7 +184,7 @@ class MeasurementModel(ABC):
         pass
     
     @abstractmethod
-    def compute_negative_log_likelihood(self, images, data_seed=123, average=True, verbose=True):
+    def compute_negative_log_likelihood(self, images, data_seed=123, average=True, verbose=True, use_tfds=True):
         """
         Compute the NLL of the images under the model
 
@@ -227,7 +227,7 @@ class MeasurementModel(ABC):
         """
         pass
 
-def _add_gaussian_noise_fn(images, condition_vectors=None):
+def _add_gaussian_noise_fn(images, condition_vectors=None, use_tfds=True):
     """
     Add Gaussian noise to images.
 
@@ -245,14 +245,17 @@ def _add_gaussian_noise_fn(images, condition_vectors=None):
     condition_vectors : ndarray, optional
         If provided, returns the conditioning vectors.
     """
-
-    noisy_images = images + tf.random.normal(shape=tf.shape(images), mean=0, stddev=1)
+    if use_tfds:
+        noise = tf.random.normal(shape=tf.shape(images), mean=0, stddev=1)
+    else:
+        noise = np.random.normal(0, 1, size=images.shape)
+    noisy_images = images + noise
     if condition_vectors is not None:
         return noisy_images, condition_vectors
     else:
         return noisy_images
 
-def _add_uniform_noise_fn(images, condition_vectors=None):
+def _add_uniform_noise_fn(images, condition_vectors=None, use_tfds=True):
     """
     Add uniform noise to images.
 
@@ -270,8 +273,11 @@ def _add_uniform_noise_fn(images, condition_vectors=None):
     condition_vectors : ndarray, optional
         If provided, returns the conditioning vectors.
     """
-
-    noisy_images = images + tf.random.uniform(shape=tf.shape(images), minval=0, maxval=1)
+    if use_tfds:
+        noise = tf.random.uniform(shape=tf.shape(images), minval=0, maxval=1)
+    else:
+        noise = np.random.uniform(0, 1, size=images.shape)
+    noisy_images = images + noise
     if condition_vectors is not None:
         return noisy_images, condition_vectors
     else:
@@ -354,6 +360,67 @@ def make_dataset_generators(data, batch_size, num_val_samples, add_uniform_noise
     val_ds = val_ds.shuffle(1024).batch(batch_size, drop_remainder=False).prefetch(tf.data.AUTOTUNE)
 
     return train_ds.as_numpy_iterator(), lambda : val_ds.as_numpy_iterator()
+
+
+def make_dataset_generators_jax(data, batch_size, num_val_samples, add_uniform_noise=True, 
+                            add_gaussian_noise=False, condition_vectors=None, seed=None, infinite=True):
+    """
+    Create TensorFlow dataset generators for training and validation data.
+
+    Parameters
+    ----------
+    data : ndarray
+        The input data, shape (N, H, W).
+    batch_size : int
+        The number of samples per batch.
+    num_val_samples : int
+        Number of validation samples.
+    add_uniform_noise : bool, optional
+        Whether to add uniform noise to the data (default is True).
+    add_gaussian_noise : bool, optional
+        Whether to add Gaussian noise to the data (default is False).
+    condition_vectors : ndarray, optional
+        Conditioning vectors associated with the images.
+    seed : int, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    train_ds : tf.data.Dataset
+        TensorFlow dataset iterator for training data.
+    val_ds : callable
+        A function that returns a TensorFlow dataset iterator for validation data.
+    """
+
+    if num_val_samples > data.shape[0]:
+        raise ValueError("Number of validation samples must be less than the number of training samples")
+    
+
+    data = data.astype(np.float32)
+
+
+    # split images into train and validation
+    val_images = data[:num_val_samples]
+    train_images = data[num_val_samples:]
+
+    def get_generator(images, val = False):
+        if val:
+            for i in range(int(num_val_samples/batch_size)):
+                outs = images[i*batch_size:(i+1)*batch_size]
+                yield outs
+        else:
+            while True:
+                inds = np.random.randint(0, images.shape[0], (batch_size,),dtype=np.int32)
+                outs = images[inds]
+
+                if add_gaussian_noise:
+                    outs = _add_gaussian_noise_fn(outs, use_tfds=False)
+                if add_uniform_noise:
+                    outs = _add_uniform_noise_fn(outs, use_tfds=False)
+
+                yield outs
+
+    return get_generator(train_images), lambda : get_generator(val_images, val=True)
 
 
 def _evaluate_nll(data_iterator, state, eval_step=None, batch_size=16, return_average=True, verbose=False):
@@ -460,7 +527,7 @@ def train_model(train_images, state, batch_size, num_val_samples, steps_per_epoc
     if num_val_samples < 1:
         warnings.warn('Number of validation samples must be at least 1. Using 1 validation sample instead.')
         num_val_samples = 1
-    train_ds_iterator, val_loader_maker_fn = make_dataset_generators(train_images,
+    train_ds_iterator, val_loader_maker_fn = make_dataset_generators_jax(train_images,
                      batch_size=batch_size, num_val_samples=num_val_samples, condition_vectors=condition_vectors,
                      add_gaussian_noise=add_gaussian_noise, add_uniform_noise=add_uniform_noise, seed=seed
                      )
