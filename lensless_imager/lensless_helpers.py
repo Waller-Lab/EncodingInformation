@@ -42,13 +42,17 @@ def generate_repeated_tiled_data(x_set, y_set):
     repeated_labels = y_set # the labels are just what they were
     return repeated_data, repeated_labels
 
-def convolved_dataset(psf, random_tiled_data):
+def convolved_dataset(psf, random_tiled_data, verbose=True):
     # takes a psf and a set of tiled images and returns a set of convolved images, convolved image size is 2n + 1? same size as the random data when it's cropped
-    # tile size is two images worth plus one extra index value
-    vert_shape = psf.shape[0] * 2 + 1
-    horiz_shape = psf.shape[1] * 2 + 1
+    # tile size is two images worth plus one extra index value at the 0th index
+    vert_shape = random_tiled_data.shape[1] - psf.shape[0] + 1 #psf.shape[0] * 2 + 1
+    horiz_shape = random_tiled_data.shape[2] - psf.shape[1] + 1 #psf.shape[1] * 2 + 1
     psf_dataset = np.zeros((random_tiled_data.shape[0], vert_shape, horiz_shape)) # 57 x 57 for the case of mnist 28x28 images, 65 x 65 for the cifar 32 x 32 images
-    for i in tqdm(range(random_tiled_data.shape[0])):
+    if verbose:
+        iterator = tqdm(range(random_tiled_data.shape[0]), desc='Convolving images', unit='image')
+    else:
+        iterator = range(random_tiled_data.shape[0])
+    for i in iterator:
         psf_dataset[i] = scipy.signal.fftconvolve(psf, random_tiled_data[i], mode='valid')
     return psf_dataset
 
@@ -439,7 +443,7 @@ def load_four_lens_32():
     return psf
 
 def load_diffuser_32():
-    diffuser_psf = skimage.io.imread('psfs/diffuser_psf.png')
+    diffuser_psf = skimage.io.imread('/home/lakabuli/workspace/EncodingInformation/lensless_imager/psfs/diffuser_psf.png')
     diffuser_psf = diffuser_psf[:,:,1]
     diffuser_resize = diffuser_psf[200:500, 250:550]
     diffuser_resize = resize(diffuser_resize, (100, 100), anti_aliasing=True)  #resize(diffuser_psf, (28, 28))
@@ -452,47 +456,47 @@ def load_diffuser_32():
 ### 10/15/2023: Make new versions of the model functions that train with Datasets - first attempt failed
 
 # lenses with centralized positions for use in task-specific estimations
-def load_single_lens_uniform(size=32):
+def load_single_lens_uniform(size=32, sigma=0.8):
     one_lens = np.zeros((size, size))
     one_lens[16, 16] = 1
-    one_lens = scipy.ndimage.gaussian_filter(one_lens, sigma=0.8)
+    one_lens = scipy.ndimage.gaussian_filter(one_lens, sigma=sigma)
     one_lens /= np.sum(one_lens)
     return one_lens
 
-def load_two_lens_uniform(size=32):
+def load_two_lens_uniform(size=32, sigma=0.8):
     two_lens = np.zeros((size, size))
     two_lens[16, 16] = 1 
     two_lens[7, 9] = 1
-    two_lens = scipy.ndimage.gaussian_filter(two_lens, sigma=0.8)
+    two_lens = scipy.ndimage.gaussian_filter(two_lens, sigma=sigma)
     two_lens /= np.sum(two_lens)
     return two_lens
 
-def load_three_lens_uniform(size=32):
+def load_three_lens_uniform(size=32, sigma=0.8):
     three_lens = np.zeros((size, size))
     three_lens[16, 16] = 1
     three_lens[7, 9] = 1
     three_lens[23, 21] = 1
-    three_lens = scipy.ndimage.gaussian_filter(three_lens, sigma=0.8)
+    three_lens = scipy.ndimage.gaussian_filter(three_lens, sigma=sigma)
     three_lens /= np.sum(three_lens)
     return three_lens
 
-def load_four_lens_uniform(size=32):
+def load_four_lens_uniform(size=32, sigma=0.8):
     four_lens = np.zeros((size, size))
     four_lens[16, 16] = 1
     four_lens[7, 9] = 1
     four_lens[23, 21] = 1
     four_lens[8, 24] = 1
-    four_lens = scipy.ndimage.gaussian_filter(four_lens, sigma=0.8)
+    four_lens = scipy.ndimage.gaussian_filter(four_lens, sigma=sigma)
     four_lens /= np.sum(four_lens)
     return four_lens
-def load_five_lens_uniform(size=32):
+def load_five_lens_uniform(size=32, sigma=0.8):
     five_lens = np.zeros((size, size))
     five_lens[16, 16] = 1
     five_lens[7, 9] = 1
     five_lens[23, 21] = 1
     five_lens[8, 24] = 1
     five_lens[21, 5] = 1
-    five_lens = scipy.ndimage.gaussian_filter(five_lens, sigma=0.8)
+    five_lens = scipy.ndimage.gaussian_filter(five_lens, sigma=sigma)
     five_lens /= np.sum(five_lens)
     return five_lens
 
@@ -610,3 +614,27 @@ def compute_confidence_interval(list_of_items, confidence_interval=0.95):
     upper_bound = np.percentile(list_of_items, 50 * (1 + confidence_interval))
     return mean_value, lower_bound, upper_bound
 
+
+
+def load_fake_rml(size=32, sigma=0.8):
+    # make 6 lenslets, with variable blur for each one 
+    fake_rml = np.zeros((size, size))
+    fake_rml_2 = np.zeros((size, size))
+    fake_rml_3 = np.zeros((size, size))
+    fake_rml[16, 16] = 1 
+    fake_rml_2[7, 9] = 1 
+    fake_rml_2[23, 21] = 1
+    fake_rml[8, 24] = 1
+    fake_rml[21, 5] = 1
+    fake_rml_3[26, 12] = 1
+    fake_rml_3[3, 17] = 1
+    fake_rml_2[16, 28] = 1
+
+    
+    fake_rml = scipy.ndimage.gaussian_filter(fake_rml, sigma=sigma)
+    fake_rml_2 = scipy.ndimage.gaussian_filter(fake_rml_2, sigma=sigma*1.25)
+    fake_rml_3 = scipy.ndimage.gaussian_filter(fake_rml_3, sigma=sigma*1.75)
+    fake_rml += fake_rml_2
+    fake_rml += fake_rml_3
+    fake_rml /= np.sum(fake_rml)
+    return fake_rml

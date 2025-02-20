@@ -2,6 +2,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 from skimage import metrics
+import warnings
 
 
 def compute_confidence_interval(list_of_items, confidence_interval=0.95):
@@ -69,3 +70,55 @@ def compute_bootstraps(mses, psnrs, ssims, test_set_length, num_bootstraps=100):
     bootstrap_psnrs = np.array(bootstrap_psnrs)
     bootstrap_ssims = np.array(bootstrap_ssims) 
     return bootstrap_mses, bootstrap_psnrs, bootstrap_ssims
+
+
+
+
+def load_single_black_hole_measurement(path):
+    measurement = np.load(path)
+    real_part = np.real(measurement) 
+    real_part = real_part + 1 
+    real_part = real_part * (255) / 2
+    imag_part = np.imag(measurement)
+    imag_part = imag_part + 1
+    imag_part = imag_part * (255) / 2
+    # take the two vectors and concatenate them into one long vector
+    return np.concatenate([real_part, imag_part], axis=-1)
+
+def load_all_black_hole_measurements(folder, num_images, start_idx=0, scale_sigma=False):
+    if not scale_sigma:
+        warnings.warn("The current way things are computed, the sigma scaling isn't done, but in the future it needs to.")
+    measurements = []
+    sigma = np.load(folder + 'sigmas/0.npy')
+    if scale_sigma:
+        # include scaling on the sigma values for the most correct approach. for now, in this framework it'll be scaled outside.
+        sigma *= 255.0 / 2.0
+    for image in range(start_idx, start_idx + num_images):
+        path = folder + 'visibilities_s/visibilities/{}.npy'.format(image)
+        measurements.append(load_single_black_hole_measurement(path))
+    measurements = np.array(measurements)
+    return measurements, sigma 
+
+
+def find_file_with_values(directory, search_values, verbose=False):
+    for filename in os.listdir(directory):
+        if filename.endswith('.txt') and filename.startswith('combination'):
+            file_path = os.path.join(directory, filename)
+            try:
+                with open(file_path, 'r') as file:
+                    content = file.read()
+                    if all(value in content for value in search_values):
+                        if verbose:
+                            print(f'File found: {filename} with values: {search_values}')
+                        return filename 
+            except Exception as e:
+                print(f'Error reading file {filename}: {e}')
+    print(f'File not found with values: {search_values}')
+    return None
+
+
+def correct_for_sigma_scaling(sigma_length):
+    # H(Y | X) adds a 2 * sum log(sigma * 255 / 2) / log(2) 
+    # so here, have 2 * sigma_length * log(255/2) / log(2) 
+    # this term will be subtracted from (H(Y) - H(Y | X) / log(2): - correction_factor
+    return 2 * sigma_length * np.log(255.0/2.0) / np.log(2.0)

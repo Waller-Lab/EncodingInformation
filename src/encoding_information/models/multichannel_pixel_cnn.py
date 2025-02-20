@@ -44,7 +44,7 @@ class PreprocessLayer(nn.Module):
     std: np.ndarray
 
     def __call__(self, x):
-        return (x - self.mean) / (self.std + 1e-5)
+        return (x - self.mean) / (self.std + 1e-5) # this might need much smaller values if input data is on a small scale
 
 class MaskedConvolution(nn.Module):
     """
@@ -284,7 +284,7 @@ class _MultiChannelPixelCNNFlaxImpl(nn.Module):
         if self.train_data_max.dtype != np.float32 or self.train_data_min.dtype != np.float32 or \
             self.train_data_mean.dtype != np.float32 or self.train_data_std.dtype != np.float32:
             raise Exception('Must pass in training data statistics as float32')
-
+        
         self.normalize = PreprocessLayer(mean=self.train_data_mean, std=self.train_data_std) 
 
         if not isinstance(self.num_hidden_channels, int):
