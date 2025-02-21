@@ -14,6 +14,9 @@ Icon
 
 *.iml
 
+#logs
+*.log
+
 analysis/.idea/analysis.iml
 
 analysis/.idea/misc.xml

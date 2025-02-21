@@ -6,11 +6,11 @@ and reconstruction capabilities. The system uses a structured mask to shape
 the probe beam and implements fly-scan ptychography.
 """
 
-from ..imaging_system import ImagingSystem
-from ..xray_ptychography import make_cell
+from ...imaging_system import ImagingSystem
 import jax.numpy as np
-from jax import nn, random
-from typing import Dict, Optional, Tuple
+from jax import lax, nn, random
+import equinox as eqx
+from typing import Optional, Tuple
 
 
 import matplotlib.pyplot as plt
@@ -25,57 +25,83 @@ class XRayPtychography(ImagingSystem):
     the probe beam.
 
     Attributes:
-        params.fixed_params (dict): Fixed system parameters including:
-            - energy: beam energy in eV
-            - detector_px_sz: detector pixel size in nm
-            - detector_length: sample to detector distance in nm
-            - f_length: focal length in nm
-            - zp_rad: zone plate radius in nm
-            - bstop_rad: beam stop radius in nm
-            - osa_length: zone plate to OSA distance in nm
-            - osa_rad: OSA radius in nm
-            - window_rad: window radius in nm
-            - spacing: hole spacing in nm
-            - npix_detector: number of detector pixels
-            - binfactor: binning factor
-            - xstep: step size in x direction
-            - ystep: step size in y direction
-            - probe_size: size of probe field
-            - n_photons: number of incident photons
-        params.learnable_params (dict): Learnable parameters including:
-            - mask: structured illumination mask pattern
+        mask: Structured illumination mask pattern
+        energy: Beam energy in eV
+        detector_px_sz: Detector pixel size in nm
+        detector_length: Sample to detector distance in nm
+        f_length: Focal length in nm
+        zp_rad: Zone plate radius in nm
+        bstop_rad: Beam stop radius in nm
+        osa_length: Zone plate to OSA distance in nm
+        osa_rad: OSA radius in nm
+        window_rad: Window radius in nm
+        spacing: Hole spacing in nm
+        npix_detector: Number of detector pixels
+        binfactor: Binning factor
+        xstep: Step size in x direction
+        ystep: Step size in y direction
+        probe_size: Size of probe field
+        n_photons: Number of incident photons
+        rng_key: Random number generator key
+        lambda_: X-ray wavelength in nm
+        necessary_det_px_sz: Required detector pixel size
+        necessary_Npx_detector: Required number of detector pixels
+        px_sz_probe: Probe pixel size
+        px_sz_zp: Zone plate pixel size
+        px_sz_osa: OSA pixel size
+        k: Wavenumber
+        positions: Array of scan positions
     """
-    
-    def __init__(self, fixed_params: Optional[Dict] = None, seed: int = 0):
+    mask: np.ndarray
+
+    energy: int = eqx.field(static=True)
+    detector_px_sz: int = eqx.field(static=True)
+    detector_length: int = eqx.field(static=True)
+    f_length: int = eqx.field(static=True)
+    zp_rad: int = eqx.field(static=True)
+    bstop_rad: int = eqx.field(static=True)
+    osa_length: int = eqx.field(static=True)
+    osa_rad: int = eqx.field(static=True)
+    window_rad: int = eqx.field(static=True)
+    spacing: int = eqx.field(static=True)
+    npix_detector: int = eqx.field(static=True)
+    binfactor: int = eqx.field(static=True)
+    xstep: int = eqx.field(static=True)
+    ystep: int = eqx.field(static=True) 
+    probe_size: Tuple[int, int] = eqx.field(static=True)
+    n_photons: int = eqx.field(static=True)
+    rng_key: np.ndarray = eqx.field(static=True)
+    lambda_: float = eqx.field(static=True)
+    necessary_det_px_sz: float = eqx.field(static=True)
+    necessary_Npx_detector: int = eqx.field(static=True)
+    px_sz_probe: float = eqx.field(static=True)
+    px_sz_zp: float = eqx.field(static=True)
+    px_sz_osa: float = eqx.field(static=True)
+    k: float = eqx.field(static=True)
+    positions: np.ndarray = eqx.field(static=True)
+
+    def __init__(self, energy=7e3, detector_px_sz=75e3, detector_length=2.05e9, f_length=60.5e6, zp_rad=125e3, bstop_rad=25e3, osa_length=50.5e6, osa_rad=19e3, window_rad=200, spacing=500, npix_detector=512, binfactor=1, xstep=250, ystep=250, probe_size=(512,512), n_photons=1e7, seed: int = 0):
         """
         Initialize the ptychography system.
         
-        Args:
-            fixed_params: Dictionary of fixed system parameters
-            seed: Random seed for initialization
         """
-        # Set default parameters if none provided
-        if fixed_params is None:
-            fixed_params = {
-                'energy': 7e3,  # eV
-                'detector_px_sz': 75e3,  # nm
-                'detector_length': 2.05e9,  # nm
-                'f_length': 60.5e6,  # nm
-                'zp_rad': 125e3,  # nm
-                'bstop_rad': 25e3,  # nm
-                'osa_length': 50.5e6,  # nm
-                'osa_rad': 19e3,  # nm
-                'window_rad': 200,  # nm
-                'spacing': 500,  # nm
-                'npix_detector': 512,
-                'binfactor': 1,
-                'xstep': 500,#100,
-                'ystep': 500,#100,
-                'probe_size': (512,512),
-                'n_photons': 1e7
-            }
-
-        super().__init__(fixed_params=fixed_params, seed=seed)
+        self.energy = energy
+        self.detector_px_sz = detector_px_sz
+        self.detector_length = detector_length
+        self.f_length = f_length
+        self.zp_rad = zp_rad
+        self.bstop_rad = bstop_rad
+        self.osa_length = osa_length
+        self.osa_rad = osa_rad
+        self.window_rad = window_rad
+        self.spacing = spacing
+        self.npix_detector = npix_detector
+        self.binfactor = binfactor
+        self.xstep = xstep
+        self.ystep = ystep
+        self.probe_size = probe_size
+        self.n_photons = n_photons
+        self.rng_key = random.PRNGKey(seed)
         
         # Calculate derived parameters
         self._calculate_derived_params()
@@ -86,27 +112,27 @@ class XRayPtychography(ImagingSystem):
         # Generate scan positions
         self._generate_scan_positions((800,800)) 
 
+        super().__init__(seed)
+
     def _calculate_derived_params(self):
         """Calculate derived system parameters from fixed parameters."""
-        p = self.params.fixed_params
-        
         # Calculate wavelength
-        self.lambda_ = 1239.8 / p['energy']  # nm
+        self.lambda_ = 1239.8 / self.energy  # nm
         
         # Calculate pixel sizes
-        self.necessary_det_px_sz = p['detector_px_sz'] / p['binfactor']
-        self.necessary_Npx_detector = round(p['npix_detector'] * 
-                                         p['detector_px_sz'] / 
+        self.necessary_det_px_sz = self.detector_px_sz / self.binfactor
+        self.necessary_Npx_detector = round(self.npix_detector * 
+                                         self.detector_px_sz / 
                                          self.necessary_det_px_sz)
         
         # Calculate probe and system parameters
-        self.px_sz_probe = (self.lambda_ * p['detector_length'] / 
+        self.px_sz_probe = (self.lambda_ * self.detector_length / 
                            (self.necessary_Npx_detector * self.necessary_det_px_sz))
-        self.px_sz_zp = (self.necessary_det_px_sz * p['f_length'] / 
-                        p['detector_length'])
+        self.px_sz_zp = (self.necessary_det_px_sz * self.f_length / 
+                        self.detector_length)
         self.px_sz_osa = (self.necessary_det_px_sz * 
-                         (p['f_length'] - p['osa_length']) / 
-                         p['detector_length'])
+                         (self.f_length - self.osa_length) / 
+                         self.detector_length)
         self.k = 2 * np.pi / self.lambda_
 
     def _initialize_learnable_params(self):
@@ -114,7 +140,7 @@ class XRayPtychography(ImagingSystem):
         # Initialize with random mask pattern
         mask_shape = (self.necessary_Npx_detector, self.necessary_Npx_detector)
         initial_mask = np.zeros(mask_shape)
-        self.add_learnable_param('mask', initial_mask)
+        self.mask = initial_mask
 
     def _generate_scan_positions(self, object_shape: Tuple[int, int]):
         """
@@ -123,10 +149,9 @@ class XRayPtychography(ImagingSystem):
         Args:
             object_shape: Shape of object to be scanned (height, width)
         """
-        p = self.params.fixed_params
-        xstep, ystep = p['xstep'], p['ystep']
+        xstep, ystep = self.xstep, self.ystep
         flyrange = int(np.floor(xstep/2))
-        probe_size = p['probe_size']
+        probe_size = self.probe_size
         
         # Calculate number of scan points
         Npts_x = int(np.ceil((object_shape[1] - probe_size[1] - flyrange)/xstep)) 
@@ -154,9 +179,7 @@ class XRayPtychography(ImagingSystem):
                 pos_ind += 1
         
         # Store positions in fixed params
-        self.params = self.params.replace(
-            fixed_params={**self.params.fixed_params, 'positions': scanpos}
-        )
+        self.positions = scanpos
 
     def _generate_probe(self, mask=None) -> np.ndarray:
         """
@@ -166,78 +189,76 @@ class XRayPtychography(ImagingSystem):
         Returns:
             Complex probe field
         """
-        p = self.params.fixed_params
         if(mask is None):
-            mask = nn.sigmoid(self.params.learnable_params['mask'])
+            mask = nn.sigmoid(self.mask)
         
         # Get structured OSA
         _, _, structured_osa = self._gen_structured_osa(mask)
         
         # Calculate grid
-        nx = self.necessary_Npx_detector
-        ny = self.necessary_Npx_detector
+        nx = int(self.necessary_Npx_detector)
+        ny = int(self.necessary_Npx_detector)
         xi, eta = np.meshgrid(
             np.arange(-nx/2, nx/2),
             np.arange(-ny/2, ny/2)
         )
         
         # Generate apertures
-        zp_aperture = self._gen_circle((nx, ny), p['zp_rad']/self.px_sz_zp)
-        bstop = 1 - self._gen_circle((nx, ny), p['bstop_rad']/self.px_sz_zp)
+        zp_aperture = self._gen_circle((nx, ny), self.zp_rad/self.px_sz_zp)
+        bstop = 1 - self._gen_circle((nx, ny), self.bstop_rad/self.px_sz_zp)
         
         # Calculate phase term
-        phase = np.exp(-(xi**2 + eta**2) * 1j * self.k * (self.px_sz_zp**2) / (2 * p['f_length']))
+        phase = np.exp(-(xi**2 + eta**2) * 1j * self.k * (self.px_sz_zp**2) / (2 * self.f_length))
 
         # First propagation (to OSA plane)
         zp_probe = zp_aperture * bstop * phase
-        osa_probe = self._fresnel_back(self._fresnel_fft(zp_probe, self.px_sz_zp, p['f_length'], self.lambda_), self.px_sz_probe, (p['f_length'] - p['osa_length']), self.lambda_)
-        probe = self._fresnel_fft(osa_probe * structured_osa, self.px_sz_osa, (p['f_length'] - p['osa_length']), self.lambda_)
+        osa_probe = self._fresnel_back(self._fresnel_fft(zp_probe, self.px_sz_zp, self.f_length, self.lambda_), self.px_sz_probe, (self.f_length - self.osa_length), self.lambda_)
+        probe = self._fresnel_fft(osa_probe * structured_osa, self.px_sz_osa, (self.f_length - self.osa_length), self.lambda_)
 
         # Scale probe intensity
-        n_photons = p.get('n_photons', 1e7)
+        n_photons = self.n_photons
         probe = probe*np.sqrt(n_photons/np.sum(np.abs(probe)**2)) 
         
         return probe, zp_probe
     
-    def forward_model(self, images: np.ndarray, learnable_params: Dict) -> np.ndarray:
+    def forward_model(self, image: np.ndarray) -> np.ndarray:
         """
-        Run forward model on batch of images using fly-scan ptychography.
+        Run forward model on a single image using fly-scan ptychography.
         
         Args:
-            images: Input images of shape (B, H, W, C)
+            image: Input image of shape (H, W, C)
             
         Returns:
-            measurements: Diffraction patterns of shape (B, H, W, N_positions)
+            measurements: Diffraction patterns of shape (H, W, N_positions)
         """
-        if(learnable_params is None):
-            learnable_params = self.params.learnable_params
-        batch_size = images.shape[0]
-        probe, _ = self._generate_probe(nn.sigmoid(learnable_params['mask']))
-        positions = self.params.fixed_params['positions']
-        xstep = self.params.fixed_params['xstep']
+        probe, _ = self._generate_probe(nn.sigmoid(self.mask))
+        positions = self.positions
         
         # Scale probe to desired photon count
-        n_photons = self.params.fixed_params.get('n_photons', 1e7)
+        n_photons = self.n_photons
         probe = probe * np.sqrt(n_photons/np.sum(np.abs(probe)**2))
         
         # Initialize output array
-        measurements = np.zeros((batch_size, *probe.shape, len(positions)))
+        measurements = np.zeros((*probe.shape, len(positions)))
         
-        # Process each image in batch
-        for b in range(batch_size):
-            scene = images[b, ..., 0]  # Assume single channel
-            
-            # Generate diffraction patterns for each position
-            for i, pos in enumerate(positions):
-                for flyscan_offset in [0]:#range(-flyrange, flyrange):
-                    uby = int(pos[0] + np.ceil(probe.shape[0]/2))
-                    ubx = int(pos[1] + np.ceil(probe.shape[1]/2) + flyscan_offset)
-                    lby = int(pos[0] - np.floor(probe.shape[0]/2))
-                    lbx = int(pos[1] - np.floor(probe.shape[1]/2) + flyscan_offset)
-                    obj_curr = scene[lby:uby, lbx:ubx]
-                    dp_single = self._my_fft(obj_curr * probe)
-                    measurements = measurements.at[b, :, :, i].set(np.abs(dp_single)**2)
-        return measurements
+        def _scan_loop(i, measurements):
+            scene = image[..., 0]  # Assume single channel
+            pos = positions[i]
+            flyscan_offset = 0
+            lby = (pos[0] - np.floor(probe.shape[0]/2)).astype(int)
+            lbx = (pos[1] - np.floor(probe.shape[1]/2) + flyscan_offset).astype(int)
+            obj_curr = lax.dynamic_slice(scene, (lby, lbx), probe.shape)
+            dp_single = self._my_fft(obj_curr * probe)
+            measurements = measurements.at[..., i].set(np.abs(dp_single)**2)
+            return measurements
+
+        # Loop over positions
+        measurements = lax.fori_loop(
+            0, len(positions),
+            _scan_loop,
+            measurements
+        )
+        return measurements[..., 0]
 
     def _gen_structured_osa(self, structure=None):
         """
@@ -249,23 +270,21 @@ class XRayPtychography(ImagingSystem):
         Returns:
             tuple: (structure, osa, structured_osa)
         """
-        p = self.params.fixed_params
-        
         # Load Au scattering factors
         sc_au = np.load('scatteringfactors_au_highenergy.npz')['data']
-        el_f1 = np.interp(p['energy'], sc_au[:, 0], sc_au[:, 1])
-        el_f2 = np.interp(p['energy'], sc_au[:, 0], sc_au[:, 2])
+        el_f1 = np.interp(self.energy, sc_au[:, 0], sc_au[:, 1])
+        el_f2 = np.interp(self.energy, sc_au[:, 0], sc_au[:, 2])
         
         # Calculate physical parameters
         re = 2.818e-6  # nm
         beta = re / (2 * np.pi) * self.lambda_**2
         
-        window_rad = np.round(p['window_rad'] / self.px_sz_osa)
-        spacing = np.round(p['spacing'] / self.px_sz_osa)
+        window_rad = int(self.window_rad / self.px_sz_osa)
+        spacing = int(self.spacing / self.px_sz_osa)
         
         # Generate circle pattern
         circle = self._gen_circle(
-            [int(spacing), int(spacing)], 
+            (spacing, spacing), 
             window_rad
         )
         
@@ -274,7 +293,7 @@ class XRayPtychography(ImagingSystem):
         
         # Calculate material properties
         lacey_thickness_map = 1 - structure
-        lacey_thickness_px = p.get('thickness', 1e3)  # nm
+        lacey_thickness_px = 1e3  # nm
         lacey_mol_weight = 197  # g/mol (Au)
         lacey_density = 19.3  # g/cm^3
         avoNum = 6.022e23
@@ -289,7 +308,7 @@ class XRayPtychography(ImagingSystem):
         structure = structure_amp * structure_ph
         
         # Generate OSA aperture
-        osa = self._gen_circle(structure.shape, radius=p['osa_rad']/self.px_sz_osa)
+        osa = self._gen_circle(structure.shape, radius=self.osa_rad/self.px_sz_osa)
         structured_osa = osa * structure
         
         return structure, osa, structured_osa
@@ -373,9 +392,12 @@ class XRayPtychography(ImagingSystem):
         Returns:
             Binary circle mask
         """
+        height = shape[0]
+        width = shape[1]
+
         y, x = np.meshgrid(
-            np.linspace(-1, 1, shape[0]),
-            np.linspace(-1, 1, shape[1])
+            np.linspace(-1, 1, height),
+            np.linspace(-1, 1, width)
         )
         r = np.sqrt(x**2 + y**2)
         return (r <= radius/np.max(np.asarray(shape))).astype(np.float32)
@@ -495,115 +517,6 @@ class XRayPtychography(ImagingSystem):
         
         return np.pad(arr, ((pad_top, pad_bottom), (pad_left, pad_right)))
 
-    
-    def toy_images(self, batch_size: int = 1, height: int = 800, width: int = 800, channels: int = 1) -> np.ndarray:
-        """
-        Generate toy cell images for testing and optimization.
-        
-        Args:
-            batch_size: Number of images to generate
-            height: Image height 
-            width: Image width
-            channels: Number of channels
-            
-        Returns:
-            images: Generated cell images of shape (B, H, W, C)
-        """
-        # Initialize output array
-        images = np.zeros((batch_size, height, width, channels))
-        
-        # Generate cell images
-        for b in range(batch_size):
-            # Generate random cell thickness and water thickness
-            self.rng_key, thickness_key = random.split(self.rng_key)
-            cell_thickness = random.uniform(thickness_key, (), minval=0.3, maxval=0.7)
-            h2o_thickness = 0.5
-            
-            # Generate cell image
-            cell_thickness_map = make_cell.make_single_cell(
-                energy=self.params.fixed_params['energy'],
-                cell_thickness=cell_thickness,
-                h2o_thickness=h2o_thickness,
-                dx=self.params.fixed_params.get('dx', 2.29e-3),
-                sz=height
-            )
-            
-            images = images.at[b, ..., 0].set(cell_thickness_map)
-            
-        return images
-    
-
-    def visualize_system(self, save_path: Optional[str] = None):
-        """
-        Visualize the ptychography system components.
-        
-        Args:
-            save_path: Optional path to save figures
-        """
-        # Get components
-        mask = nn.sigmoid(self.params.learnable_params['mask'])
-        _, _, structured_osa = self._gen_structured_osa(mask)
-        probe, zp_probe = self._generate_probe()
-        # Turn off axes for all subplots
-        def turn_off_axes(ax):
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(True)
-            ax.spines['left'].set_visible(True)
-            ax.xaxis.set_ticks_position('none')
-            ax.yaxis.set_ticks_position('none')
-            ax.set_xlabel(ax.get_xlabel())
-            ax.set_ylabel(ax.get_ylabel())
-            ax.set_title(ax.get_title())
-            
-        # Plot mask and structured OSA
-        fig1, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-        low = 205
-        high = 305
-        
-        im1 = ax1.imshow(mask[low:high,low:high], cmap='viridis')
-        turn_off_axes(ax1)
-        plt.colorbar(im1, ax=ax1)
-        ax1.set_title('Mask')
-        
-        im2 = ax2.imshow(np.abs(structured_osa[low:high,low:high]), cmap='viridis')
-        turn_off_axes(ax2)
-        plt.colorbar(im2, ax=ax2)
-        ax2.set_title('Structured OSA')
-        
-        im3 = ax3.imshow(np.angle(structured_osa[low:high,low:high]), cmap='twilight')
-        turn_off_axes(ax3)
-        plt.colorbar(im3, ax=ax3)
-        ax3.set_title('Structured OSA Phase')
-        plt.tight_layout()
-        if save_path:
-            plt.savefig(f"{save_path}_mask_osa.png")
-        
-        # Plot probe amplitude and phase
-        fig2, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-        
-        im1 = ax1.imshow(np.abs(probe[low:high,low:high]), cmap='viridis')
-        turn_off_axes(ax1)
-        plt.colorbar(im1, ax=ax1)
-        ax1.set_title('Probe Amplitude')
-        
-        im2 = ax2.imshow(np.angle(probe), cmap='twilight')
-        turn_off_axes(ax2)
-        plt.colorbar(im2, ax=ax2)
-        ax2.set_title('Probe Phase') 
-        
-        im3 = ax3.imshow(np.abs(zp_probe[low:high,low:high])*np.angle(zp_probe[low:high,low:high]), cmap='twilight')
-        turn_off_axes(ax3)
-        plt.colorbar(im3, ax=ax3)
-        ax3.set_title('ZP Phase')
-        plt.tight_layout()
-        if save_path:
-            plt.savefig(f"{save_path}_probe.png")
-        
-        return fig1, fig2
-
     def reconstruct(self, measurements: np.ndarray) -> np.ndarray:
         """
         Reconstruct images from measurements using ePIE algorithm.
@@ -619,7 +532,7 @@ class XRayPtychography(ImagingSystem):
         
         # Process each batch independently
         for b in range(batch_size):
-            measurement = measurements[b, ..., 0]  # Assume single channel
+            measurement = measurements[b, ..., 0:1]  # Assume single channel
             
             # Run ePIE reconstruction
             obj = self._run_epie(measurement)
@@ -645,9 +558,9 @@ class XRayPtychography(ImagingSystem):
             Reconstructed object
         """
         # Get parameters
-        positions = self.params.fixed_params['positions']
+        positions = self.positions
         probe, _ = self._generate_probe()
-        xstep = self.params.fixed_params['xstep']
+        xstep = self.xstep
         flyrange = int(np.floor(xstep/2))
         
         # Initialize object guess
@@ -716,60 +629,8 @@ class XRayPtychography(ImagingSystem):
         
         return obj
 
-    def visualize_measurements(self, 
-                             images: np.ndarray, 
-                             measurements: np.ndarray,
-                             save_path: Optional[str] = None):
-        """
-        Visualize input images and their measurements.
-        
-        Args:
-            images: Input images (B, H, W, C)
-            measurements: Diffraction patterns (B, H, W, N_positions)
-            save_path: Optional path to save figures
-        """        
-        n_samples = min(4, images.shape[0])
-        positions = self.params.fixed_params['positions']
-        n_positions = min(4, len(positions))
-        
-        # Plot sample images
-        fig1, axes = plt.subplots(1, n_samples, figsize=(4*n_samples, 4))
-        if n_samples == 1:
-            axes = [axes]
-        
-        for i in range(n_samples):
-            axes[i].imshow(images[i, ..., 0], cmap='gray')
-            axes[i].set_title(f'Sample {i+1}')
-            axes[i].axis('off')
-        
-        plt.tight_layout()
-        if save_path:
-            plt.savefig(f"{save_path}_samples.png")
-        
-        # Plot diffraction patterns
-        fig2, axes = plt.subplots(n_samples, n_positions, 
-                                 figsize=(4*n_positions, 4*n_samples))
-        if n_samples == 1:
-            axes = axes[np.newaxis, :]
-        if n_positions == 1:
-            axes = axes[:, np.newaxis]
-        
-        for i in range(n_samples):
-            for j in range(n_positions):
-                im = axes[i,j].imshow(
-                    np.log10(measurements[i, ..., j] + 1), 
-                    cmap='viridis'
-                )
-                axes[i,j].set_title(f'Sample {i+1}, Pos {j+1}')
-                axes[i,j].axis('off')
-                plt.colorbar(im, ax=axes[i,j])
-        
-        plt.tight_layout()
-        if save_path:
-            plt.savefig(f"{save_path}_diffraction.png")
-        
-        return fig1, fig2
-    
+    # TODO: Add display_measurement, display_object, display_optics
+
     def visualize_scan_positions(self, 
                                object_shape: Optional[Tuple[int, int]] = None, 
                                centers_only: bool = False,
@@ -787,8 +648,8 @@ class XRayPtychography(ImagingSystem):
             matplotlib figure
         """
         # Get probe size and positions
-        probe_size = self.params.fixed_params['probe_size']
-        positions = self.params.fixed_params['positions']
+        probe_size = self.probe_size
+        positions = self.positions
         
         # Calculate object field size if not provided
         if object_shape is None:

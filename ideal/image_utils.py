@@ -1,11 +1,8 @@
 import equinox as eqx
 import jax
-from encoding_information import image_utils
 import numpy as onp
 import jax.numpy as jnp
 from functools import partial
-from encoding_information.models.model_base_class import MeasurementModel, make_dataset_generators
-from encoding_information.models.gaussian_process import match_to_generator_data, generate_multivariate_gaussian_samples
 import warnings
 
 # Patching functions

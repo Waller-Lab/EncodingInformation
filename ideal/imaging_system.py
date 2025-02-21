@@ -44,6 +44,10 @@ class ImagingSystemProtocol(Protocol):
     def display_optics(self) -> None:
         """Displays learned the optics."""
         return NotImplemented
+    
+    def normalize(self) -> None:
+        """Adjust the learned optical system after each optimization step."""
+        return NotImplemented
 
 
 class ImagingSystem(eqx.Module):
@@ -60,6 +64,11 @@ class ImagingSystem(eqx.Module):
         """
         self.seed = seed
         self.rng_key = random.PRNGKey(seed)
+
+    @eqx.filter_jit
+    def __call__(self, objects: jnp.ndarray) -> jnp.ndarray:
+        """JIT-compiled forward pass"""
+        return self.forward_model(objects)
 
     def forward_model(self, objects: jnp.ndarray) -> jnp.ndarray:
         """
@@ -175,3 +184,13 @@ class ImagingSystem(eqx.Module):
         ax.set_xticks([])
         ax.set_yticks([])
         return fig
+    
+    def normalize(self):
+        """
+        Adjust the learned optical system as needed after each optimization step.
+        E.g.: normalize a PSF. Default implementation is to do nothing.
+        
+        Returns: normalized optical system
+
+        """
+        return self
