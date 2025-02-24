@@ -15,7 +15,7 @@ import warnings
 
 def estimate_information(measurement_model, noise_model, train_set, test_set, 
                          confidence_interval=None, num_bootstraps=100,
-                         scale_total_mi=False, clean_data=None, use_tfds=True):
+                         scale_total_mi=False, clean_data=None):
     """
     Estimate mutual information in bits per pixel given a probabilistic model of the measurement process p(y)
     and a probabilistic model of the noise process p(y|x). Optionally, estimate a confidence interval using bootstrapping,
@@ -67,7 +67,7 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
         measurement_model = measurement_model[best_model_index]
         nll = nlls[best_model_index]
     else:
-        nll = measurement_model.compute_negative_log_likelihood(test_set, use_tfds=use_tfds)
+        nll = measurement_model.compute_negative_log_likelihood(test_set)
     
     
     if scale_total_mi:
