@@ -6,6 +6,7 @@ from tqdm import tqdm
 from typing import Optional, Callable
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from encoding_information.models import PixelCNN
 
 
 class IDEALOptimizer:
@@ -28,7 +29,8 @@ class IDEALOptimizer:
         gaussian_sigma: Optional[float] = None,
         use_wandb: bool = True,
         project_name: str = 'ideal_development',
-        run_name: str = 'run_1'
+        run_name: str = 'run_1',
+        wandb_config: dict = {}
     ):
         """Initialize the IDEAL optimizer.
         
@@ -56,8 +58,9 @@ class IDEALOptimizer:
         self.run_name = run_name
         # Initialize optimizer state.
         self.opt_state = optimizer.init(eqx.filter([imaging_system], eqx.is_array))
+        self.wandb_config = wandb_config
     
-    @eqx.filter_jit
+    # @eqx.filter_jit
     def step(
         self,
         imaging_system,
@@ -141,9 +144,9 @@ class IDEALOptimizer:
             validation_data = self._convert_batch(val_batch)
     
         if self.use_wandb:
-            wandb.init(project=self.project_name, name=self.run_name)
+            wandb.init(project=self.project_name, name=self.run_name, config=self.wandb_config)
             
-        for step in tqdm(range(num_steps)):
+        for iteration in tqdm(range(num_steps)):
             key, subkey = jax.random.split(key)
             
             # Get the next training batch, and restart the iterator if needed.
@@ -153,18 +156,6 @@ class IDEALOptimizer:
                 data_iter = iter(data)
                 batch = next(data_iter)
             batch = self._convert_batch(batch)
-            
-            # Refit PixelCNN if necessary.
-            if hasattr(self.loss_fn, 'refit_every') and hasattr(self.loss_fn, 'refit_pixel_cnn') and \
-               self.loss_fn.refit_every is not None and step % self.loss_fn.refit_every == 0:
-                self.loss_fn.refit_pixel_cnn(
-                    self.imaging_system, batch,
-                    key=subkey,
-                    num_patches=self.num_patches,
-                    patch_size=self.patch_size,
-                    strategy=self.patching_strategy,
-                    gaussian_sigma=self.gaussian_sigma
-                )
             
             # Execute one optimization step.
             self.imaging_system, self.opt_state, loss = self.step(
@@ -182,10 +173,10 @@ class IDEALOptimizer:
                 loss_value = float(loss)
                 metrics = {
                     'train/loss': loss_value,
-                    'train/step': step,
+                    'train/iteration': iteration,
                 }
                 
-                if step % log_every == 0:
+                if iteration % log_every == 0:
                     try:
                         measurements = self.imaging_system(sample_data[0])
                         reconstructions = self.imaging_system.reconstruct(measurements)
@@ -224,12 +215,12 @@ class IDEALOptimizer:
                 else:
                     wandb.log(metrics)
                     
-            if validation_data is not None and step % validate_every == 0:
+            if validation_data is not None and iteration % validate_every == 0:
                 val_loss = self.validate(validation_data, subkey)
                 if self.use_wandb:
                     wandb.log({
                         'val/loss': float(val_loss),
-                        'val/step': step
+                        'val/iteration': iteration  
                     })
                     
         if self.use_wandb:
