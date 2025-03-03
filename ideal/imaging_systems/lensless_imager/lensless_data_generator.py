@@ -3,7 +3,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import tensorflow as tf
-from tensorflow.keras.datasets import mnist, cifar10
+from tensorflow.keras.datasets import mnist, cifar10, fashion_mnist
 
 class LenslessDataGenerator:
     """ A data generator class for creating lensless imaging datasets from existing image datasets. 
@@ -46,6 +46,36 @@ class LenslessDataGenerator:
         x_test = x_test * self.mean_photon_count
 
         return x_train, x_test 
+
+    def load_fashion_mnist_data(self):
+        """
+        Load and preprocess Fashion MNIST dataset. 
+        
+        Returns:
+        tuple: (x_train, x_test) converted to photon counts and subset of Fashion MNIST data. 
+        """
+        (x_train, _), (x_test, _) = fashion_mnist.load_data() 
+
+        # take subset if specified:
+        if self.subset_fraction < 1.0:
+            train_size = int(len(x_train) * self.subset_fraction)
+            test_size = int(len(x_test) * self.subset_fraction)
+            x_train = x_train[:train_size]
+            x_test = x_test[:test_size]
+        
+        # pad images to be 32 x 32, NOTE that this can skew results compared to 28x28 un-padded MI estimates
+        x_train = jnp.pad(x_train, ((0, 0), (2, 2), (2, 2)), 'constant')
+        x_test = jnp.pad(x_test, ((0, 0), (2, 2), (2, 2)), 'constant')
+
+        # convert to photons
+        x_train = x_train.astype('float32')
+        x_train = x_train / jnp.mean(x_train)
+        x_train = x_train * self.mean_photon_count
+        x_test = x_test.astype('float32')
+        x_test = x_test / jnp.mean(x_test)
+        x_test = x_test * self.mean_photon_count
+
+        return x_train, x_test
     
     def load_cifar10_data(self):
         """ 
