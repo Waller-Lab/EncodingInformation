@@ -19,16 +19,25 @@ class BaseLoss:
 class PixelCNNLoss(BaseLoss):
     """Loss using PixelCNN model for entropy estimation."""
     
-    def __init__(self, refit_every: Optional[int] = None):
+    def __init__(self, refit_every: Optional[int] = None, refit_patience: Optional[int] = 10, refit_learning_rate: Optional[float] = 1e-3, refit_steps_per_epoch: Optional[int] = 100, reinitialize_pixelcnn: Optional[bool] = True):
+
         """Initialize PixelCNNLoss.
         
         Args:
             refit_every: How often to refit the PixelCNN model (None means never refit)
+            refit_patience: Patience for early stopping during refitting
+            refit_learning_rate: Learning rate for refitting
+            refit_steps_per_epoch: Number of steps per epoch during refitting
+            reinitialize_pixelcnn: Whether to reinitialize the PixelCNN model at each refit, if True, it will use a fresh model each time. If False it will use the same model and only update the weights
         """
         self.pixel_cnn = PixelCNN()  # This model is trained separately
         # The loss function is jitted and returns both loss and gradients
         self._compute_loss = eqx.filter_jit(eqx.filter_value_and_grad(self._loss_fn))
         self.refit_every = refit_every
+        self.refit_patience = refit_patience
+        self.refit_learning_rate = refit_learning_rate
+        self.refit_steps_per_epoch = refit_steps_per_epoch
+        self.reinitialize_pixelcnn = reinitialize_pixelcnn
         self.step_counter = 0
         self._is_initialized = False
 
@@ -129,8 +138,9 @@ class PixelCNNLoss(BaseLoss):
         reshaped_patches = patches_np.reshape(-1, kwargs.get('patch_size'), kwargs.get('patch_size'))[..., None]
         
         # Refit the PixelCNN model (non-differentiable update)
-        self.pixel_cnn = PixelCNN()
-        self.pixel_cnn.fit(reshaped_patches, patience=10, learning_rate=1e-3, verbose=False)
+        if self.reinitialize_pixelcnn or not self._is_initialized:
+            self.pixel_cnn = PixelCNN()
+        self.pixel_cnn.fit(reshaped_patches, patience=self.refit_patience, learning_rate=self.refit_learning_rate, steps_per_epoch=self.refit_steps_per_epoch, verbose=False)
         self._is_initialized = True
         self._compute_loss = eqx.filter_jit(eqx.filter_value_and_grad(self._loss_fn))
 
