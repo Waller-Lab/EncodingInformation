@@ -85,7 +85,11 @@ class PixelCNNLoss(BaseLoss):
         Returns:
             A tuple of (loss, gradients).
         """
+        # Check if refitting is needed
+        if self.refit_every is not None and self.step_counter % self.refit_every == 0:
+            self.refit_pixel_cnn(model, data, key, **kwargs)
         self.step_counter += 1
+        
         return self._compute_loss(
             model, data, key,
             kwargs.get('num_patches'),
@@ -95,7 +99,8 @@ class PixelCNNLoss(BaseLoss):
             self.pixel_cnn
         )
     
-    def refit_pixel_cnn(self, model, data, key, num_patches, patch_size, strategy, gaussian_sigma):
+    
+    def refit_pixel_cnn(self, model, data, key, **kwargs):
         """
         Refit the PixelCNN using patches extracted outside the jitted context.
         
@@ -107,28 +112,27 @@ class PixelCNNLoss(BaseLoss):
             model: The imaging system model.
             data: Input data.
             key: Random key.
-            num_patches: Number of patches to extract.
-            patch_size: Size of each patch.
-            strategy: Patching strategy.
-            gaussian_sigma: Gaussian noise sigma.
+            **kwargs: Additional parameters (num_patches, patch_size, strategy, gaussian_sigma)
         """
         measurements = eqx.filter_vmap(model)(data).clip(1e-8)
         patches = extract_patches(
             measurements,
             key=key,
-            num_patches=num_patches,
-            patch_size=patch_size,
-            strategy=strategy
+            num_patches=kwargs.get('num_patches'),
+            patch_size=kwargs.get('patch_size'),
+            strategy=kwargs.get('strategy')
         )
         patches = patches.reshape(patches.shape[0], -1)
-        noisy_patches = jnp.maximum(1e-8, add_noise(patches, gaussian_sigma=gaussian_sigma))
+        noisy_patches = jnp.maximum(1e-8, add_noise(patches, gaussian_sigma=kwargs.get('gaussian_sigma')))
         # Transfer to host memory to obtain a concrete array.
         patches_np = jax.device_get(noisy_patches)
-        reshaped_patches = patches_np.reshape(-1, patch_size, patch_size)[..., None]
+        reshaped_patches = patches_np.reshape(-1, kwargs.get('patch_size'), kwargs.get('patch_size'))[..., None]
         
         # Refit the PixelCNN model (non-differentiable update)
-        self.pixel_cnn.fit(reshaped_patches, patience=5, learning_rate=4e-3, verbose=False)
+        self.pixel_cnn = PixelCNN()
+        self.pixel_cnn.fit(reshaped_patches, patience=10, learning_rate=1e-3, verbose=False)
         self._is_initialized = True
+        self._compute_loss = eqx.filter_jit(eqx.filter_value_and_grad(self._loss_fn))
 
 class GaussianEntropyLoss(BaseLoss):
     """Loss using analytic Gaussian entropy estimation."""
