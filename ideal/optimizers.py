@@ -7,6 +7,7 @@ from typing import Optional, Callable
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from encoding_information.models import PixelCNN
+import optax
 
 
 class IDEALOptimizer:
@@ -21,7 +22,7 @@ class IDEALOptimizer:
     def __init__(
         self,
         imaging_system,
-        optimizer,
+        learnable_parameters_w_lr: dict,
         loss_fn: Callable,
         patch_size: int = 16,
         num_patches: int = 1024,
@@ -36,7 +37,7 @@ class IDEALOptimizer:
         
         Args:
             imaging_system: The imaging system to optimize.
-            optimizer: The optax optimizer to use.
+            learnable_parameters_w_lr: The parameters to optimize and their learning rates.
             loss_fn: Loss function to optimize.
             patch_size: Size of patches to extract.
             num_patches: Number of patches to extract per iteration.
@@ -47,7 +48,7 @@ class IDEALOptimizer:
             run_name: Name of W&B run for logging.
         """
         self.imaging_system = imaging_system
-        self.optimizer = optimizer
+        self.learnable_parameters_w_lr = learnable_parameters_w_lr
         self.loss_fn = loss_fn
         self.patch_size = patch_size
         self.num_patches = num_patches
@@ -57,21 +58,20 @@ class IDEALOptimizer:
         self.project_name = project_name
         self.run_name = run_name
         # Initialize optimizer state.
-        self.opt_state = optimizer.init(eqx.filter([imaging_system], eqx.is_array))
         self.wandb_config = wandb_config
+        self.optimizer, self.learnable_parameters, self.frozen_parameters, self.opt_state = setup_parameter_optimizer(self.imaging_system, self.learnable_parameters_w_lr)
     
     # @eqx.filter_jit
     def step(
         self,
-        imaging_system,
-        opt_state,
         data: jnp.ndarray,
         key: jax.random.PRNGKey,
         **loss_kwargs
     ):
         """Perform one optimization step."""
         loss, grads = self.loss_fn(
-            imaging_system, 
+            self.learnable_parameters,
+            self.frozen_parameters,
             data,
             key,
             num_patches=self.num_patches,
@@ -82,11 +82,11 @@ class IDEALOptimizer:
         )
     
         # Update parameters.
-        updates, new_opt_state = self.optimizer.update([grads], opt_state, [imaging_system])
+        updates, new_opt_state = self.optimizer.update([grads], self.opt_state, [self.learnable_parameters])
         updates = jax.tree_util.tree_map(lambda x: jnp.nan_to_num(x), updates)
-        imaging_system = eqx.apply_updates(imaging_system, updates[0])  
+        self.learnable_parameters = eqx.apply_updates(self.learnable_parameters, updates[0])  
     
-        return imaging_system, new_opt_state, loss
+        return self.learnable_parameters, new_opt_state, loss
 
     def _convert_batch(self, batch):
         """
@@ -158,16 +158,18 @@ class IDEALOptimizer:
             batch = self._convert_batch(batch)
             
             # Execute one optimization step.
-            self.imaging_system, self.opt_state, loss = self.step(
-                self.imaging_system,
-                self.opt_state,
+            self.learnable_parameters, self.opt_state, loss = self.step(
                 batch,
                 subkey,
                 **loss_kwargs
             )
             
             # Apply any constraints/normalization.
+            self.imaging_system = eqx.combine(self.learnable_parameters, self.frozen_parameters)
             self.imaging_system = self.imaging_system.normalize()
+
+            # Resplit the parameters.
+            self.learnable_parameters, self.frozen_parameters = split_model_params(self.imaging_system, self.learnable_parameters_w_lr.keys())
             
             if self.use_wandb:
                 loss_value = float(loss)
@@ -248,51 +250,46 @@ class IDEALOptimizer:
             gaussian_sigma=self.gaussian_sigma
         )
         return val_loss 
-    
-def param_labels(model):
-    print('Learnable parameters:')
-    
-    # Dictionary to store parameter labels
-    labels = {}
 
-    def traverse_fields(module, prefix=""):
-        """Recursively traverse fields of the module."""
-        for field_name, field_value in module.__dict__.items():
-            full_field_name = f"{prefix}.{field_name}" if prefix else field_name
-
-            # Check if the field is another Equinox module
-            if isinstance(field_value, eqx.Module):
-                traverse_fields(field_value, prefix=full_field_name)
-            # Handle learnable parameters (arrays) in the module
-            elif eqx.is_array(field_value) and eqx.is_inexact_array(field_value):
-                labels[full_field_name] = full_field_name
-
-    # Start traversal from the main model
-    traverse_fields(model)
-
-    # Create a tree with placeholders
-    jax_labels = model
-
-    # Update the fields in the tree structure
-    for field_name in labels:
-        # Split the field name for nested access
-        field_parts = field_name.split(".")
-        try:
-            jax_labels = eqx.tree_at(
-                lambda m, fp=field_parts: getattr_nested(m, fp),
-                jax_labels,
-                replace=labels[field_name]
-            )
-            print(field_name)
-
-        except Exception as e:
-            # print(f"Failed to update {field_name}: {e}")
-            pass
-
-    return [jax_labels]
-
-def getattr_nested(obj, attrs):
-    """Helper function to get nested attributes."""
-    for attr in attrs:
+def get_nested_attr(obj, attr_path):
+    """Retrieve a nested attribute given a dot-separated path."""
+    for attr in attr_path.split("."):
         obj = getattr(obj, attr)
     return obj
+
+def split_model_params(model, trainable_names):
+    trainable_params, frozen_params = eqx.partition(
+            model,
+            lambda x: any(get_nested_attr(model, path) is x for path in trainable_names)
+        )
+    return trainable_params, frozen_params
+
+def setup_parameter_optimizer(model: eqx.Module, learnable_params: dict):
+    """Splits model parameters into trainable and frozen sets, and initializes an optimizer.
+
+    Args:
+        model (eqx.Module): The model containing parameters.
+        learnable_params (dict): A dictionary where keys are parameter paths (str) and values are learning rates (float).
+
+    Returns:
+        tuple: (optimizer, trainable_params, frozen_params, opt_state)
+    """
+    trainable_names = set(learnable_params.keys())
+    trainable_params, frozen_params = split_model_params(model, trainable_names)
+
+    labeled_model = [eqx.tree_at(
+        lambda model: [get_nested_attr(model, path) for path in trainable_names],
+        model,
+        replace=[path for path in trainable_names]
+    )]
+
+    # Create optimizer
+    optimizer = optax.multi_transform(
+        {param: optax.adam(learning_rate=lr) for param, lr in learnable_params.items()},
+        param_labels=labeled_model
+    )
+
+    # Initialize optimizer state
+    opt_state = optimizer.init(eqx.filter([trainable_params], eqx.is_array))
+
+    return optimizer, trainable_params, frozen_params, opt_state

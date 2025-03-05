@@ -41,7 +41,7 @@ class PixelCNNLoss(BaseLoss):
         self.step_counter = 0
         self._is_initialized = False
 
-    def _loss_fn(self, model, data, key, num_patches, patch_size, strategy, gaussian_sigma, pixel_cnn):
+    def _loss_fn(self, learnable_parameters, frozen_parameters, data, key, num_patches, patch_size, strategy, gaussian_sigma, pixel_cnn):
         """
         Jitted loss function used for differentiable optimization.
         
@@ -58,6 +58,7 @@ class PixelCNNLoss(BaseLoss):
         Returns:
             The loss value.
         """
+        model = eqx.combine(learnable_parameters, frozen_parameters)
         measurements = eqx.filter_vmap(model)(data).clip(1e-8)
         patches = extract_patches(
             measurements,
@@ -81,7 +82,7 @@ class PixelCNNLoss(BaseLoss):
         mi = (h_y - h_y_given_x) / jnp.log(2)
         return -mi
     
-    def __call__(self, model, data, key, **kwargs):
+    def __call__(self, learnable_parameters, frozen_parameters, data, key, **kwargs):
         """
         Compute the loss and its gradient in a jitted and differentiable way.
         
@@ -96,11 +97,14 @@ class PixelCNNLoss(BaseLoss):
         """
         # Check if refitting is needed
         if self.refit_every is not None and self.step_counter % self.refit_every == 0:
-            self.refit_pixel_cnn(model, data, key, **kwargs)
+            self.refit_pixel_cnn(learnable_parameters, frozen_parameters, data, key, **kwargs)
         self.step_counter += 1
         
         return self._compute_loss(
-            model, data, key,
+            learnable_parameters,
+            frozen_parameters,
+            data,
+            key,
             kwargs.get('num_patches'),
             kwargs.get('patch_size'),
             kwargs.get('strategy'),
@@ -109,7 +113,7 @@ class PixelCNNLoss(BaseLoss):
         )
     
     
-    def refit_pixel_cnn(self, model, data, key, **kwargs):
+    def refit_pixel_cnn(self, learnable_parameters, frozen_parameters, data, key, **kwargs):
         """
         Refit the PixelCNN using patches extracted outside the jitted context.
         
@@ -118,12 +122,13 @@ class PixelCNNLoss(BaseLoss):
         This update is non-differentiable and can safely be called from the training loop.
         
         Args:
-            model: The imaging system model.
+            learnable_parameters: The imaging system model.
+            frozen_parameters: The imaging system model.
             data: Input data.
             key: Random key.
             **kwargs: Additional parameters (num_patches, patch_size, strategy, gaussian_sigma)
         """
-        measurements = eqx.filter_vmap(model)(data).clip(1e-8)
+        measurements = eqx.filter_vmap(eqx.combine(learnable_parameters, frozen_parameters))(data).clip(1e-8)
         patches = extract_patches(
             measurements,
             key=key,
@@ -152,8 +157,8 @@ class GaussianEntropyLoss(BaseLoss):
         self._compute_loss = eqx.filter_jit(eqx.filter_value_and_grad(self._loss_fn))
     
     @staticmethod
-    def _loss_fn(model, data, key, num_patches, patch_size, strategy, gaussian_sigma):
-        measurements = eqx.filter_vmap(model)(data).clip(1e-8)
+    def _loss_fn(learnable_parameters, frozen_parameters, data, key, num_patches, patch_size, strategy, gaussian_sigma):
+        measurements = eqx.filter_vmap(eqx.combine(learnable_parameters, frozen_parameters))(data).clip(1e-8)
         patches = extract_patches(measurements, key=key, num_patches=num_patches, 
                                 patch_size=patch_size, strategy=strategy)
         patches = patches.reshape(patches.shape[0], -1)
@@ -174,10 +179,13 @@ class GaussianEntropyLoss(BaseLoss):
         mi = (h_y - h_y_given_x) / jnp.log(2)
         return -mi
     
-    def __call__(self, model, data, key, **kwargs):
+    def __call__(self, learnable_parameters, frozen_parameters, data, key, **kwargs):
         # This will return both the loss value and its gradient
         return self._compute_loss(
-            model, data, key,
+            learnable_parameters,
+            frozen_parameters,
+            data,
+            key,
             kwargs.get('num_patches'),
             kwargs.get('patch_size'),
             kwargs.get('strategy'),
@@ -191,8 +199,8 @@ class GaussianLoss(BaseLoss):
         self._compute_loss = eqx.filter_jit(eqx.filter_value_and_grad(self._loss_fn))
     
     @staticmethod
-    def _loss_fn(model, data, key, num_patches, patch_size, strategy, gaussian_sigma):
-        measurements = eqx.filter_vmap(model)(data).clip(1e-8)
+    def _loss_fn(learnable_parameters, frozen_parameters, data, key, num_patches, patch_size, strategy, gaussian_sigma):
+        measurements = eqx.filter_vmap(eqx.combine(learnable_parameters, frozen_parameters))(data).clip(1e-8)
         patches = extract_patches(measurements, key=key, num_patches=num_patches, patch_size=patch_size, strategy=strategy)
         patches = patches.reshape(patches.shape[0], -1)
         noisy_patches = jnp.maximum(1e-8, add_noise(
@@ -215,9 +223,12 @@ class GaussianLoss(BaseLoss):
         mi = (h_y - h_y_given_x) / jnp.log(2)
         return -mi
     
-    def __call__(self, model, data, key, **kwargs):
+    def __call__(self, learnable_parameters, frozen_parameters, data, key, **kwargs):
         return self._compute_loss(
-            model, data, key,
+            learnable_parameters,
+            frozen_parameters,
+            data,
+            key,
             kwargs.get('num_patches'),
             kwargs.get('patch_size'),
             kwargs.get('strategy'),
