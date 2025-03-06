@@ -60,7 +60,7 @@ class IDEALOptimizer:
         # Initialize optimizer state.
         self.wandb_config = wandb_config
         self.optimizer, self.learnable_parameters, self.frozen_parameters, self.opt_state = setup_parameter_optimizer(self.imaging_system, self.learnable_parameters_w_lr)
-    
+
     # @eqx.filter_jit
     def step(
         self,
@@ -250,7 +250,7 @@ class IDEALOptimizer:
             gaussian_sigma=self.gaussian_sigma
         )
         return val_loss 
-
+    
 def get_nested_attr(obj, attr_path):
     """Retrieve a nested attribute given a dot-separated path."""
     for attr in attr_path.split("."):
@@ -279,7 +279,7 @@ def setup_parameter_optimizer(model: eqx.Module, learnable_params: dict):
 
     labeled_model = [eqx.tree_at(
         lambda model: [get_nested_attr(model, path) for path in trainable_names],
-        model,
+        trainable_params,
         replace=[path for path in trainable_names]
     )]
 
