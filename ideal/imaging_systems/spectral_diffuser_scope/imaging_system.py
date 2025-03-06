@@ -11,12 +11,12 @@ class GaussianPSFLayer(eqx.Module):
     means: jnp.ndarray  # (N, 2) array of Gaussian centers
     covs: jnp.ndarray   # (N, 2, 2) array of covariance matrices
     weights: jnp.ndarray  # (N,) array of Gaussian weights
-    object_size: int = eqx.field(static=True)
-    obj_padding: tuple = eqx.field(static=True)
-    psf_padding: tuple = eqx.field(static=True)
-    num_gaussians: int = eqx.field(static=True)
-    grid: jnp.ndarray = eqx.field(static=True)  # Cached coordinate grid
-    psf_shape: tuple = eqx.field(static=True)  # Static PSF shape
+    object_size: int
+    obj_padding: tuple
+    psf_padding: tuple
+    num_gaussians: int
+    grid: jnp.ndarray  # Cached coordinate grid
+    psf_shape: tuple # PSF shape
 
     def __init__(self, object_size: int, num_gaussians: int, psf_size: Tuple[int, int] = (100, 100), 
                  key: Optional[jax.random.PRNGKey] = None):

@@ -1,10 +1,49 @@
 # Mutual Information Estimation Installation Guide
 
-The minimal installation requires jax and tensorflow. Installing jax after other deep learning packages seems to work best due to difficulties with CUDA and CuDNN installations.
+The minimal installation requires jax and tensorflow. Installing jax after other deep learning packages seems to work best due to difficulties with CUDA and CuDNN installations. In recent installs (jax >= 0.5), installing jax first has seemed to work fine.
 
 Installation varies according to system specifications. This is an incomplete guide, providing directions for our system, running Ubuntu 20.04.6 x86_64, CUDA 12.3, CUDNN >=8.9.
 
+# Instructions for 2025 
+## Python 3.11 instructions 
+This is a simple installation that uses pip. The same process can be used for python 3.10, both versions of python work fine. 
 
+1. Use conda for environment management 
+
+`conda create -n infotheory2025 python=3.11`
+
+2. Activate your environment
+
+`conda activate infotheory2025`
+
+3. Install jax using the pip install command corresponding to your CUDA version.
+
+`pip install "jax[cuda12]"`
+
+4. Install tensorflow with the wheel corresponding to your system configuration from https://www.tensorflow.org/install/pip#package_location. For example, for python 3.11 with GPU support: 
+
+`pip install https://storage.googleapis.com/tensorflow/versions/2.18.0/tensorflow-2.18.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`
+
+5. The other packages that are necessary are `tqdm` and `scikit-image`. `cleanplots` and `gpustat` are helpful. All of these packages can be pip installed. 
+
+`pip install tqdm` 
+
+`pip install scikit-image`
+
+6. For design with IDEAL, the equinox package and Weights and Biases are necessary. These do not interfere with the base installation from step 1-5. 
+
+`pip install equinox`
+
+`pip install wandb` 
+
+This installation runs smoothly but does include warnings with cuDNN for tensorflow. These do not affect performance. Specifically:
+
+`E0000 00:00:1741215469.150672 3893437 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered`
+
+
+
+
+# Old instructions from 2024 
 ## Python 3.10 instructions
 
 1. Use conda for environment management

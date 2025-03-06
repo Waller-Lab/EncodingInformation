@@ -21,19 +21,21 @@ class RMLPSFLayer(eqx.Module):
     means: jnp.ndarray # (N, 2) array of Gaussian centers 
     covs: jnp.ndarray # (N, 2, 2) array of Gaussian covariances
     weights: jnp.ndarray # (N,) array of Gaussian weights
-    object_size: int = eqx.field(static=True)
-    obj_padding: tuple = eqx.field(static=True)
-    psf_padding: tuple = eqx.field(static=True)
-    num_gaussians: int = eqx.field(static=True)
-    grid: jnp.ndarray = eqx.field(static=True) # cached coordinate grid 
-    psf_shape: tuple = eqx.field(static=True) # static PSF shape
+    object_size: int # don't make them eqx.field(static=True) it can break
+    obj_padding: tuple
+    psf_padding: tuple
+    num_gaussians: int
+    grid: jnp.ndarray # cached coordinate grid 
+    psf_shape: tuple # static PSF shape
+    measurement_bias: float # static measurement bias
 
-    def __init__(self, object_size: int, num_gaussians: int, psf_size: Tuple[int, int] = (32, 32), key: Optional[jax.random.PRNGKey] = None):
+    def __init__(self, object_size: int, num_gaussians: int, psf_size: Tuple[int, int] = (32, 32), measurement_bias: Optional[float] = 0.0, key: Optional[jax.random.PRNGKey] = None):
         super().__init__()
         key = jax.random.PRNGKey(0) if key is None else key
         self.num_gaussians = num_gaussians
         self.object_size = object_size
         self.psf_shape = psf_size
+        self.measurement_bias = measurement_bias
 
         # including psf_size shape to ensure it's square 
         assert psf_size[0] == psf_size[1], "PSF size must be square."
@@ -128,6 +130,8 @@ class RMLPSFLayer(eqx.Module):
 
         # convolve
         convolved = jax.scipy.signal.fftconvolve(psf_pad, obj_pad, mode='valid') # using fftconvolve with valid mode 
+        # add measurement bias
+        convolved += self.measurement_bias # just adding a scaled number to every single pixel 
         return convolved # TODO not doing manual FFT padding version, using the built-in convolution
     
     def normalize_psf(self):
