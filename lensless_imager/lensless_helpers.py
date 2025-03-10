@@ -10,6 +10,9 @@ import skimage
 import skimage.io
 from skimage.transform import resize
 
+from scipy.signal import fftconvolve
+from scipy.ndimage import gaussian_filter
+
 # from tensorflow.keras.optimizers import SGD
 
 def tile_9_images(data_set):
@@ -500,6 +503,44 @@ def load_five_lens_uniform(size=32, sigma=0.8):
     five_lens /= np.sum(five_lens)
     return five_lens
 
+def load_six_lens_uniform(size=32, sigma=0.8):
+    six_lens = np.zeros((size, size))
+    six_lens[16, 16] = 1
+    six_lens[7, 9] = 1
+    six_lens[23, 21] = 1
+    six_lens[8, 24] = 1
+    six_lens[21, 5] = 1
+    six_lens[27, 13] = 1 
+    six_lens = scipy.ndimage.gaussian_filter(six_lens, sigma=sigma)
+    six_lens /= np.sum(six_lens)
+    return six_lens
+
+def load_seven_lens_uniform(size=32, sigma=0.8):
+    seven_lens = np.zeros((size, size))
+    seven_lens[16, 16] = 1
+    seven_lens[7, 9] = 1
+    seven_lens[23, 21] = 1
+    seven_lens[8, 24] = 1
+    seven_lens[21, 5] = 1
+    seven_lens[27, 13] = 1 
+    seven_lens[4, 16] = 1
+    seven_lens = scipy.ndimage.gaussian_filter(seven_lens, sigma=sigma)
+    seven_lens /= np.sum(seven_lens)
+    return seven_lens
+
+def load_eight_lens_uniform(size=32, sigma=0.8):
+    eight_lens = np.zeros((size, size))
+    eight_lens[16, 16] = 1
+    eight_lens[7, 9] = 1
+    eight_lens[23, 21] = 1
+    eight_lens[8, 24] = 1
+    eight_lens[21, 5] = 1
+    eight_lens[27, 13] = 1 
+    eight_lens[4, 16] = 1
+    eight_lens[16, 26] = 1
+    eight_lens = scipy.ndimage.gaussian_filter(eight_lens, sigma=sigma)
+    eight_lens /= np.sum(eight_lens)
+    return eight_lens
 
 
 ## 01/24/2024 new CNN that's slightly deeper 
@@ -638,3 +679,49 @@ def load_fake_rml(size=32, sigma=0.8):
     fake_rml += fake_rml_3
     fake_rml /= np.sum(fake_rml)
     return fake_rml
+
+
+def make_bead_volume(sparsity, bead_width_scale=1, numz=1, numz_obj=1, mask_planes=[0], numx=64, numy=64):
+    """ 
+    Generates 2D or 3D volumes with a fixed level of sparsity. 
+    
+    sparsity: Adjusts the density of beads in scene, here ends up being the number of nonzero points as a fraction of the total number of available points. 
+    
+    numz: number of z planes in the volume space 
+    numz_obj: number of z planes that the object occupies, must be <= numz 
+    mask_planes: a list of the z slices that you want to keep in your object 
+    numx: number of x pixels in the volume space
+    numy: number of y pixels in the volume space
+    """
+
+    sigmas=[1.275e-3,1.275e-3,1.596e-3] # x, y, and z direction gaussian blurring
+    sigmas = [sigma * 4e3 * bead_width_scale for sigma in sigmas] # testing scaling #TODO could also remove blurring in z direction, potentially useful in the future
+
+    mask = np.zeros((numz, numy, numx))
+    # isolates planes for the objects to be in, based on the indices in mask_planes
+    for mask_plane in mask_planes:
+        mask[mask_plane, :, :] = 1
+    # generate 3D volume with randomly located points
+    volume = np.zeros([numz, numy, numx]) # final volume
+    volume_object = np.zeros([numz_obj, numy, numx]) # volume containing object information
+    # set random seed before each random call you do, if you have specified - 3/10/2025 I think this is not the right way to do it, set random seed in the outer code
+    # if seed_val != -1:
+    #     np.random.seed(seed_val)
+    indices = np.random.choice(np.arange(volume_object.size), int(sparsity*volume_object.size), replace=False)
+    volume_object[np.unravel_index(indices, volume_object.shape)] = 1 # put ones in at the random points in volume
+    start_ind = int((numz - numz_obj) / 2)
+    volume[start_ind:start_ind + numz_obj] = volume_object # put object into bigger volume 
+    volume = volume * mask # isolate beads only in the valid planes via mask 
+    volume = volume.astype(np.float32)
+    num_points = np.size(np.nonzero(volume), 1) # num points in z, y, x that are nonzero, divide by 3 for total number of points in volume
+    # generate 3D gaussian blur PSF 
+    kernel = np.zeros_like(volume)
+    for offset in [0, 1]:
+        kernel[tuple((np.array(kernel.shape) - offset) // 2)] = 1 # two center points
+    sigma = [sigmas[2]/2, sigmas[1]/2, sigmas[0]/2] / (2 * np.sqrt(2 * np.log(2))) # adjusted scaling
+    kernel = gaussian_filter(kernel, sigma)
+    volume = fftconvolve(volume, kernel, mode='same') # 'same' convolution mode to generate a uniform object
+    volume = volume.clip(min=0) * mask
+    volume = volume.astype(np.float32)
+    #volume = volume + 1e-6 # adding small epsilon? TODO if something goes wrong with MI estimation can add this in again
+    return volume, num_points
