@@ -181,42 +181,39 @@ class IDEALOptimizer:
                 if iteration % log_every == 0:
                     try:
                         measurements = self.imaging_system(sample_data[0])
-                        reconstructions = self.imaging_system.reconstruct(measurements)
                         try:
                             fig = self.imaging_system.display_measurement(measurements)
+                            metrics['viz/measurement'] = wandb.Image(fig) if fig is not None else None
                             if fig is not None:
-                                metrics['viz/measurement'] = wandb.Image(fig)
                                 plt.close(fig)
-                        except Exception:
-                            pass
-                        try:
-                            fig = self.imaging_system.display_reconstruction(reconstructions)
-                            if fig is not None:
-                                metrics['viz/reconstruction'] = wandb.Image(fig)
-                                plt.close(fig)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"Warning: Failed to generate measurement visualization: {str(e)}")
                         try:
                             fig = self.imaging_system.display_object(sample_data[0])
+                            metrics['viz/object'] = wandb.Image(fig) if fig is not None else None
                             if fig is not None:
-                                metrics['viz/object'] = wandb.Image(fig)
                                 plt.close(fig)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"Warning: Failed to generate object visualization: {str(e)}")
                         try:
                             fig = self.imaging_system.display_optics()
+                            metrics['viz/optics'] = wandb.Image(fig) if fig is not None else None
                             if fig is not None:
-                                metrics['viz/optics'] = wandb.Image(fig)
                                 plt.close(fig)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"Warning: Failed to generate optics visualization: {str(e)}")
+                        # reconstructions = self.imaging_system.reconstruct(measurements)
+                        try:
+                            fig = self.imaging_system.display_reconstruction(measurements)
+                            metrics['viz/reconstruction'] = wandb.Image(fig) if fig is not None else None
+                            if fig is not None:
+                                plt.close(fig)
+                        except Exception as e:
+                            print(f"Warning: Failed to generate reconstruction visualization: {str(e)}")
                     except Exception as e:
                         print(f"Warning: Error during visualization: {str(e)}")
-                    
-                    wandb.log(metrics)
-                else:
-                    wandb.log(metrics)
-                    
+                
+                wandb.log(metrics)
             if validation_data is not None and iteration % validate_every == 0:
                 val_loss = self.validate(validation_data, subkey)
                 if self.use_wandb:
