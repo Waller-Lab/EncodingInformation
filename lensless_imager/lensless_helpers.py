@@ -11,7 +11,7 @@ import skimage.io
 from skimage.transform import resize
 
 from scipy.signal import fftconvolve
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, sobel
 
 # from tensorflow.keras.optimizers import SGD
 
@@ -542,6 +542,37 @@ def load_eight_lens_uniform(size=32, sigma=0.8):
     eight_lens /= np.sum(eight_lens)
     return eight_lens
 
+def load_nine_lens_uniform(size=32, sigma=0.8):
+    nine_lens = np.zeros((size, size))
+    nine_lens[16, 16] = 1
+    nine_lens[7, 9] = 1
+    nine_lens[23, 21] = 1
+    nine_lens[8, 24] = 1
+    nine_lens[21, 5] = 1
+    nine_lens[27, 13] = 1
+    nine_lens[4, 16] = 1
+    nine_lens[16, 26] = 1
+    nine_lens[14, 7] = 1
+    nine_lens = scipy.ndimage.gaussian_filter(nine_lens, sigma=sigma)
+    nine_lens /= np.sum(nine_lens)
+    return nine_lens
+
+def load_ten_lens_uniform(size=32, sigma=0.8):
+    ten_lens = np.zeros((size, size)) 
+    ten_lens[16, 16] = 1
+    ten_lens[7, 9] = 1
+    ten_lens[23, 21] = 1
+    ten_lens[8, 24] = 1
+    ten_lens[21, 5] = 1
+    ten_lens[27, 13] = 1
+    ten_lens[4, 16] = 1
+    ten_lens[16, 26] = 1
+    ten_lens[14, 7] = 1
+    ten_lens[26, 26] = 1
+    ten_lens = scipy.ndimage.gaussian_filter(ten_lens, sigma=sigma)
+    ten_lens /= np.sum(ten_lens)
+    return ten_lens
+
 
 ## 01/24/2024 new CNN that's slightly deeper 
 def current_testing_model(train_data, train_labels, test_data, test_labels, val_data, val_labels, seed_value=-1, max_epochs=50, patience=20):
@@ -725,3 +756,18 @@ def make_bead_volume(sparsity, bead_width_scale=1, numz=1, numz_obj=1, mask_plan
     volume = volume.astype(np.float32)
     #volume = volume + 1e-6 # adding small epsilon? TODO if something goes wrong with MI estimation can add this in again
     return volume, num_points
+
+
+def compute_tamura(img, return_gradient_mag=False):
+    # computes the Tamura Coefficient sparsity metric
+    # make sure input is np.float32 or np.float64 for accurate results
+    assert len(img.shape) == 2 # must be a 2D image for correct behavior
+    assert img.dtype == np.float32 or img.dtype == np.float64 # must be float32 or float64 for accurate results
+    sobel_h = sobel(img, 0)
+    sobel_v = sobel(img, 1)
+    magnitude = np.sqrt(sobel_h**2 + sobel_v**2)
+    magnitude_normed = magnitude / np.max(magnitude) # normalize is technically not needed but whatever, good practice
+    tamura = np.sqrt(np.std(magnitude_normed) / np.mean(magnitude_normed)) # square root of ratio of SD and mean of gradient magnitude image
+    if return_gradient_mag:
+        return magnitude, tamura
+    return tamura
