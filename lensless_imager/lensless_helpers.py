@@ -771,3 +771,18 @@ def compute_tamura(img, return_gradient_mag=False):
     if return_gradient_mag:
         return magnitude, tamura
     return tamura
+
+def convolve_volume(psf, volume, size=65):
+    convolution_sum = np.zeros((size, size))
+    assert psf.shape[0] == volume.shape[0]
+    for i in range(psf.shape[0]):
+        convolution = scipy.signal.convolve2d(psf[i], volume[i], mode='valid') 
+        convolution = convolution.clip(min=0) 
+        convolution_sum += convolution
+    return convolution_sum
+
+def convolve_volume_dataset(psf, volumes, size=65):
+    convolved_dataset = np.zeros((volumes.shape[0], size, size)) # each output is 2D 
+    for i in tqdm(range(volumes.shape[0])):
+        convolved_dataset[i] = convolve_volume(psf, volumes[i], size=size)
+    return convolved_dataset
