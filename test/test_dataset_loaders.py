@@ -7,7 +7,7 @@ from encoding_information.datasets import BSCCMDataset, MNISTDataset, LenslessDa
 def dataset(request):
     print(request.param, type(request.param))
     if request.param == BSCCMDataset:
-        return BSCCMDataset('/home/your_username/data/BSCCM/')
+        return BSCCMDataset('/home/hpinkard_waller/data/BSCCM/')
     if request.param == MNISTDataset:
         return MNISTDataset()
     if request.param == LenslessDataset:
