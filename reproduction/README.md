@@ -1,34 +1,5 @@
 
 
-
-Specification of dependencies
-
-
-
-
-
-
-Training code
-Evaluation code
-Pre-trained models
-README file including table of results accompanied by precise commands to run/produce those results
-
-
-
-
-
-
-
-
-## Validation of mutual information estimator (Section 3 in paper)
-
-- Uses the `./led_array/estimator_and_microscopy_requirements.txt` environment
-
-
-
-## Information estimation on imaging applications (Section 4 in paper)
-
-### Fig 1
 (Conceptual, no experiments)
 
 
