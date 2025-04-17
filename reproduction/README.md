@@ -98,13 +98,13 @@ Conceptual, no experiments
 
 ### S20
 
-#### S20a 
+#### top row
 TODO
 
-#### S20b
+#### middle row
 TODO
 
-#### S20c 
+#### bottom row
 TODO
 
 
