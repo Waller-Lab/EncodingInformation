@@ -3,7 +3,7 @@ data:
   batch: 0
   channels:
   - Brightfield
-  data_dir: /home/your_username/data/
+  data_dir: /home/hpinkard_waller/data/
   dataset_name: BSCCM
   shuffle_seed: 1
   synthetic_noise:
@@ -39,10 +39,10 @@ options:
   immortal: false
   resume_training: false
 patch_size: 30
-saving_dir: /home/your_username/models/Synthetic_Noise_v5/
-train_script_path: /home/your_username/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
+saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v5/
+train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
 training:
   attempt_number: 2
   elapsed: 131249.19768452644
   start_date: '2023-11-02'
-  tensorboard_dir: /home/your_username/models/Synthetic_Noise_v5/Synthetic_Noise_v5_Brightfield_50photons_replicate_1/tensorboard/
+  tensorboard_dir: /home/hpinkard_waller/models/Synthetic_Noise_v5/Synthetic_Noise_v5_Brightfield_50photons_replicate_1/tensorboard/

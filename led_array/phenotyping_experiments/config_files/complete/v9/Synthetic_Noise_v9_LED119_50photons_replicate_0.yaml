@@ -3,7 +3,7 @@ data:
   batch: 0
   channels:
   - LED119
-  data_dir: /home/your_username/data/
+  data_dir: /home/hpinkard_waller/data/
   dataset_name: BSCCM
   shuffle_seed: 0
   synthetic_noise:
@@ -39,10 +39,10 @@ options:
   hog_memory: false
   immortal: false
   resume_training: false
-saving_dir: /home/your_username/models/Synthetic_Noise_v9/
-train_script_path: /home/your_username/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
+saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v9/
+train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
 training:
   attempt_number: 3
   elapsed: 76747.11874127388
   start_date: '2023-12-16'
-  tensorboard_dir: /home/your_username/models/Synthetic_Noise_v9/Synthetic_Noise_v9_LED119_50photons_replicate_0/tensorboard/
+  tensorboard_dir: /home/hpinkard_waller/models/Synthetic_Noise_v9/Synthetic_Noise_v9_LED119_50photons_replicate_0/tensorboard/

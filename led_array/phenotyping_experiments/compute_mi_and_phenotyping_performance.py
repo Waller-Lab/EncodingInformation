@@ -148,7 +148,7 @@ def test_set_phenotyping_nll(model_name, config):
 
 
 
-bsccm = BSCCM('/home/your_username/data/BSCCM/')
+bsccm = BSCCM('/home/hpinkard_waller/data/BSCCM/')
 # remove the .yaml and take the file name
 model_name = config_file_path.split('/')[-1].split('.')[0]
 # remove leading 'Analysis_' from model name

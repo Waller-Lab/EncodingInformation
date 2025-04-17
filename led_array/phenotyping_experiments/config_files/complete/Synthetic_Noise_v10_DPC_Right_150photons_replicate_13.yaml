@@ -3,7 +3,7 @@ data:
   batch: 0
   channels:
   - DPC_Right
-  data_dir: /home/your_username/data/
+  data_dir: /home/hpinkard_waller/data/
   dataset_name: BSCCM
   shuffle_seed: 12345
   synthetic_noise:
@@ -39,10 +39,10 @@ options:
   hog_memory: false
   immortal: false
   resume_training: false
-saving_dir: /home/your_username/models/Synthetic_Noise_v10/
-train_script_path: /home/your_username/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
+saving_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/
+train_script_path: /home/hpinkard_waller/GitRepos/EncodingInformation/led_array/phenotyping_experiments/train_model.py
 training:
   attempt_number: 2
   elapsed: 27383.145106077194
   start_date: '2023-12-13'
-  tensorboard_dir: /home/your_username/models/Synthetic_Noise_v10/Synthetic_Noise_v10_DPC_Right_150photons_replicate_13/tensorboard/
+  tensorboard_dir: /home/hpinkard_waller/models/Synthetic_Noise_v10/Synthetic_Noise_v10_DPC_Right_150photons_replicate_13/tensorboard/
