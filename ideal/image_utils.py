@@ -18,11 +18,18 @@ def _extract_random_patches(data, key, num_patches, patch_size):
                                  minval=0, maxval=data.shape[2] - patch_size + 1)
     
     def get_patch(i):
-        return jax.lax.dynamic_slice(
-            data[image_indices[i]], 
-            (x_indices[i], y_indices[i]), 
-            (patch_size, patch_size)
-        )
+        if data.ndim == 3:  # No channel dimension
+            return jax.lax.dynamic_slice(
+                data[image_indices[i]], 
+                (x_indices[i], y_indices[i]), 
+                (patch_size, patch_size)
+            )
+        elif data.ndim == 4:  # With channel dimension
+            return jax.lax.dynamic_slice(
+                data[image_indices[i]], 
+                (x_indices[i], y_indices[i], 0), 
+                (patch_size, patch_size, data.shape[3])
+            )
     
     return jax.vmap(get_patch)(jnp.arange(num_patches))
 
@@ -40,11 +47,18 @@ def _extract_tiled_patches(data, key, num_patches, patch_size):
                                       minval=0, maxval=num_tiles_y)
     
     def get_tile(i):
-        return jax.lax.dynamic_slice(
-            data[image_indices[i]], 
-            (x_tile_indices[i] * patch_size, y_tile_indices[i] * patch_size), 
-            (patch_size, patch_size)
-        )
+        if data.ndim == 3:  # No channel dimension
+            return jax.lax.dynamic_slice(
+                data[image_indices[i]], 
+                (x_tile_indices[i] * patch_size, y_tile_indices[i] * patch_size), 
+                (patch_size, patch_size)
+            )
+        elif data.ndim == 4:  # With channel dimension
+            return jax.lax.dynamic_slice(
+                data[image_indices[i]], 
+                (x_tile_indices[i] * patch_size, y_tile_indices[i] * patch_size, 0), 
+                (patch_size, patch_size, data.shape[3])
+            )
     
     return jax.vmap(get_tile)(jnp.arange(num_patches))
 
@@ -59,9 +73,14 @@ def _extract_cropped_patches(data, key, num_patches, patch_size, crop_location):
         y_index = jax.random.randint(key2, shape=(), 
                                    minval=0, maxval=data.shape[2] - patch_size + 1)
     
-    patches = jax.lax.dynamic_slice(data, 
-                                  (0, x_index, y_index), 
-                                  (min(data.shape[0], num_patches), patch_size, patch_size))
+    if data.ndim == 3:  # No channel dimension
+        patches = jax.lax.dynamic_slice(data, 
+                                        (0, x_index, y_index), 
+                                        (min(data.shape[0], num_patches), patch_size, patch_size))
+    elif data.ndim == 4:  # With channel dimension
+        patches = jax.lax.dynamic_slice(data, 
+                                        (0, x_index, y_index, 0), 
+                                        (min(data.shape[0], num_patches), patch_size, patch_size, data.shape[3]))
     
     if num_patches > data.shape[0]:
         key3 = jax.random.split(key)[0]
@@ -96,7 +115,10 @@ def _extract_masked_patches(data, key, num_patches, patch_size, num_masked_pixel
         patches = patches[sample_indices]
     
     if patch_size * patch_size == num_masked_pixels:
-        patches = patches.reshape(num_patches, patch_size, patch_size)
+        if data.ndim == 3:  # No channel dimension
+            patches = patches.reshape(num_patches, patch_size, patch_size)
+        elif data.ndim == 4:  # With channel dimension
+            patches = patches.reshape(num_patches, patch_size, patch_size, data.shape[3])
     
     return patches
 
