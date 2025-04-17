@@ -1,3 +1,4 @@
+[![doc](https://readthedocs.org/projects/encodinginformation/badge/?version=latest)(https://encodinginformation.readthedocs.io/en/latest/)]
 [![License](https://img.shields.io/pypi/l/encoding_information.svg)](https://github.com/EncodingInformation/EncodingInformation/raw/master/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/encoding_information.svg)](https://pypi.org/project/encoding-information)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/encoding_information.svg)](https://pypistats.org/packages/encoding_information)
@@ -5,7 +6,7 @@
 
 Code and experiments from the paper [Information-driven design of imaging systems](https://waller-lab.github.io/EncodingInformationWebsite/). 
 
-For detailed usage, see the [documentation](https://readthedocs.org/projects/encodinginformation/badge/?version=latest).
+For detailed usage, see the [documentation](https://encodinginformation.readthedocs.io/en/latest/).
 
 ## Installation guide
 
