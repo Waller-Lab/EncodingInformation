@@ -22,7 +22,7 @@ import os
 from jax import config
 config.update("jax_enable_x64", True)
 import sys 
-sys.path.append('/home/lakabuli/workspace/EncodingInformation/src')
+sys.path.append('/home/your_username/EncodingInformation/src')
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -81,7 +81,7 @@ num_iters_per_epoch = 500
 patience_val = 20
 
 
-save_dir = '/home/lakabuli/workspace/EncodingInformation/lensless_imager/mi_estimates_smaller_lr/'
+save_dir = '/home/your_username/EncodingInformation/lensless_imager/mi_estimates_smaller_lr/'
 
 
 # %%

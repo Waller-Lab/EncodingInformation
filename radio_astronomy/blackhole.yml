@@ -265,7 +265,7 @@ dependencies:
       - sgp4==2.23
       - skyfield==1.48
 variables:
-  INOISY_DIR: /home/lakabuli/workspace/pynoisy/inoisy
-  HYPRE_DIR: /home/lakabuli/workspace/pynoisy/hypre/src/hypre
-  LD_LIBRARY_PATH: :/home/lakabuli/workspace/pynoisy/hypre/src/hypre/lib/
-prefix: /home/lakabuli/miniconda3/envs/pynoisy
+  INOISY_DIR: /home/your_username/pynoisy/inoisy
+  HYPRE_DIR: /home/your_username/pynoisy/hypre/src/hypre
+  LD_LIBRARY_PATH: :/home/your_username/pynoisy/hypre/src/hypre/lib/
+prefix: /home/your_username/miniconda3/envs/pynoisy

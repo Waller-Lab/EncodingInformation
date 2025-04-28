@@ -20,7 +20,7 @@ import ehtim as eh # installed using https://github.com/achael/eht-imaging
 # #%matplotlib ipympl
 import pynoisy
 import sys 
-sys.path.append('/home/lakabuli/workspace/eht_stuff/ehtplot')
+sys.path.append('/home/your_username/eht_stuff/ehtplot')
 import ehtplot.color # installed using https://github.com/liamedeiros/ehtplot (only necessary if you want cfun="afmhot_10us", the colormap used in EHT papers)
 import matplotlib.pyplot as plt
 import numpy as np
