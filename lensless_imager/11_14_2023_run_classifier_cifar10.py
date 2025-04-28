@@ -20,8 +20,8 @@ import os
 from jax import config
 config.update("jax_enable_x64", True)
 import sys
-sys.path.insert(0, '/home/lkabuli_waller/workspace/EncodingInformation/')
-sys.path.append('/home/lkabuli_waller/workspace/EncodingInformation/imager_experiments/')
+sys.path.insert(0, '/home/your_username/EncodingInformation/')
+sys.path.append('/home/your_username/EncodingInformation/imager_experiments/')
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'

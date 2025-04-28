@@ -18,8 +18,8 @@
 # %%
 import os
 import sys
-sys.path.append('/home/lakabuli/workspace/eht_stuff')
-sys.path.append('/home/lakabuli/workspace/eht_stuff/ehtplot')
+sys.path.append('/home/your_username/eht_stuff')
+sys.path.append('/home/your_username/eht_stuff/ehtplot')
 import ehtim as eh
 import numpy as np
 import matplotlib.pyplot as plt
@@ -89,7 +89,7 @@ for image_idx in range(image_idx_start, image_idx_end):
     prior = prior.add_gauss(flux, (prior_fwhm, prior_fwhm, 0, 0, 0))
     #print('prior total flux: {:.2f} Jy'.format(prior.total_flux()))
 
-    # default parameters for reconstruction, matches Angela's code implementation. 100 iterations per round, simple then two rounds of TV reg
+    # default parameters for reconstruction, matches EHT people's code implementation. 100 iterations per round, simple then two rounds of TV reg
     outim = imager_func(obs, prior, prior, flux, d1='vis', s1='simple', alpha_s1=1, show_updates=False, maxit=maxit)
     # round 2
     outim = outim.blur_circ(res)

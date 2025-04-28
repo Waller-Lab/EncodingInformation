@@ -25,7 +25,7 @@ import os
 from jax import config
 config.update("jax_enable_x64", True)
 import sys 
-sys.path.append('/home/lakabuli/workspace/EncodingInformation/src')
+sys.path.append('/home/your_username/EncodingInformation/src')
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'
@@ -85,7 +85,7 @@ mean_photon_count_list = [20, 40, 80, 160, 320]
 psf_patterns_use = [one_psf, four_psf, diffuser_psf]
 psf_names_use = ['one', 'four', 'diffuser']
 
-save_dir = '/home/lakabuli/workspace/EncodingInformation/lensless_imager/deconvolutions/'
+save_dir = '/home/your_username/EncodingInformation/lensless_imager/deconvolutions/'
 
 
 # MI estimator parameters 

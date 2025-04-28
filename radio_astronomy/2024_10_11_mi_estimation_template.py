@@ -35,7 +35,7 @@ gpu_idx = args.gpu_idx
 
 
 import sys 
-sys.path.append('/home/lakabuli/workspace/EncodingInformation/src')
+sys.path.append('/home/your_username/EncodingInformation/src')
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
 os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)
@@ -156,12 +156,12 @@ test_set_options = [100, 500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 90
 num_bootstraps = 100
 
 # %%
-base_folder = '/home/lakabuli/4tb_ssd/black_holes/'
+base_folder = '/home/your_username/black_holes/'
 
 telescope_name = 'observations_combination_{}'.format(array_idx)
 folder = base_folder + telescope_name + '/'
 
-save_dir = '/home/lakabuli/4tb_ssd/black_holes/mi_estimates_all_combinations/'
+save_dir = '/home/your_username/black_holes/mi_estimates_all_combinations/'
 
 add_uniform_noise = False # always no uniform noise now. 
 

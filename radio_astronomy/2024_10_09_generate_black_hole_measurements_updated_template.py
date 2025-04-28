@@ -19,8 +19,8 @@
 
 # %%
 import sys 
-sys.path.append('/home/lakabuli/workspace/eht_stuff')
-sys.path.append('/home/lakabuli/workspace/eht_stuff/ehtplot')
+sys.path.append('/home/your_username/eht_stuff')
+sys.path.append('/home/your_username/eht_stuff/ehtplot')
 import ehtim as eh # installed using https://github.com/achael/eht-imaging
 # #%matplotlib ipympl
 #import pynoisy # have an import error but also it works as is without this.
@@ -124,7 +124,7 @@ shutil.copy(array_filename, saving_path)
 shutil.move(saving_path + array_filename.split('/')[-1], saving_path + 'telescope_array.txt')
 
 # also add a data loading template notebook to check data progress
-data_loading_notebook_path = '/home/lakabuli/4tb_ssd/black_holes/data_progress_template.ipynb'
+data_loading_notebook_path = '/home/your_username/black_holes/data_progress_template.ipynb'
 shutil.copy(data_loading_notebook_path, saving_path)
 
 # %%

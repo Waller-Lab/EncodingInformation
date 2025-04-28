@@ -63,7 +63,7 @@ def compute_entropy(eigenvalues):
     return gaussian_entropy
 
 def add_shot_noise(photon_scaled_images, photon_fraction=None, photons_per_pixel=None, assume_noiseless=True, seed_value=-1):
-    #adapted from henry, also uses a seed though
+    #adapted from main API, also uses a seed though
     if seed_value==-1:
         np.random.seed()
     else: 
@@ -443,7 +443,7 @@ def load_four_lens_32():
     return psf
 
 def load_diffuser_32():
-    diffuser_psf = skimage.io.imread('/home/lakabuli/workspace/EncodingInformation/lensless_imager/psfs/diffuser_psf.png')
+    diffuser_psf = skimage.io.imread('/home/your_username/EncodingInformation/lensless_imager/psfs/diffuser_psf.png')
     diffuser_psf = diffuser_psf[:,:,1]
     diffuser_resize = diffuser_psf[200:500, 250:550]
     diffuser_resize = resize(diffuser_resize, (100, 100), anti_aliasing=True)  #resize(diffuser_psf, (28, 28))
