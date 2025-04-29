@@ -18,8 +18,8 @@ data_key: 1
 n_batch: 2304
 val_size: 0.1
 total_patches: 100000
-data_mean_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/train/avg_white_channel.npy'
-data_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/zarr_directories'
+data_mean_path: '/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/train/avg_white_channel.npy'
+data_path: '/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/data/zarr_directories'
 
 # Training parameters
 num_steps: 100000

@@ -1,6 +1,6 @@
 dataset:
-  zarr_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/zarr_directories'
-  data_mean_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/train/avg_white_channel.npy'
+  zarr_path: '/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/data/zarr_directories'
+  data_mean_path: '/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/train/avg_white_channel.npy'
   mean_photons: 1000
   total_patches: 100000
   val_size: 0.1
@@ -8,7 +8,7 @@ dataset:
   model_key: 3
   patch_size: 24
   batch_size: 128
-  model_path: '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/models/ideal_1000_photons_initialization/step_0000000.eqx'
+  model_path: '/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/models/ideal_1000_photons_initialization/step_0000000.eqx'
 
 training:
   epochs: 50
@@ -19,5 +19,5 @@ seeds:
   data_seed: 0
 
 output:
-  results_dir: "/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/mi_results"
+  results_dir: "/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/mi_results"
   save_name: 'ideal_1000_photons_initialization.npz'
