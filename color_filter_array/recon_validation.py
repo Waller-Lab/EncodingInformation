@@ -70,7 +70,7 @@ def main(config_path, gpu_index):
     mean_photons = h_params['mean_photons']
     data_mean = np.load(h_params['data_mean_path'])
 
-    image_path = '/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/test'
+    image_path = '/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/data/npy_files/test'
     images = glob.glob(os.path.join(image_path, '0*.npy'))
 
     patch_size = 24
@@ -188,7 +188,7 @@ def main(config_path, gpu_index):
         }
 
         # save the metrics to a npz file
-        np.savez(os.path.join('/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/recon_results', h_params['model_name']+'.npz'), **metrics)
+        np.savez(os.path.join('/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/recon_results', h_params['model_name']+'.npz'), **metrics)
 
 
     # calculate the mean ssim, psnr, and mse for full images
@@ -265,7 +265,7 @@ def main(config_path, gpu_index):
     
 
     # save the results to an npz file
-    np.savez(os.path.join('/home/emarkley/Workspace/PYTHON/EncodingInformation/color_filter_array/recon_results', h_params['model_name']+'.npz'), **results)
+    np.savez(os.path.join('/home/anonymous_user/Workspace/PYTHON/EncodingInformation/color_filter_array/recon_results', h_params['model_name']+'.npz'), **results)
 
 if __name__ == '__main__':
     import sys
