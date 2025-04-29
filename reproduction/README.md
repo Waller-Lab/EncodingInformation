@@ -5,7 +5,13 @@
 
 ### Fig 2
 #### 2a
-    TODO
+- *Environment*: `lcfa_requirements.txt`
+- *Data*: [Shi's Re-processing of Gehler's Raw Dataset](https://www.cs.sfu.ca/~colour/data/shi_gehler/)
+- *Experiments*: 
+    - Script for E2E optimzation `./color_filter_array/recon.py` with config files `./color_filter_array/e2e_configs`
+    - Script for mutual information verfication `./color_filter_array/mi_calculation.py` with config files `./color_filter_array/mi_configs`
+    - Script for reconstruction training `./color_filter_array/recon.py` with config files `./color_filter_array/recon_configs`
+- *Analysis/figure* using  `./color_filter_array/recon_validation.py`, `./color_filter_array/results_viewer.ipynb`, and `./color_filter_array/sandbox.ipynb`
 
 #### 2b
 - *Environment*: `astronomy_requirements.txt` and `lensless_requirements.txt`
@@ -34,9 +40,13 @@
 
 
 ### Fig 3
-    TODO
-
-
+- *Environment*: `lcfa_requirements.txt`
+- *Data*: [Shi's Re-processing of Gehler's Raw Dataset](https://www.cs.sfu.ca/~colour/data/shi_gehler/)
+- *Experiments*: 
+    - Script for IDEAL optimzation `./color_filter_array/ideal_optimization.py` with config files `./color_filter_array/ideal_configs`
+    - Script for mutual information verfication `./color_filter_array/mi_calculation.py` with config files `./color_filter_array/mi_configs`
+    - Script for reconstruction training `./color_filter_array/recon.py` with config files `./color_filter_array/recon_configs`
+- *Analysis/figure* using  `./color_filter_array/recon_validation.py`, `./color_filter_array/results_viewer.ipynb`, and `./color_filter_array/sandbox.ipynb`
 
 ## Supplementary figures
 
@@ -109,7 +119,13 @@ Conceptual, no experiments
 ### S20
 
 #### top row
-TODO
+- *Environment*: `lcfa_requirements.txt`
+- *Data*: [Shi's Re-processing of Gehler's Raw Dataset](https://www.cs.sfu.ca/~colour/data/shi_gehler/)
+- *Experiments*: 
+    - Script for E2E optimzation `./color_filter_array/recon.py` with config files `./color_filter_array/e2e_configs`
+    - Script for mutual information verfication `./color_filter_array/mi_calculation.py` with config files `./color_filter_array/mi_configs`
+    - Script for reconstruction training `./color_filter_array/recon.py` with config files `./color_filter_array/recon_configs`
+- *Analysis/figure* using  `./color_filter_array/recon_validation.py`, `./color_filter_array/results_viewer.ipynb`, and `./color_filter_array/sandbox.ipynb`
 
 #### middle row
 - *Environment*: `astronomy_requirements.txt` and `lensless_requirements.txt`
