@@ -72,8 +72,13 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     
     if scale_total_mi:
         assert noise_model.__class__.__name__ == 'AnalyticComplexPixelGaussianNoiseModel', "Only compatible with AnalyticComplexPixelGaussianNoiseModel for now."
-        print("scaling everything by {} for total NLL".format(train_set.shape[-1]))
-        nll = nll * train_set.shape[-1]
+        # if using multichannel stuff, might need to double check this scaling factor here.
+        #scale_factor = np.prod(np.array(train_set.shape[1:]))
+        # TODO resolve this later: for multichannel
+        scale_factor = np.prod(np.array(train_set.shape[1:3]))
+        print("scaling everything by {} for total NLL".format(scale_factor))
+        nll = nll * scale_factor
+
     hy_given_x = noise_model.estimate_conditional_entropy(full_dataset)
     mutual_info = (nll - hy_given_x) / np.log(2)
     if confidence_interval is None:
@@ -83,7 +88,7 @@ def estimate_information(measurement_model, noise_model, train_set, test_set,
     nll = measurement_model.compute_negative_log_likelihood(test_set, average=False)
 
     if scale_total_mi: 
-        nll = nll * train_set.shape[-1]
+        nll = nll * scale_factor
 
     # estimate confidence interval by bootstrapping data
     nlls = []
