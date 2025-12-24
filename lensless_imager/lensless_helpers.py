@@ -10,6 +10,9 @@ import skimage
 import skimage.io
 from skimage.transform import resize
 
+from scipy.signal import fftconvolve
+from scipy.ndimage import gaussian_filter, sobel
+
 # from tensorflow.keras.optimizers import SGD
 
 def tile_9_images(data_set):
@@ -199,6 +202,13 @@ def confidence_bars(data_array, noise_length, confidence_interval=0.95):
     error_hi = np.percentile(data_array, 100 * (1 - (1 - confidence_interval) / 2), axis=1)
     mean = np.mean(data_array, axis=1)
     assert len(error_lo) == len(mean) == len(error_hi) == noise_length
+    return error_lo, error_hi, mean
+
+def confidence_interval_list(data_list, confidence_interval=0.95):
+    # can also use confidence interval 0.9 or 0.99 if want slightly different bounds
+    error_lo = np.percentile(data_list, 100 * (1 - confidence_interval) / 2)
+    error_hi = np.percentile(data_list, 100 * (1 - (1 - confidence_interval) / 2))
+    mean = np.mean(data_list)
     return error_lo, error_hi, mean
 
 
@@ -500,6 +510,75 @@ def load_five_lens_uniform(size=32, sigma=0.8):
     five_lens /= np.sum(five_lens)
     return five_lens
 
+def load_six_lens_uniform(size=32, sigma=0.8):
+    six_lens = np.zeros((size, size))
+    six_lens[16, 16] = 1
+    six_lens[7, 9] = 1
+    six_lens[23, 21] = 1
+    six_lens[8, 24] = 1
+    six_lens[21, 5] = 1
+    six_lens[27, 13] = 1 
+    six_lens = scipy.ndimage.gaussian_filter(six_lens, sigma=sigma)
+    six_lens /= np.sum(six_lens)
+    return six_lens
+
+def load_seven_lens_uniform(size=32, sigma=0.8):
+    seven_lens = np.zeros((size, size))
+    seven_lens[16, 16] = 1
+    seven_lens[7, 9] = 1
+    seven_lens[23, 21] = 1
+    seven_lens[8, 24] = 1
+    seven_lens[21, 5] = 1
+    seven_lens[27, 13] = 1 
+    seven_lens[4, 16] = 1
+    seven_lens = scipy.ndimage.gaussian_filter(seven_lens, sigma=sigma)
+    seven_lens /= np.sum(seven_lens)
+    return seven_lens
+
+def load_eight_lens_uniform(size=32, sigma=0.8):
+    eight_lens = np.zeros((size, size))
+    eight_lens[16, 16] = 1
+    eight_lens[7, 9] = 1
+    eight_lens[23, 21] = 1
+    eight_lens[8, 24] = 1
+    eight_lens[21, 5] = 1
+    eight_lens[27, 13] = 1 
+    eight_lens[4, 16] = 1
+    eight_lens[16, 26] = 1
+    eight_lens = scipy.ndimage.gaussian_filter(eight_lens, sigma=sigma)
+    eight_lens /= np.sum(eight_lens)
+    return eight_lens
+
+def load_nine_lens_uniform(size=32, sigma=0.8):
+    nine_lens = np.zeros((size, size))
+    nine_lens[16, 16] = 1
+    nine_lens[7, 9] = 1
+    nine_lens[23, 21] = 1
+    nine_lens[8, 24] = 1
+    nine_lens[21, 5] = 1
+    nine_lens[27, 13] = 1
+    nine_lens[4, 16] = 1
+    nine_lens[16, 26] = 1
+    nine_lens[14, 7] = 1
+    nine_lens = scipy.ndimage.gaussian_filter(nine_lens, sigma=sigma)
+    nine_lens /= np.sum(nine_lens)
+    return nine_lens
+
+def load_ten_lens_uniform(size=32, sigma=0.8):
+    ten_lens = np.zeros((size, size)) 
+    ten_lens[16, 16] = 1
+    ten_lens[7, 9] = 1
+    ten_lens[23, 21] = 1
+    ten_lens[8, 24] = 1
+    ten_lens[21, 5] = 1
+    ten_lens[27, 13] = 1
+    ten_lens[4, 16] = 1
+    ten_lens[16, 26] = 1
+    ten_lens[14, 7] = 1
+    ten_lens[26, 26] = 1
+    ten_lens = scipy.ndimage.gaussian_filter(ten_lens, sigma=sigma)
+    ten_lens /= np.sum(ten_lens)
+    return ten_lens
 
 
 ## 01/24/2024 new CNN that's slightly deeper 
@@ -638,3 +717,79 @@ def load_fake_rml(size=32, sigma=0.8):
     fake_rml += fake_rml_3
     fake_rml /= np.sum(fake_rml)
     return fake_rml
+
+
+def make_bead_volume(sparsity, bead_width_scale=1, numz=1, numz_obj=1, mask_planes=[0], numx=64, numy=64, bead_photon_count=1.0):
+    """ 
+    Generates 2D or 3D volumes with a fixed level of sparsity. 
+    
+    sparsity: Adjusts the density of beads in scene, here ends up being the number of nonzero points as a fraction of the total number of available points. 
+    
+    numz: number of z planes in the volume space 
+    numz_obj: number of z planes that the object occupies, must be <= numz 
+    mask_planes: a list of the z slices that you want to keep in your object 
+    numx: number of x pixels in the volume space
+    numy: number of y pixels in the volume space
+    """
+
+    sigmas=[1.275e-3,1.275e-3,1.596e-3] # x, y, and z direction gaussian blurring
+    sigmas = [sigma * 4e3 * bead_width_scale for sigma in sigmas] # testing scaling #TODO could also remove blurring in z direction, potentially useful in the future
+
+    mask = np.zeros((numz, numy, numx))
+    # isolates planes for the objects to be in, based on the indices in mask_planes
+    for mask_plane in mask_planes:
+        mask[mask_plane, :, :] = 1
+    # generate 3D volume with randomly located points
+    volume = np.zeros([numz, numy, numx]) # final volume
+    volume_object = np.zeros([numz_obj, numy, numx]) # volume containing object information
+    # set random seed before each random call you do, if you have specified - 3/10/2025 I think this is not the right way to do it, set random seed in the outer code
+    # if seed_val != -1:
+    #     np.random.seed(seed_val)
+    indices = np.random.choice(np.arange(volume_object.size), int(sparsity*volume_object.size), replace=False)
+    volume_object[np.unravel_index(indices, volume_object.shape)] = bead_photon_count # put ones in at the random points in volume
+    start_ind = int((numz - numz_obj) / 2)
+    volume[start_ind:start_ind + numz_obj] = volume_object # put object into bigger volume 
+    volume = volume * mask # isolate beads only in the valid planes via mask 
+    volume = volume.astype(np.float32)
+    num_points = np.size(np.nonzero(volume), 1) # num points in z, y, x that are nonzero, divide by 3 for total number of points in volume
+    # generate 3D gaussian blur PSF 
+    kernel = np.zeros_like(volume)
+    for offset in [0, 1]:
+        kernel[tuple((np.array(kernel.shape) - offset) // 2)] = 1 # two center points
+    sigma = [sigmas[2]/2, sigmas[1]/2, sigmas[0]/2] / (2 * np.sqrt(2 * np.log(2))) # adjusted scaling
+    kernel = gaussian_filter(kernel, sigma)
+    volume = fftconvolve(volume, kernel, mode='same') # 'same' convolution mode to generate a uniform object
+    volume = volume.clip(min=0) * mask
+    volume = volume.astype(np.float32)
+    #volume = volume + 1e-6 # adding small epsilon? TODO if something goes wrong with MI estimation can add this in again
+    return volume, num_points
+
+
+def compute_tamura(img, return_gradient_mag=False):
+    # computes the Tamura Coefficient sparsity metric
+    # make sure input is np.float32 or np.float64 for accurate results
+    assert len(img.shape) == 2 # must be a 2D image for correct behavior
+    assert img.dtype == np.float32 or img.dtype == np.float64 # must be float32 or float64 for accurate results
+    sobel_h = sobel(img, 0)
+    sobel_v = sobel(img, 1)
+    magnitude = np.sqrt(sobel_h**2 + sobel_v**2)
+    magnitude_normed = magnitude / np.max(magnitude) # normalize is technically not needed but whatever, good practice
+    tamura = np.sqrt(np.std(magnitude_normed) / np.mean(magnitude_normed)) # square root of ratio of SD and mean of gradient magnitude image
+    if return_gradient_mag:
+        return magnitude, tamura
+    return tamura
+
+def convolve_volume(psf, volume, size=65):
+    convolution_sum = np.zeros((size, size))
+    assert psf.shape[0] == volume.shape[0]
+    for i in range(psf.shape[0]):
+        convolution = scipy.signal.convolve2d(psf[i], volume[i], mode='valid') 
+        convolution = convolution.clip(min=0) 
+        convolution_sum += convolution
+    return convolution_sum
+
+def convolve_volume_dataset(psf, volumes, size=65):
+    convolved_dataset = np.zeros((volumes.shape[0], size, size)) # each output is 2D 
+    for i in tqdm(range(volumes.shape[0])):
+        convolved_dataset[i] = convolve_volume(psf, volumes[i], size=size)
+    return convolved_dataset
