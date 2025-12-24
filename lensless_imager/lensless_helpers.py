@@ -204,6 +204,13 @@ def confidence_bars(data_array, noise_length, confidence_interval=0.95):
     assert len(error_lo) == len(mean) == len(error_hi) == noise_length
     return error_lo, error_hi, mean
 
+def confidence_interval_list(data_list, confidence_interval=0.95):
+    # can also use confidence interval 0.9 or 0.99 if want slightly different bounds
+    error_lo = np.percentile(data_list, 100 * (1 - confidence_interval) / 2)
+    error_hi = np.percentile(data_list, 100 * (1 - (1 - confidence_interval) / 2))
+    mean = np.mean(data_list)
+    return error_lo, error_hi, mean
+
 
 ######### This function is very outdated, don't use it!! used to be called test_system use the ones below instead
 #########
@@ -712,7 +719,7 @@ def load_fake_rml(size=32, sigma=0.8):
     return fake_rml
 
 
-def make_bead_volume(sparsity, bead_width_scale=1, numz=1, numz_obj=1, mask_planes=[0], numx=64, numy=64):
+def make_bead_volume(sparsity, bead_width_scale=1, numz=1, numz_obj=1, mask_planes=[0], numx=64, numy=64, bead_photon_count=1.0):
     """ 
     Generates 2D or 3D volumes with a fixed level of sparsity. 
     
@@ -739,7 +746,7 @@ def make_bead_volume(sparsity, bead_width_scale=1, numz=1, numz_obj=1, mask_plan
     # if seed_val != -1:
     #     np.random.seed(seed_val)
     indices = np.random.choice(np.arange(volume_object.size), int(sparsity*volume_object.size), replace=False)
-    volume_object[np.unravel_index(indices, volume_object.shape)] = 1 # put ones in at the random points in volume
+    volume_object[np.unravel_index(indices, volume_object.shape)] = bead_photon_count # put ones in at the random points in volume
     start_ind = int((numz - numz_obj) / 2)
     volume[start_ind:start_ind + numz_obj] = volume_object # put object into bigger volume 
     volume = volume * mask # isolate beads only in the valid planes via mask 
